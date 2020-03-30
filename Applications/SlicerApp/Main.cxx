@@ -18,80 +18,24 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QList>
-#include <QSettings>
-#include <QSplashScreen>
-#include <QString>
-#include <QTimer>
-
 // Slicer includes
-#include "vtkSlicerConfigure.h"
-
-// CTK includes
-#include <ctkAbstractLibraryFactory.h>
-#ifdef Slicer_USE_PYTHONQT
-# include <ctkPythonConsole.h>
-#endif
-
-// Slicer includes
-#include "vtkSlicerVersionConfigure.h" // For Slicer_VERSION_FULL, Slicer_BUILD_CLI_SUPPORT
-
-// SlicerApp includes
 #include "qSlicerApplication.h"
 #include "qSlicerApplicationHelper.h"
-#ifdef Slicer_BUILD_CLI_SUPPORT
-# include "qSlicerCLIExecutableModuleFactory.h"
-# include "qSlicerCLILoadableModuleFactory.h"
-#endif
-#include "qSlicerAppMainWindow.h"
-#include "qSlicerCommandOptions.h"
-#include "qSlicerModuleFactoryManager.h"
-#include "qSlicerModuleManager.h"
 #include "qSlicerStyle.h"
 
-// VTK includes
-//#include <vtkObject.h>
-
-#if defined (_WIN32) && !defined (Slicer_BUILD_WIN32_CONSOLE)
-# include <windows.h>
-# include <vtksys/SystemTools.hxx>
-#endif
+// SlicerApp includes
+#include "qSlicerAppMainWindow.h"
 
 namespace
 {
 
-#ifdef Slicer_USE_QtTesting
-//-----------------------------------------------------------------------------
-void setEnableQtTesting()
-{
-  if (qSlicerApplication::application()->commandOptions()->enableQtTesting() ||
-      qSlicerApplication::application()->userSettings()->value("QtTesting/Enabled").toBool())
-    {
-    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
-    }
-}
-#endif
-
-//----------------------------------------------------------------------------
-void splashMessage(QScopedPointer<QSplashScreen>& splashScreen, const QString& message)
-{
-  if (splashScreen.isNull())
-    {
-    return;
-    }
-  splashScreen->showMessage(message, Qt::AlignBottom | Qt::AlignHCenter);
-  //splashScreen->repaint();
-}
-
 //----------------------------------------------------------------------------
 int SlicerAppMain(int argc, char* argv[])
 {
-  QCoreApplication::setApplicationName("Slicer");
-  QCoreApplication::setApplicationVersion(Slicer_VERSION_FULL);
-  //vtkObject::SetGlobalWarningDisplay(false);
-  QApplication::setDesktopSettingsAware(false);
-  QApplication::setStyle(new qSlicerStyle);
+  typedef qSlicerAppMainWindow SlicerMainWindowType;
+  typedef qSlicerStyle SlicerAppStyle;
+
+  qSlicerApplicationHelper::preInitializeApplication(argv[0], new SlicerAppStyle);
 
   qSlicerApplication app(argc, argv);
   if (app.returnCode() != -1)
@@ -99,119 +43,25 @@ int SlicerAppMain(int argc, char* argv[])
     return app.returnCode();
     }
 
-  // We load the language selected for the application
-  qSlicerApplicationHelper::loadLanguage();
-
-#ifdef Slicer_USE_QtTesting
-  setEnableQtTesting(); // disabled the native menu bar.
-#endif
-
-#ifdef Slicer_USE_PYTHONQT
-  ctkPythonConsole pythonConsole;
-  pythonConsole.setWindowTitle("Slicer Python Interactor");
-  if (!qSlicerApplication::testAttribute(qSlicerApplication::AA_DisablePython))
-    {
-    qSlicerApplicationHelper::initializePythonConsole(&pythonConsole);
-    }
-#endif
-
-  bool enableMainWindow = !app.commandOptions()->noMainWindow();
-  enableMainWindow = enableMainWindow && !app.commandOptions()->runPythonAndExit();
-  bool showSplashScreen = !app.commandOptions()->noSplash() && enableMainWindow;
-
+  QScopedPointer<SlicerMainWindowType> window;
   QScopedPointer<QSplashScreen> splashScreen;
-  if (showSplashScreen)
+
+  int exitCode = qSlicerApplicationHelper::postInitializeApplication<SlicerMainWindowType>(
+        app, splashScreen, window);
+  if (exitCode != 0)
     {
-    QPixmap pixmap(":/SplashScreen.png");
-    splashScreen.reset(new QSplashScreen(pixmap));
-    splashMessage(splashScreen, "Initializing...");
-    splashScreen->show();
+    return exitCode;
     }
 
-  qSlicerModuleManager * moduleManager = qSlicerApplication::application()->moduleManager();
-  qSlicerModuleFactoryManager * moduleFactoryManager = moduleManager->factoryManager();
-  moduleFactoryManager->addSearchPaths(app.commandOptions()->additonalModulePaths());
-  qSlicerApplicationHelper::setupModuleFactoryManager(moduleFactoryManager);
-
-  // Register and instantiate modules
-  splashMessage(splashScreen, "Registering modules...");
-  moduleFactoryManager->registerModules();
-  qDebug() << "Number of registered modules:"
-           << moduleFactoryManager->registeredModuleNames().count();
-  splashMessage(splashScreen, "Instantiating modules...");
-  moduleFactoryManager->instantiateModules();
-  qDebug() << "Number of instantiated modules:"
-           << moduleFactoryManager->instantiatedModuleNames().count();
-  // Create main window
-  splashMessage(splashScreen, "Initializing user interface...");
-  QScopedPointer<qSlicerAppMainWindow> window;
-  if (enableMainWindow)
+  if (!window.isNull())
     {
-    window.reset(new qSlicerAppMainWindow);
-    window->setWindowTitle(window->windowTitle()+ " " + Slicer_VERSION_FULL);
+    QString windowTitle = QString("%1 %2").arg(window->windowTitle()).arg(Slicer_VERSION_FULL);
+    window->setWindowTitle(windowTitle);
     }
 
-  // Load all available modules
-  foreach(const QString& name, moduleFactoryManager->instantiatedModuleNames())
-    {
-    Q_ASSERT(!name.isNull());
-    splashMessage(splashScreen, "Loading module \"" + name + "\"...");
-    moduleFactoryManager->loadModule(name);
-    }
-  qDebug() << "Number of loaded modules:" << moduleManager->modulesNames().count();
-
-  splashMessage(splashScreen, QString());
-
-  if (window)
-    {
-    window->setHomeModuleCurrent();
-    window->show();
-    }
-
-  if (splashScreen && window)
-    {
-    splashScreen->finish(window.data());
-    }
-
-  // Process command line argument after the event loop is started
-  QTimer::singleShot(0, &app, SLOT(handleCommandLineArguments()));
-
-  // qSlicerApplicationHelper::showMRMLEventLoggerWidget();
-
-  // Look at QApplication::exec() documentation, it is recommended to connect
-  // clean up code to the aboutToQuit() signal
   return app.exec();
 }
 
 } // end of anonymous namespace
 
-#if defined (_WIN32) && !defined (Slicer_BUILD_WIN32_CONSOLE)
-int __stdcall WinMain(HINSTANCE hInstance,
-                      HINSTANCE hPrevInstance,
-                      LPSTR lpCmdLine, int nShowCmd)
-{
-  Q_UNUSED(hInstance);
-  Q_UNUSED(hPrevInstance);
-  Q_UNUSED(nShowCmd);
-
-  int argc;
-  char **argv;
-  vtksys::SystemTools::ConvertWindowsCommandLineToUnixArguments(
-    lpCmdLine, &argc, &argv);
-
-  int ret = SlicerAppMain(argc, argv);
-
-  for (int i = 0; i < argc; i++)
-    {
-    delete [] argv[i];
-    }
-  delete [] argv;
-
-  return ret;
-}
-#else
-int main(int argc, char *argv[])
-{
-  return SlicerAppMain(argc, argv);
-}
-#endif
+#include "qSlicerApplicationMainWrapper.cxx"

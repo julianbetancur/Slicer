@@ -27,9 +27,9 @@
 #include <ctkVTKAbstractMatrixWidget.h>
 
 #include "qMRMLWidgetsExport.h"
- 
-class vtkMRMLNode; 
-class vtkMRMLLinearTransformNode; 
+
+class vtkMRMLNode;
+class vtkMRMLTransformNode;
 class vtkMatrix4x4;
 class qMRMLMatrixWidgetPrivate;
 
@@ -39,31 +39,31 @@ class QMRML_WIDGETS_EXPORT qMRMLMatrixWidget : public ctkVTKAbstractMatrixWidget
   QVTK_OBJECT
   Q_PROPERTY(CoordinateReferenceType coordinateReference READ coordinateReference WRITE setCoordinateReference)
   Q_ENUMS(CoordinateReferenceType)
-  
+
 public:
-  
+
   /// Constructors
   typedef ctkVTKAbstractMatrixWidget Superclass;
   explicit qMRMLMatrixWidget(QWidget* parent);
-  virtual ~qMRMLMatrixWidget();
-  
-  /// 
+  ~qMRMLMatrixWidget() override;
+
+  ///
   /// Set/Get Coordinate system
   /// By default, the selector coordinate system will be set to GLOBAL
   enum CoordinateReferenceType { GLOBAL, LOCAL };
   void setCoordinateReference(CoordinateReferenceType coordinateReference);
   CoordinateReferenceType coordinateReference() const;
 
-  vtkMRMLLinearTransformNode* mrmlTransformNode()const;
+  vtkMRMLTransformNode* mrmlTransformNode()const;
 
 public slots:
-  /// 
+  ///
   /// Set the MRML node of interest
-  void setMRMLTransformNode(vtkMRMLLinearTransformNode* transformNode); 
-  void setMRMLTransformNode(vtkMRMLNode* node); 
-  
+  void setMRMLTransformNode(vtkMRMLTransformNode* transformNode);
+  void setMRMLTransformNode(vtkMRMLNode* node);
+
 protected slots:
-  /// 
+  ///
   /// Triggered upon MRML transform node updates
   void updateMatrix();
 
@@ -78,6 +78,6 @@ protected:
 private:
   Q_DECLARE_PRIVATE(qMRMLMatrixWidget);
   Q_DISABLE_COPY(qMRMLMatrixWidget);
-}; 
+};
 
 #endif

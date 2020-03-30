@@ -24,6 +24,7 @@
 // SlicerQT includes
 #include "qSlicerAbstractCoreModule.h"
 #include "qSlicerBaseQTCLIExport.h"
+class qSlicerCLIModule;
 
 // CTK includes
 #include <ctkPimpl.h>
@@ -35,12 +36,20 @@ class qSlicerCLIExecutableModuleFactoryItem
 {
 public:
   qSlicerCLIExecutableModuleFactoryItem(const QString& newTempDirectory);
-  virtual bool load();
+  bool load() override;
+  void uninstantiate() override;
 protected:
-  virtual qSlicerAbstractCoreModule* instanciator();
+  /// Return path of the expected XML file.
+  QString xmlModuleDescriptionFilePath();
+
+  qSlicerAbstractCoreModule* instanciator() override;
+  QString runCLIWithXmlArgument();
 private:
   QString TempDirectory;
+  qSlicerCLIModule* CLIModule;
 };
+
+class qSlicerCLIExecutableModuleFactoryPrivate;
 
 //-----------------------------------------------------------------------------
 class Q_SLICER_BASE_QTCLI_EXPORT qSlicerCLIExecutableModuleFactory :
@@ -50,25 +59,31 @@ public:
   typedef ctkAbstractFileBasedFactory<qSlicerAbstractCoreModule> Superclass;
   qSlicerCLIExecutableModuleFactory();
   qSlicerCLIExecutableModuleFactory(const QString& tempDir);
+  ~qSlicerCLIExecutableModuleFactory() override;
 
-  virtual void registerItems();
+  void registerItems() override;
 
   /// Extract module name given \a executableName
   /// For example:
   ///  Threshold.exe -> threshold
   ///  Threshold -> threshold
-  virtual QString fileNameToKey(const QString& fileName)const;
+  QString fileNameToKey(const QString& fileName)const override;
 
   void setTempDirectory(const QString& newTempDirectory);
 
 protected:
-  virtual bool isValidFile(const QFileInfo& file)const;
+  bool isValidFile(const QFileInfo& file)const override;
 
-  virtual ctkAbstractFactoryItem<qSlicerAbstractCoreModule>*
-    createFactoryFileBasedItem();
+  ctkAbstractFactoryItem<qSlicerAbstractCoreModule>*
+    createFactoryFileBasedItem() override;
+
+protected:
+
+  QScopedPointer<qSlicerCLIExecutableModuleFactoryPrivate> d_ptr;
 
 private:
-  QString TempDirectory;
+  Q_DECLARE_PRIVATE(qSlicerCLIExecutableModuleFactory);
+  Q_DISABLE_COPY(qSlicerCLIExecutableModuleFactory);
 };
 
 #endif

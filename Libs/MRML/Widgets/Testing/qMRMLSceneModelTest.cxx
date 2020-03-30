@@ -53,7 +53,7 @@ private slots:
 void qMRMLSceneModelTester::testDefaults()
 {
   qMRMLSceneModel sceneModel;
-  QCOMPARE(sceneModel.listenNodeModifiedEvent(), true);
+  QCOMPARE(sceneModel.listenNodeModifiedEvent(), qMRMLSceneModel::OnlyVisibleNodes);
   QCOMPARE(sceneModel.lazyUpdate(), false);
   QCOMPARE(sceneModel.nameColumn(), 0);
   QCOMPARE(sceneModel.idColumn(), -1);
@@ -61,8 +61,8 @@ void qMRMLSceneModelTester::testDefaults()
   QCOMPARE(sceneModel.visibilityColumn(), -1);
   QCOMPARE(sceneModel.toolTipNameColumn(), -1);
 
-  QVERIFY(sceneModel.mrmlScene() == 0);
-  QVERIFY(sceneModel.mrmlSceneItem() == 0);
+  QVERIFY(sceneModel.mrmlScene() == nullptr);
+  QVERIFY(sceneModel.mrmlSceneItem() == nullptr);
   QVERIFY(!sceneModel.mrmlSceneIndex().isValid());
 }
 
@@ -71,11 +71,11 @@ void qMRMLSceneModelTester::testSetsAndGets()
 {
   qMRMLSceneModel sceneModel;
 
-  sceneModel.setListenNodeModifiedEvent(false);
-  QCOMPARE(sceneModel.listenNodeModifiedEvent(), false);
+  sceneModel.setListenNodeModifiedEvent(qMRMLSceneModel::NoNodes);
+  QCOMPARE(sceneModel.listenNodeModifiedEvent(), qMRMLSceneModel::NoNodes);
 
-  sceneModel.setListenNodeModifiedEvent(true);
-  QCOMPARE(sceneModel.listenNodeModifiedEvent(), true);
+  sceneModel.setListenNodeModifiedEvent(qMRMLSceneModel::AllNodes);
+  QCOMPARE(sceneModel.listenNodeModifiedEvent(), qMRMLSceneModel::AllNodes);
 
   sceneModel.setLazyUpdate(true);
   QCOMPARE(sceneModel.lazyUpdate(), true);
@@ -95,7 +95,7 @@ void qMRMLSceneModelTester::testSetScene()
   qMRMLSceneModel sceneModel;
   vtkNew<vtkMRMLScene> scene;
   sceneModel.setMRMLScene(scene.GetPointer());
-  QVERIFY(sceneModel.mrmlSceneItem() != 0);
+  QVERIFY(sceneModel.mrmlSceneItem() != nullptr);
   QVERIFY(sceneModel.mrmlSceneIndex().isValid());
   QCOMPARE(sceneModel.mrmlSceneIndex().row(), 0);
   QCOMPARE(sceneModel.mrmlSceneIndex().column(), 0);

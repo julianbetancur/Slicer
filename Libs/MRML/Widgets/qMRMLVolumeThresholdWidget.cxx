@@ -16,6 +16,7 @@
 ==============================================================================*/
 
 // CTK includes
+#include <ctkDoubleSpinBox.h>
 #include <ctkPopupWidget.h>
 
 // qMRML includes
@@ -37,12 +38,12 @@ protected:
 
 public:
   qMRMLVolumeThresholdWidgetPrivate(qMRMLVolumeThresholdWidget& object);
-  virtual void init();
+  void init() override;
 
-  virtual bool blockSignals(bool block);
-  virtual void setRange(double min, double max);
-  virtual void setDecimals(int decimals);
-  virtual void setSingleStep(double singleStep);
+  bool blockSignals(bool block) override;
+  void setRange(double min, double max) override;
+  void setDecimals(int decimals) override;
+  void setSingleStep(double singleStep) override;
 };
 
 // --------------------------------------------------------------------------
@@ -59,6 +60,10 @@ void qMRMLVolumeThresholdWidgetPrivate::init()
 
   this->Superclass::init();
   this->setupUi(q);
+  this->VolumeThresholdRangeWidget->minimumSpinBox()->setDecimalsOption(
+    ctkDoubleSpinBox::DecimalsByKey|ctkDoubleSpinBox::DecimalsByShortcuts);
+  this->VolumeThresholdRangeWidget->maximumSpinBox()->setDecimalsOption(
+    ctkDoubleSpinBox::DecimalsByKey|ctkDoubleSpinBox::DecimalsByShortcuts);
 
   q->setAutoThreshold(qMRMLVolumeThresholdWidget::Off);
 
@@ -109,8 +114,7 @@ qMRMLVolumeThresholdWidget::qMRMLVolumeThresholdWidget(QWidget* parentWidget)
 
 // --------------------------------------------------------------------------
 qMRMLVolumeThresholdWidget::~qMRMLVolumeThresholdWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLVolumeThresholdWidget::setAutoThreshold(int autoThreshold)
@@ -270,7 +274,7 @@ void qMRMLVolumeThresholdWidget::updateWidgetFromMRMLDisplayNode()
 
   // We don't want the slider to fire signals saying that the threshold values
   // have changed, it would set the AutoThrehold mode to Manual automatically
-  // even if the values have been just set programatically/automatically.
+  // even if the values have been just set programmatically/automatically.
   bool wasBlocking = d->VolumeThresholdRangeWidget->blockSignals(true);
 
   const int autoThresh = d->VolumeDisplayNode->GetAutoThreshold();

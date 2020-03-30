@@ -15,18 +15,24 @@
  *  limitations under the License.
  *
  *=========================================================================*/
-#ifndef __itkDCMTKFileReader_h
+#ifndef itkDCMTKFileReader_h
+#define itkDCMTKFileReader_h
 
-#define __itkDCMTKFileReader_h
+// XXX # Workaround bug in packaging of DCMTK 3.6.0 on Debian.
+//     # See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=637687
+#ifndef HAVE_CONFIG_H
+#define HAVE_CONFIG_H
+#endif
+
 #include <stack>
 #include <vector>
 #include "itkByteSwapper.h"
 #include "itkIntTypes.h"
 #include "vnl/vnl_vector.h"
-#include "dcxfer.h"
-#include "dcvrds.h"
-#include "dcstack.h"
-#include "dcdatset.h"
+#include "dcmtk/dcmdata/dcxfer.h"
+#include "dcmtk/dcmdata/dcvrds.h"
+#include "dcmtk/dcmdata/dcstack.h"
+#include "dcmtk/dcmdata/dcdatset.h"
 #include "itkMacro.h"
 #include "itkImageIOBase.h"
 
@@ -54,7 +60,7 @@ namespace itk
 class DCMTKSequence
 {
 public:
-  DCMTKSequence() : m_DcmSequenceOfItems(0) {}
+  DCMTKSequence() : m_DcmSequenceOfItems(nullptr) {}
   void SetDcmSequenceOfItems(DcmSequenceOfItems *seq);
   int card();
   int GetSequence(unsigned long index,
@@ -96,7 +102,7 @@ public:
       this->GetStack(group,element,&resultStack);
       DcmDecimalString *dsItem =
         dynamic_cast<DcmDecimalString *>(resultStack.top());
-      if(dsItem == 0)
+      if(dsItem == nullptr)
         {
         DCMTKException(<< "Can't get DecimalString Element at tag "
                        << std::hex << group << " "
@@ -106,7 +112,7 @@ public:
       OFVector<Float64> doubleVals;
       if(dsItem->getFloat64Vector(doubleVals) != EC_Normal)
         {
-        DCMTKException(<< "Cant extract Array from DecimalString " << std::hex
+        DCMTKException(<< "Can't extract Array from DecimalString " << std::hex
                        << group << " " << std::hex
                        << element << std::dec);
         }
@@ -138,8 +144,8 @@ class DCMTKFileReader
 public:
   typedef DCMTKFileReader Self;
 
-  DCMTKFileReader() : m_DFile(0),
-                      m_Dataset(0),
+  DCMTKFileReader() : m_DFile(nullptr),
+                      m_Dataset(nullptr),
                       m_Xfer(EXS_Unknown),
                       m_FrameCount(0),
                       m_FileNumber(-1L)
@@ -176,21 +182,21 @@ public:
       DcmElement *el;
       if(this->m_Dataset->findAndGetElement(tagkey,el) != EC_Normal)
         {
-        DCMTKException(<< "Cant find tag " << std::hex
+        DCMTKException(<< "Can't find tag " << std::hex
                        << group << " " << std::hex
                        << element << std::dec);
         }
       DcmDecimalString *dsItem = dynamic_cast<DcmDecimalString *>(el);
-      if(dsItem == 0)
+      if(dsItem == nullptr)
         {
-        DCMTKException(<< "Cant find DecimalString element " << std::hex
+        DCMTKException(<< "Can't find DecimalString element " << std::hex
                        << group << " " << std::hex
                        << element << std::dec);
         }
       OFVector<Float64> doubleVals;
       if(dsItem->getFloat64Vector(doubleVals) != EC_Normal)
         {
-        DCMTKException(<< "Cant extract Array from DecimalString " << std::hex
+        DCMTKException(<< "Can't extract Array from DecimalString " << std::hex
                        << group << " " << std::hex
                        << element << std::dec);
         }
@@ -223,7 +229,7 @@ public:
       std::string val;
       if(this->GetElementOB(group,element,val) != EXIT_SUCCESS)
         {
-        DCMTKException(<< "Cant find DecimalString element " << std::hex
+        DCMTKException(<< "Can't find DecimalString element " << std::hex
                        << group << " " << std::hex
                        << element << std::dec);
         }
@@ -368,4 +374,4 @@ private:
 extern bool CompareDCMTKFileReaders(DCMTKFileReader *a, DCMTKFileReader *b);
 }
 
-#endif // __itkDCMTKFileReader_h
+#endif // itkDCMTKFileReader_h

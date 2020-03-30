@@ -2,7 +2,7 @@
 #define __vtkMRMLAnnotationAngleNode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationLinesNode.h" 
+#include "vtkMRMLAnnotationLinesNode.h"
 
 class vtkMatrix4x4;
 class vtkAbstractTransform;
@@ -15,38 +15,38 @@ public:
   static vtkMRMLAnnotationAngleNode *New();
   vtkTypeMacro(vtkMRMLAnnotationAngleNode,vtkMRMLAnnotationLinesNode);
   // Description:
-  // Just prints short summary 
-  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  // Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationAngle";};
+  const char* GetNodeTagName() override {return "AnnotationAngle";}
 
   // Description:
   // Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
   // Legacy code
   // Description:
@@ -55,25 +55,25 @@ public:
 
   int SetPosition1(double newControl[3]) { return this->SetControlPoint(0, newControl) ; }
 
-  int SetPosition1(double nC1, double nC2, double nC3) { 
+  int SetPosition1(double nC1, double nC2, double nC3) {
    double newControl[3] = {nC1,nC2,nC3};
-    return this->SetPosition1(newControl) ; 
+    return this->SetPosition1(newControl) ;
   }
 
   double* GetPosition2() {return this->GetControlPointCoordinates(1);}
   int SetPosition2(double newControl[3]) { return this->SetControlPoint(1, newControl);}
 
-  int SetPosition2(double nC1, double nC2, double nC3) { 
+  int SetPosition2(double nC1, double nC2, double nC3) {
    double newControl[3] = {nC1,nC2,nC3};
-    return this->SetPosition2(newControl) ; 
+    return this->SetPosition2(newControl) ;
   }
 
   double* GetPositionCenter() { return this->GetControlPointCoordinates(2);}
   int SetPositionCenter(double newControl[3]) { return this->SetControlPoint(2, newControl);}
 
-  int SetPositionCenter(double nC1, double nC2, double nC3) { 
+  int SetPositionCenter(double nC1, double nC2, double nC3) {
    double newControl[3] = {nC1,nC2,nC3};
-    return this->SetPositionCenter(newControl) ; 
+    return this->SetPositionCenter(newControl) ;
   }
 
   // Description:
@@ -82,7 +82,7 @@ public:
   vtkSetStringMacro(LabelFormat);
 
   // Description:
-  // KP Define - should be part of AnnotationAngleDisplayNode 
+  // KP Define - should be part of AnnotationAngleDisplayNode
   double GetLabelScale();
   void SetLabelScale(double init);
 
@@ -91,13 +91,13 @@ public:
   int GetLabelVisibility();
   void SetLabelVisibility(int flag);
 
-  int SetAngle(vtkIdType line1Id, vtkIdType line2Id, int sel, int vis);  
+  int SetAngle(vtkIdType line1Id, vtkIdType line2Id, int sel, int vis);
 
   // Description:
-  int GetRay1Visibility() {return this->GetAnnotationAttribute(0,vtkMRMLAnnotationLinesNode::LINE_VISIBLE);} 
-  void SetRay1Visibility(int flag) { this->SetAnnotationAttribute(0,vtkMRMLAnnotationLinesNode::LINE_VISIBLE,flag);} 
-  int GetRay2Visibility() {return this->GetAnnotationAttribute(1,vtkMRMLAnnotationLinesNode::LINE_VISIBLE);} 
-  void SetRay2Visibility(int flag) { this->SetAnnotationAttribute(1,vtkMRMLAnnotationLinesNode::LINE_VISIBLE,flag);} 
+  int GetRay1Visibility() {return this->GetAnnotationAttribute(0,vtkMRMLAnnotationLinesNode::LINE_VISIBLE);}
+  void SetRay1Visibility(int flag) { this->SetAnnotationAttribute(0,vtkMRMLAnnotationLinesNode::LINE_VISIBLE,flag);}
+  int GetRay2Visibility() {return this->GetAnnotationAttribute(1,vtkMRMLAnnotationLinesNode::LINE_VISIBLE);}
+  void SetRay2Visibility(int flag) { this->SetAnnotationAttribute(1,vtkMRMLAnnotationLinesNode::LINE_VISIBLE,flag);}
 
   int GetArcVisibility() { return this->GetLabelVisibility();}
   void SetArcVisibility(int flag) { this->SetLabelVisibility(flag);}
@@ -124,12 +124,11 @@ public:
 
  // Description:
   // transform utility functions
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix);
-  virtual void ApplyTransform(vtkAbstractTransform* transform);
+  void ApplyTransform(vtkAbstractTransform* transform) override;
 
   // Description:
-  // Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();  
+  // Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
   //  void Initialize(vtkMRMLScene* mrmlScene);
 
@@ -153,7 +152,7 @@ public:
 
 protected:
   vtkMRMLAnnotationAngleNode();
-  ~vtkMRMLAnnotationAngleNode();
+  ~vtkMRMLAnnotationAngleNode() override;
   vtkMRMLAnnotationAngleNode(const vtkMRMLAnnotationAngleNode&);
   void operator=(const vtkMRMLAnnotationAngleNode&);
 
@@ -161,7 +160,7 @@ protected:
   // number of subdivisions on the line
   int Resolution;
   char* LabelFormat;
- 
+
   int SetControlPoint(int id, double newControl[3]);
 
   int AddControlPoint(double newControl[3],int selectedFlag, int visibleFlag);

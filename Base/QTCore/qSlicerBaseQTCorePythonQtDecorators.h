@@ -16,19 +16,17 @@
 // PythonQt includes
 #include <PythonQt.h>
 
-// CTK includes
-#include <ctkErrorLogModel.h>
-
 // SlicerQt includes
 #include "qSlicerCoreApplication.h"
 #include "qSlicerAbstractCoreModule.h"
+#include "qSlicerUtils.h"
 
 #include "qSlicerBaseQTCoreExport.h"
 
 // NOTE:
 //
 // For decorators it is assumed that the methods will never be called
-// with the self argument as NULL.  The self argument is the first argument
+// with the self argument as nullptr.  The self argument is the first argument
 // for non-static methods.
 //
 
@@ -41,7 +39,7 @@ public:
     {
     PythonQt::self()->registerClass(&qSlicerCoreApplication::staticMetaObject);
     PythonQt::self()->registerClass(&qSlicerAbstractCoreModule::staticMetaObject);
-    PythonQt::self()->registerClass(&ctkErrorLogModel::staticMetaObject);
+    PythonQt::self()->registerCPPClass("qSlicerUtils", nullptr, "qSlicerBaseQTCore");
     // Note: Use registerCPPClassForPythonQt to register pure Cpp classes
     }
 
@@ -73,6 +71,18 @@ public slots:
     {
     app->processEvents();
     }
+
+  //----------------------------------------------------------------------------
+  // qSlicerUtils
+
+  //----------------------------------------------------------------------------
+  // static methods
+
+  QString static_qSlicerUtils_replaceWikiUrlVersion(const QString& text,
+                                                    const QString& version)
+  {
+    return qSlicerUtils::replaceWikiUrlVersion(text, version);
+  }
 };
 
 //-----------------------------------------------------------------------------

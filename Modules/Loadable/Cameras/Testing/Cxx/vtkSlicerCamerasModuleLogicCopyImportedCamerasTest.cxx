@@ -23,6 +23,7 @@
 
 // MRML includes
 #include <vtkMRMLCameraNode.h>
+#include <vtkMRMLScene.h>
 
 // VTK includes
 #include <vtkNew.h>
@@ -110,7 +111,7 @@ bool TestCopyImportedCameras(bool clear, bool copy)
     expectedFirstCamera = importedCamera1Pos;
     }
   vtkMRMLCameraNode* firstCamera = vtkMRMLCameraNode::SafeDownCast(
-    scene->GetNthNodeByClass(0, "vtkMRMLCameraNode"));
+    scene->GetFirstNodeByClass("vtkMRMLCameraNode"));
   if (camera1->GetPosition()[0] != expectedCamera1Pos[0] ||
       camera2->GetPosition()[0] != expectedCamera2Pos[0] ||
       firstCamera->GetPosition()[0] != expectedFirstCamera[0])

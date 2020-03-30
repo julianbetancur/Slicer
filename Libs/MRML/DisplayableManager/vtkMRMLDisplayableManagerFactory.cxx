@@ -34,11 +34,11 @@
 
 // STD includes
 #include <algorithm>
+#include <string>
 #include <vector>
 
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLDisplayableManagerFactory);
-vtkCxxRevisionMacro(vtkMRMLDisplayableManagerFactory, "$Revision: 13859 $");
 
 //----------------------------------------------------------------------------
 class vtkMRMLDisplayableManagerFactory::vtkInternal
@@ -61,8 +61,7 @@ public:
 
 //----------------------------------------------------------------------------
 vtkMRMLDisplayableManagerFactory::vtkInternal::vtkInternal()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 // vtkMRMLDisplayableManagerFactory methods
@@ -157,7 +156,7 @@ bool vtkMRMLDisplayableManagerFactory::UnRegisterDisplayableManager(const char* 
     vtkWarningMacro(<<"UnRegisterDisplayableManager - vtkClassOrScriptName is NULL");
     return false;
     }
-  
+
   // Check if the DisplayableManager is registered
   vtkInternal::DisplayableManagerClassNamesIt it = std::find(
       this->Internal->DisplayableManagerClassNames.begin(),
@@ -205,7 +204,7 @@ vtkMRMLDisplayableManagerGroup* vtkMRMLDisplayableManagerFactory::InstantiateDis
   if (!newRenderer)
     {
     vtkWarningMacro(<<"InstanciateDisplayableManagers - newRenderer is NULL");
-    return 0;
+    return nullptr;
     }
 
   vtkMRMLDisplayableManagerGroup * displayableManagerGroup = vtkMRMLDisplayableManagerGroup::New();

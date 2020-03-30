@@ -23,6 +23,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 
 // qMRML includes
@@ -34,19 +37,20 @@
 #include <vtkMRMLScene.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
-
-// STD includes
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 int qMRMLColorModelTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLColorModel model;
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  qMRMLNodeFactory nodeFactory(0);
-  nodeFactory.setMRMLScene(scene);
+  vtkNew<vtkMRMLScene> scene;
+  qMRMLNodeFactory nodeFactory(nullptr);
+  nodeFactory.setMRMLScene(scene.GetPointer());
   vtkMRMLNode* node = nodeFactory.createNode("vtkMRMLColorTableNode");
   vtkMRMLColorTableNode* colorNode = vtkMRMLColorTableNode::SafeDownCast(node);
   if (colorNode)
@@ -56,7 +60,7 @@ int qMRMLColorModelTest1(int argc, char * argv [])
   model.setMRMLColorNode(colorNode);
   colorNode->SetTypeToCool1();
 
-  QTreeView* view = new QTreeView(0);
+  QTreeView* view = new QTreeView(nullptr);
   view->setModel(&model);
   view->show();
   view->resize(500, 800);

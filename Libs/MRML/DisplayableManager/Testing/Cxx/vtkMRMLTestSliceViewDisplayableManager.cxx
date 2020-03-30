@@ -25,13 +25,13 @@
 #include <vtkMRMLCameraNode.h>
 
 // VTK includes
+#include <vtkObjectFactory.h>
 
 // STD includes
 #include <cassert>
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLTestSliceViewDisplayableManager );
-vtkCxxRevisionMacro(vtkMRMLTestSliceViewDisplayableManager, "$Revision: 13525 $");
 
 //---------------------------------------------------------------------------
 int vtkMRMLTestSliceViewDisplayableManager::NodeAddedCount = 0;
@@ -57,8 +57,7 @@ vtkMRMLTestSliceViewDisplayableManager::vtkInternal::vtkInternal(vtkMRMLTestSlic
 
 //---------------------------------------------------------------------------
 vtkMRMLTestSliceViewDisplayableManager::vtkInternal::~vtkInternal()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 // vtkMRMLTestSliceViewDisplayableManager methods

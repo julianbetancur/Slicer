@@ -16,6 +16,8 @@
 #ifndef __vtkImageLabelCombine_h
 #define __vtkImageLabelCombine_h
 
+#include <vtkVersion.h>
+
 #include "vtkTeemConfigure.h"
 
 #include "vtkThreadedImageAlgorithm.h"
@@ -29,41 +31,47 @@ class VTK_Teem_EXPORT vtkImageLabelCombine : public vtkThreadedImageAlgorithm
 {
 public:
   static vtkImageLabelCombine *New();
-  vtkTypeRevisionMacro(vtkImageLabelCombine,vtkThreadedImageAlgorithm);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkImageLabelCombine,vtkThreadedImageAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  /// 
+  ///
   /// Set/Get the Operation to perform.
   vtkSetMacro(OverwriteInput,int);
   vtkGetMacro(OverwriteInput,int);
 
-  /// 
+  ///
   /// Set the two inputs to this filter
-  virtual void SetInput1(vtkDataObject *in) { this->SetInput(0,in); }
-  virtual void SetInput2(vtkDataObject *in) { this->SetInput(1,in); }
+  virtual void SetInput1(vtkDataObject *in)
+  {
+      this->SetInputData(0,in);
+  }
+  virtual void SetInput2(vtkDataObject *in)
+  {
+      this->SetInputData(1,in);
+  }
 
 protected:
   vtkImageLabelCombine();
-  ~vtkImageLabelCombine() {};
+  ~vtkImageLabelCombine() override  = default;
 
   int OverwriteInput;
-  
-  virtual int RequestInformation (vtkInformation *, 
-                                  vtkInformationVector **,
-                                  vtkInformationVector *);
-  
-  virtual void ThreadedRequestData(vtkInformation *request, 
-                                   vtkInformationVector **inputVector, 
-                                   vtkInformationVector *outputVector,
-                                   vtkImageData ***inData, 
-                                   vtkImageData **outData,
-                                   int extent[6], int threadId);
 
-  virtual int FillInputPortInformation(int port, vtkInformation* info);
+  int RequestInformation (vtkInformation *,
+                                  vtkInformationVector **,
+                                  vtkInformationVector *) override;
+
+  void ThreadedRequestData(vtkInformation *request,
+                                   vtkInformationVector **inputVector,
+                                   vtkInformationVector *outputVector,
+                                   vtkImageData ***inData,
+                                   vtkImageData **outData,
+                                   int extent[6], int threadId) override;
+
+  int FillInputPortInformation(int port, vtkInformation* info) override;
 
 private:
-  vtkImageLabelCombine(const vtkImageLabelCombine&);  /// Not implemented.
-  void operator=(const vtkImageLabelCombine&);  /// Not implemented.
+  vtkImageLabelCombine(const vtkImageLabelCombine&) = delete;
+  void operator=(const vtkImageLabelCombine&) = delete;
 };
 
 #endif

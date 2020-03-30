@@ -21,13 +21,20 @@
 #ifndef __qMRMLThreeDView_p_h
 #define __qMRMLThreeDView_p_h
 
-// Qt includes
-class QToolButton;
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
 
 // CTK includes
 #include <ctkPimpl.h>
 #include <ctkVTKObject.h>
-class ctkPopupWidget;
 
 // qMRML includes
 #include "qMRMLThreeDView.h"
@@ -47,7 +54,7 @@ protected:
   qMRMLThreeDView* const q_ptr;
 public:
   qMRMLThreeDViewPrivate(qMRMLThreeDView& object);
-  ~qMRMLThreeDViewPrivate();
+  ~qMRMLThreeDViewPrivate() override;
 
   virtual void init();
 
@@ -70,9 +77,6 @@ protected:
   vtkMRMLDisplayableManagerGroup*    DisplayableManagerGroup;
   vtkMRMLScene*                      MRMLScene;
   vtkMRMLViewNode*                   MRMLViewNode;
-  
-  QToolButton*                       PinButton;
-  ctkPopupWidget*                    PopupWidget;
 };
 
 #endif

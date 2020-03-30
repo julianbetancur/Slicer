@@ -21,6 +21,9 @@
 // Qt includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // MRMLWidgets includes
 #include <qMRMLNodeFactory.h>
 
@@ -30,19 +33,22 @@
 
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
 
 int qMRMLNodeFactoryTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLNodeFactory nodeFactory;
 
   // Check default values
-  if (nodeFactory.mrmlScene() != 0 ||
-      nodeFactory.createNode("vtkMRMLCameraNode") != 0)
+  if (nodeFactory.mrmlScene() != nullptr ||
+      nodeFactory.createNode("vtkMRMLCameraNode") != nullptr)
     {
     std::cerr << "Line " << __LINE__ << " - qMRMLNodeFactory wrong default values" << std::endl;
     return EXIT_FAILURE;
@@ -62,7 +68,7 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
 
   {
     vtkMRMLNode* createdEmptyNode = nodeFactory.createNode("");
-    if (createdEmptyNode != 0)
+    if (createdEmptyNode != nullptr)
       {
       std::cerr << "Line " << __LINE__ << " - qMRMLNodeFactory::createNode() created a bad node" << std::endl;
       return EXIT_FAILURE;
@@ -72,7 +78,7 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
   {
     // Test a simple node
     vtkMRMLNode* createdNode = nodeFactory.createNode("vtkMRMLCameraNode");
-    if (createdNode == 0 ||
+    if (createdNode == nullptr ||
         createdNode->IsA("vtkMRMLCameraNode") != 1 ||
         createdNode->GetReferenceCount() != 2 ||
         scene->IsNodePresent(createdNode) == 0)
@@ -92,7 +98,7 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
     vtkMRMLNode* createdSingletonNode =
       nodeFactory.createNode("vtkMRMLInteractionNode");
 
-    if (createdSingletonNode == 0 ||
+    if (createdSingletonNode == nullptr ||
         createdSingletonNode->IsA("vtkMRMLInteractionNode") != 1 ||
         createdSingletonNode->GetReferenceCount() != 2 ||
         scene->IsNodePresent(createdSingletonNode) == 0)
@@ -112,7 +118,7 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
 
     // Adding the same singleton in the scene should copy the properties of the
     // node to add in the existing node. \sa vtkMRMLScene::AddNode
-    if (createdSingletonNode2 == 0 ||
+    if (createdSingletonNode2 == nullptr ||
         createdSingletonNode2 != createdSingletonNode ||
         createdSingletonNode2->IsA("vtkMRMLInteractionNode") != 1 ||
         createdSingletonNode2->GetReferenceCount() != 2 ||
@@ -132,7 +138,7 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
     // Test static utility method
     vtkMRMLNode* createdNodeStatic =
       qMRMLNodeFactory::createNode(scene.GetPointer(), "vtkMRMLCameraNode");
-    if (createdNodeStatic == 0 ||
+    if (createdNodeStatic == nullptr ||
         createdNodeStatic->IsA("vtkMRMLCameraNode") != 1 ||
         createdNodeStatic->GetReferenceCount() != 2 ||
         scene->IsNodePresent(createdNodeStatic) == 0)
@@ -172,9 +178,9 @@ int qMRMLNodeFactoryTest1( int argc, char * argv [] )
     vtkMRMLNode* createdNodeWithAttribute1 =
       nodeFactory.createNode("vtkMRMLCameraNode");
 
-    if (createdNodeWithAttribute1 == 0 ||
+    if (createdNodeWithAttribute1 == nullptr ||
         strcmp(createdNodeWithAttribute1->GetAttribute("attribute1"), "value1") != 0 ||
-        createdNodeWithAttribute1->GetAttribute("attribute2") != 0)
+        createdNodeWithAttribute1->GetAttribute("attribute2") != nullptr)
       {
       std::cerr << "Line " << __LINE__ << " - qMRMLNodeFactory::createNode() with attribute failed." << std::endl;
       return EXIT_FAILURE;

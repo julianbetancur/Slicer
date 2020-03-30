@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,22 +10,25 @@
 
 =========================================================================auto=*/
 
+// MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLDisplayNode.h"
 
-#include "vtkMRMLCoreTestingMacros.h"
+// VTK includes
+#include <vtkObjectFactory.h>
 
 //----------------------------------------------------------------------------
 class vtkMRMLDisplayNodeTestHelper1 : public vtkMRMLDisplayNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLDisplayNodeTestHelper1 *New(){return new vtkMRMLDisplayNodeTestHelper1;};
+  static vtkMRMLDisplayNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLDisplayNodeTestHelper1,vtkMRMLDisplayNode);
+  vtkTypeMacro(vtkMRMLDisplayNodeTestHelper1,vtkMRMLDisplayNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLDisplayNodeTestHelper1;
+    return vtkMRMLDisplayNodeTestHelper1::New();
     }
 
   const char * GetTypeAsString()
@@ -39,22 +42,17 @@ public:
     return EXIT_SUCCESS;
     }
 
-  virtual const char* GetNodeTagName() 
+  const char* GetNodeTagName() override
     {
     return "Testing is good";
     }
 };
+vtkStandardNewMacro(vtkMRMLDisplayNodeTestHelper1);
 
 //----------------------------------------------------------------------------
 int vtkMRMLDisplayNodeTest1(int , char * [])
 {
-  vtkSmartPointer< vtkMRMLDisplayNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLDisplayNodeTestHelper1 >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  // EXERCISE_BASIC_MRML_METHODS(vtkMRMLDisplayNodeTestHelper1, node1);
-
-  EXERCISE_BASIC_DISPLAY_MRML_METHODS(vtkMRMLDisplayNodeTestHelper1, node1);
-
+  vtkNew<vtkMRMLDisplayNodeTestHelper1> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

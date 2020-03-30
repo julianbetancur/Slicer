@@ -23,6 +23,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include <ctkModelTester.h>
 
@@ -34,14 +37,19 @@
 // MRML includes
 #include "vtkMRMLHierarchyNode.h"
 
+// VTK includes
+#include "qMRMLWidget.h"
+
 // STD includes
 
 int qMRMLSceneHierarchyModelTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLSceneHierarchyModel model;
-  qMRMLSceneFactoryWidget sceneFactory(0);
+  qMRMLSceneFactoryWidget sceneFactory(nullptr);
 
   try
     {
@@ -64,15 +72,15 @@ int qMRMLSceneHierarchyModelTest1(int argc, char * argv [])
       sceneFactory.generateNode("vtkMRMLHierarchyNode"));
     vtkMRMLNode* node3 = sceneFactory.generateNode("vtkMRMLViewNode");
 
-    //vtkMRMLHierarchyNode* hierarchyNode4 = 
+    //vtkMRMLHierarchyNode* hierarchyNode4 =
     vtkMRMLHierarchyNode::SafeDownCast(
       sceneFactory.generateNode("vtkMRMLHierarchyNode"));
 
     hierarchyNode1->SetAssociatedNodeID(node1->GetID());
     hierarchyNode2->SetAssociatedNodeID(node3->GetID());
     hierarchyNode3->SetAssociatedNodeID(node2->GetID());
-    
-    //vtkMRMLHierarchyNode* hierarchyNode5 = 
+
+    //vtkMRMLHierarchyNode* hierarchyNode5 =
     vtkMRMLHierarchyNode::SafeDownCast(
       sceneFactory.generateNode("vtkMRMLHierarchyNode"));
     //hierarchyNode5->SetParentNodeID(hierarchyNode4->GetID());
@@ -86,13 +94,13 @@ int qMRMLSceneHierarchyModelTest1(int argc, char * argv [])
     return EXIT_FAILURE;
     }
 
-  QTreeView view(0);
+  QTreeView view(nullptr);
   view.setDragDropMode(QAbstractItemView::InternalMove);
   view.setModel(&model);
   view.show();
   view.resize(500, 300);
 
-  QTreeView view2(0);
+  QTreeView view2(nullptr);
   view2.setWindowTitle("Filtered");
 
   qMRMLSortFilterHierarchyProxyModel sortFilterModel;

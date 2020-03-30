@@ -87,11 +87,11 @@ void qSlicerSettingsExtensionsPanelPrivate::init()
   QObject::connect(this->ExtensionsManagerEnabledCheckBox, SIGNAL(toggled(bool)),
                    q, SLOT(onExtensionsManagerEnabled(bool)));
   QObject::connect(this->ExtensionsServerUrlLineEdit, SIGNAL(textChanged(QString)),
-                   q, SLOT(onExensionsServerUrlChanged(QString)));
+                   q, SIGNAL(extensionsServerUrlChanged(QString)));
   QObject::connect(this->ExtensionsInstallPathButton, SIGNAL(directoryChanged(QString)),
                    q, SLOT(onExensionsPathChanged(QString)));
-  QObject::connect(this->OpenExtensionManagerPushButton, SIGNAL(clicked()),
-                   app, SLOT(openExtensionManagerDialog()));
+  QObject::connect(this->OpenExtensionsManagerPushButton, SIGNAL(clicked()),
+                   app, SLOT(openExtensionsManagerDialog()));
 }
 
 // --------------------------------------------------------------------------
@@ -108,19 +108,12 @@ qSlicerSettingsExtensionsPanel::qSlicerSettingsExtensionsPanel(QWidget* _parent)
 
 // --------------------------------------------------------------------------
 qSlicerSettingsExtensionsPanel::~qSlicerSettingsExtensionsPanel()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qSlicerSettingsExtensionsPanel::onExtensionsManagerEnabled(bool value)
 {
   Q_UNUSED(value);
-}
-
-// --------------------------------------------------------------------------
-void qSlicerSettingsExtensionsPanel::onExensionsServerUrlChanged(const QString& url)
-{
-  Q_UNUSED(url);
 }
 
 // --------------------------------------------------------------------------

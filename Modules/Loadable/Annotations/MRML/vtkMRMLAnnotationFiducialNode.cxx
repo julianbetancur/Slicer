@@ -9,13 +9,11 @@ vtkMRMLNodeNewMacro(vtkMRMLAnnotationFiducialNode);
 
 //----------------------------------------------------------------------------
 vtkMRMLAnnotationFiducialNode::vtkMRMLAnnotationFiducialNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkMRMLAnnotationFiducialNode::~vtkMRMLAnnotationFiducialNode()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 int vtkMRMLAnnotationFiducialNode::SetFiducial(double newControl[3],int selectedFlag, int visibleFlag)
@@ -24,7 +22,7 @@ int vtkMRMLAnnotationFiducialNode::SetFiducial(double newControl[3],int selected
     {
     return 0;
     }
-  
+
   return 1;
 }
 
@@ -45,7 +43,7 @@ void vtkMRMLAnnotationFiducialNode::SetTextFromID()
 {
   std::string idLabel = this->GetID();
   std::string textLabel;
-  
+
   if (this->NumberingScheme == vtkMRMLAnnotationControlPointsNode::UseID)
     {
       textLabel = idLabel;

@@ -26,7 +26,11 @@
 
 class qMRMLCheckableNodeComboBoxPrivate;
 
+/// This class provides the ability to select(check) multiple nodes at a time
+/// instead of one (qMRMLNodeComboBox). Nodes are left untouched, the selection
+/// information only resides in the combobox.
 /// Nodes are unchecked by default.
+/// \sa qMRMLNodeComboBox
 class QMRML_WIDGETS_EXPORT qMRMLCheckableNodeComboBox
   : public qMRMLNodeComboBox
 {
@@ -37,34 +41,34 @@ public:
 
   /// Construct an empty qMRMLCheckableNodeComboBox with a null scene,
   /// no nodeType, where the hidden nodes are not forced on display.
-  explicit qMRMLCheckableNodeComboBox(QWidget* parent = 0);
-  virtual ~qMRMLCheckableNodeComboBox();
+  explicit qMRMLCheckableNodeComboBox(QWidget* parent = nullptr);
+  ~qMRMLCheckableNodeComboBox() override;
 
   /// Return the list of checked nodes.
   /// \sa uncheckedNodes(), nodes()
-  QList<vtkMRMLNode*> checkedNodes()const;
+  Q_INVOKABLE QList<vtkMRMLNode*> checkedNodes()const;
 
   /// Return the list of unchecked nodes.
   /// \sa checkedNodes(), nodes()
-  QList<vtkMRMLNode*> uncheckedNodes()const;
+  Q_INVOKABLE QList<vtkMRMLNode*> uncheckedNodes()const;
 
   /// Return true if all the nodes are checked.
   /// If empty, return true;
-  bool allChecked()const;
+  Q_INVOKABLE bool allChecked()const;
 
   /// Return true if all the nodes are unchecked.
   /// If empty, return true.
-  bool noneChecked()const;
+  Q_INVOKABLE bool noneChecked()const;
 
   /// Return the checkstate of the node.
   /// If \a node is invalid (null or not in the scene),
   /// Qt::Unchecked is returned.
-  Qt::CheckState checkState(vtkMRMLNode* node)const;
-  void setCheckState(vtkMRMLNode* node, Qt::CheckState check);
+  Q_INVOKABLE Qt::CheckState checkState(vtkMRMLNode* node)const;
+  Q_INVOKABLE void setCheckState(vtkMRMLNode* node, Qt::CheckState check);
 
   /// Set the node item as user checkable or not.
   /// By default, the items are user checkable.
-  void setUserCheckable(vtkMRMLNode* node, bool userCheckable);
+  Q_INVOKABLE void setUserCheckable(vtkMRMLNode* node, bool userCheckable);
 
 public slots:
   /// Set the check state of the node to Qt::Checked.

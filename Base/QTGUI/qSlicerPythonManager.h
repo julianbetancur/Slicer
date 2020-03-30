@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
- Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+ Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
  All Rights Reserved.
 
  See COPYRIGHT.txt
@@ -25,14 +25,13 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerPythonManager : public qSlicerCorePython
 
 public:
   typedef qSlicerCorePythonManager Superclass;
-  qSlicerPythonManager(QObject* parent=0);
-  ~qSlicerPythonManager();
- 
+  qSlicerPythonManager(QObject* parent=nullptr);
+  ~qSlicerPythonManager() override;
+
 protected:
 
-  virtual QStringList pythonPaths();
-  virtual void preInitialization();
-  virtual void executeInitializationScripts();
+  void preInitialization() override;
+  void executeInitializationScripts() override;
 
 private:
 

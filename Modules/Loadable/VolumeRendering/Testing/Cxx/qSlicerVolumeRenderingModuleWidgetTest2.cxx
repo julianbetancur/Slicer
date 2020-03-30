@@ -23,6 +23,7 @@
 
 // Slicer includes
 #include <qSlicerApplication.h>
+#include "vtkSlicerConfigure.h"
 
 // VolumeRendering includes
 #include "qSlicerVolumeRenderingModule.h"
@@ -37,9 +38,15 @@
 // VTK includes
 #include <vtkSmartPointer.h>
 
+// ITK includes
+#include <itkConfigure.h>
+#include <itkFactoryRegistration.h>
+
 //-----------------------------------------------------------------------------
 int qSlicerVolumeRenderingModuleWidgetTest2( int argc, char * argv[] )
 {
+  itk::itkFactoryRegistration();
+
   qSlicerApplication app(argc, argv);
 
   if (argc < 2)
@@ -50,7 +57,7 @@ int qSlicerVolumeRenderingModuleWidgetTest2( int argc, char * argv[] )
 
   qSlicerVolumeRenderingModule module;
   module.setMRMLScene(app.mrmlScene());
-  module.initialize(0);
+  module.initialize(nullptr);
 
   qSlicerVolumeRenderingModuleWidget* moduleWidget =
     dynamic_cast<qSlicerVolumeRenderingModuleWidget*>(
@@ -73,7 +80,7 @@ int qSlicerVolumeRenderingModuleWidgetTest2( int argc, char * argv[] )
   app.mrmlScene()->AddNode(view2);
 
   moduleWidget->show();
-  
+
   // HACK, manually select the node, should be automatic
   moduleWidget->setMRMLVolumeNode(volumeNode);
 

@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __RigidImageToImageRegistrationMethod_h
-#define __RigidImageToImageRegistrationMethod_h
+#ifndef itkRigidImageToImageRegistrationMethod_h
+#define itkRigidImageToImageRegistrationMethod_h
 
 #include "itkImage.h"
 #include "itkAffineTransform.h"
@@ -76,7 +76,7 @@ public:
   //
   //  Superclass Methods
   //
-  void GenerateData( void );
+  void GenerateData() override;
 
   //
   // Custom Methods
@@ -88,9 +88,9 @@ public:
    *   functions that exist only in specific transforms (e.g., SetIdentity)
    *   can be called without the caller having to do the casting.
    **/
-  TransformType * GetTypedTransform( void );
+  TransformType* GetTypedTransform();
 
-  const TransformType * GetTypedTransform( void ) const;
+  const TransformType* GetTypedTransform() const;
 
   /**
    * This function creates a new affine transforms that implements the
@@ -101,7 +101,7 @@ public:
    * SmartPointer to prevent it from being destroyed by depletion of its
    * reference counting.
    **/
-  AffineTransformPointer GetAffineTransform( void ) const;
+  AffineTransformPointer GetAffineTransform() const;
 
   /** Initialize the transform parameters from an AffineTransform This method
    * is intended as an alternative to calling SetInitialTransformParameters()
@@ -116,11 +116,10 @@ public:
   void SetInitialTransformParametersFromAffineTransform( const AffineTransformType * affine );
 
 protected:
+  RigidImageToImageRegistrationMethod();
+  ~RigidImageToImageRegistrationMethod() override;
 
-  RigidImageToImageRegistrationMethod( void );
-  virtual ~RigidImageToImageRegistrationMethod( void );
-
-  void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
 private:
 

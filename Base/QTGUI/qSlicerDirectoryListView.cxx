@@ -19,10 +19,14 @@
 ==============================================================================*/
 
 // Qt includes
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QListView>
+#include <QMimeData>
 #include <QStandardItemModel>
+#include <QUrl>
 
 // QtGUI includes
 #include "qSlicerDirectoryListView.h"
@@ -57,7 +61,8 @@ public:
 
 // --------------------------------------------------------------------------
 qSlicerDirectoryListViewPrivate::qSlicerDirectoryListViewPrivate(qSlicerDirectoryListView& object)
-  :q_ptr(&object)
+  : q_ptr(&object)
+  , ListView(nullptr)
 {
 }
 
@@ -103,12 +108,12 @@ qSlicerDirectoryListView::qSlicerDirectoryListView(QWidget* _parent)
 {
   Q_D(qSlicerDirectoryListView);
   d->init();
+  setAcceptDrops(true);
 }
 
 // --------------------------------------------------------------------------
 qSlicerDirectoryListView::~qSlicerDirectoryListView()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 QStringList qSlicerDirectoryListView::directoryList(bool absolutePath)const
@@ -152,7 +157,7 @@ bool qSlicerDirectoryListView::hasDirectory(const QString& path)const
   QString absolutePath = QFileInfo(path).absoluteFilePath();
   QModelIndexList foundIndexes = d->DirectoryListModel.match(
         d->DirectoryListModel.index(0, 0), qSlicerDirectoryListViewPrivate::AbsolutePathRole,
-        QVariant(absolutePath));
+        QVariant(absolutePath), /* hits = */ 1, Qt::MatchExactly | Qt::MatchWrap);
   Q_ASSERT(foundIndexes.size() < 2);
   return (foundIndexes.size() != 0);
 }
@@ -240,3 +245,37 @@ void qSlicerDirectoryListView::setDirectoryList(const QStringList& paths)
   emit this->directoryListChanged();
 }
 
+//---------------------------------------------------------------------------
+void qSlicerDirectoryListView::dragEnterEvent(QDragEnterEvent *event)
+{
+  event->mimeData()->hasFormat("text/uri-list");
+    {
+    event->accept();
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerDirectoryListView::dropEvent(QDropEvent *event)
+{
+  foreach(QUrl url, event->mimeData()->urls())
+    {
+    if (!url.isValid() || url.isEmpty())
+      {
+      continue;
+      }
+    // convert QUrl to local path
+    QString localPath = url.toLocalFile();
+    QFileInfo pathInfo;
+    pathInfo.setFile(localPath);
+    if (pathInfo.isDir())
+      {
+      // it is a directory, add it as is
+      addDirectory(localPath);
+      }
+    else if (pathInfo.isFile())
+      {
+      // it is a file, add the parent directory
+      addDirectory(pathInfo.absolutePath());
+      }
+    }
+}

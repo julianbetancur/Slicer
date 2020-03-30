@@ -23,6 +23,9 @@
 #include <QHBoxLayout>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLColorListView.h"
 
@@ -32,13 +35,16 @@
 #include <vtkMRMLPETProceduralColorNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLColorListViewTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QWidget topLevel;
   qMRMLColorListView ColorListView;
@@ -51,11 +57,10 @@ int qMRMLColorListViewTest1(int argc, char * argv [])
   hboxLayout->addWidget(&ColorListView2);
   topLevel.setLayout(hboxLayout);
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorTableNode =
-    vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorTableNode;
   colorTableNode->SetType(vtkMRMLColorTableNode::Labels);
-  
-  ColorListView.setMRMLColorNode(colorTableNode);
+
+  ColorListView.setMRMLColorNode(colorTableNode.GetPointer());
   if (ColorListView.mrmlColorNode() != colorTableNode.GetPointer())
     {
     std::cerr << "qMRMLColorListView::setMRMLColorNode() failed" << std::endl;
@@ -64,30 +69,28 @@ int qMRMLColorListViewTest1(int argc, char * argv [])
   // for some reasons it generate a warning if the type is changed.
   colorTableNode->NamesInitialisedOff();
   colorTableNode->SetTypeToCool1();
-  
-  vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode =
-    vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode>::New();
+
+  vtkNew<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode;
   colorFreeSurferNode->SetTypeToRedBlue();
 
-  ColorListView1.setMRMLColorNode(colorFreeSurferNode);
+  ColorListView1.setMRMLColorNode(colorFreeSurferNode.GetPointer());
   if (ColorListView1.mrmlColorNode() != colorFreeSurferNode.GetPointer())
     {
     std::cerr << "qMRMLColorListView::setMRMLColorNode() failed" << std::endl;
     return EXIT_FAILURE;
     }
   colorFreeSurferNode->SetTypeToLabels();
-  
-  vtkSmartPointer<vtkMRMLPETProceduralColorNode> colorPETNode =
-    vtkSmartPointer<vtkMRMLPETProceduralColorNode>::New();
+
+  vtkNew<vtkMRMLPETProceduralColorNode> colorPETNode;
   colorPETNode->SetTypeToRainbow();
-  ColorListView2.setMRMLColorNode(colorPETNode);
+  ColorListView2.setMRMLColorNode(colorPETNode.GetPointer());
   if (ColorListView2.mrmlColorNode() != colorPETNode.GetPointer())
     {
     std::cerr << "qMRMLColorListView::setMRMLColorNode() failed" << std::endl;
     return EXIT_FAILURE;
     }
   colorPETNode->SetTypeToMIP();
-  
+
   topLevel.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )

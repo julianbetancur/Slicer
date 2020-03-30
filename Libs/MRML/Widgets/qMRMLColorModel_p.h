@@ -21,6 +21,17 @@
 #ifndef __qMRMLColorModel_p_h
 #define __qMRMLColorModel_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 class QStandardItemModel;
 
@@ -47,10 +58,22 @@ public:
   virtual ~qMRMLColorModelPrivate();
   void init();
 
+  void updateColumnCount();
+  virtual int maxColumnId()const;
+
+  vtkSmartPointer<vtkMRMLColorLogic>  ColorLogic;
   vtkSmartPointer<vtkCallbackCommand> CallBack;
   vtkSmartPointer<vtkMRMLColorNode>   MRMLColorNode;
-  bool                                NoneEnabled;
-  bool                                LabelInColor;
+
+  bool NoneEnabled;
+  int ColorColumn;
+  int LabelColumn;
+  int OpacityColumn;
+  int CheckableColumn;
+
+  /// This flag allows to make sure that during updating widget from MRML,
+  /// GUI updates will not trigger MRML node updates.
+  bool IsUpdatingWidgetFromMRML;
 };
 
 #endif

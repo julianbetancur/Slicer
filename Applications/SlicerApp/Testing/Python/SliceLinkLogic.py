@@ -1,13 +1,19 @@
+from __future__ import print_function
 import os
 import unittest
-from __main__ import vtk, qt, ctk, slicer
+import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
 
 #
 # SliceLinkLogic
 #
 
-class SliceLinkLogic:
+class SliceLinkLogic(ScriptedLoadableModule):
+  """Uses ScriptedLoadableModule base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
   def __init__(self, parent):
+    ScriptedLoadableModule.__init__(self, parent)
     parent.title = "SliceLinkLogic" # TODO make this more human readable by adding spaces
     parent.categories = ["Testing.TestCases"]
     parent.dependencies = []
@@ -18,57 +24,19 @@ class SliceLinkLogic:
     parent.acknowledgementText = """
     This file was originally developed by Jim Miller, GE and was partially funded by NIH grant U54EB005149.
 """ # replace with organization, grant and thanks.
-    self.parent = parent
-
-    # Add this test to the SelfTest module's list for discovery when the module
-    # is created.  Since this module may be discovered before SelfTests itself,
-    # create the list if it doesn't already exist.
-    try:
-      slicer.selfTests
-    except AttributeError:
-      slicer.selfTests = {}
-    slicer.selfTests['SliceLinkLogic'] = self.runTest
-
-  def runTest(self):
-    tester = SliceLinkLogicTest()
-    tester.runTest()
 
 #
 # qSliceLinkLogicWidget
 #
 
-class SliceLinkLogicWidget:
-  def __init__(self, parent = None):
-    if not parent:
-      self.parent = slicer.qMRMLWidget()
-      self.parent.setLayout(qt.QVBoxLayout())
-      self.parent.setMRMLScene(slicer.mrmlScene)
-    else:
-      self.parent = parent
-    self.layout = self.parent.layout()
-    if not parent:
-      self.setup()
-      self.parent.show()
+class SliceLinkLogicWidget(ScriptedLoadableModuleWidget):
+  """Uses ScriptedLoadableModuleWidget base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
 
   def setup(self):
+    ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
-
-    # reload button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadButton = qt.QPushButton("Reload")
-    self.reloadButton.toolTip = "Reload this module."
-    self.reloadButton.name = "SliceLinkLogic Reload"
-    self.layout.addWidget(self.reloadButton)
-    self.reloadButton.connect('clicked()', self.onReload)
-
-    # reload and test button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadAndTestButton = qt.QPushButton("Reload and Test")
-    self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
-    self.layout.addWidget(self.reloadAndTestButton)
-    self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
 
     # Collapsible button
     dummyCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -80,7 +48,7 @@ class SliceLinkLogicWidget:
 
     # HelloWorld button
     helloWorldButton = qt.QPushButton("Hello world")
-    helloWorldButton.toolTip = "Print 'Hello world' in standard ouput."
+    helloWorldButton.toolTip = "Print 'Hello world' in standard output."
     dummyFormLayout.addWidget(helloWorldButton)
     helloWorldButton.connect('clicked(bool)', self.onHelloWorldButtonClicked)
 
@@ -91,102 +59,42 @@ class SliceLinkLogicWidget:
     self.helloWorldButton = helloWorldButton
 
   def onHelloWorldButtonClicked(self):
-    print "Hello World !"
-
-  def onReload(self,moduleName="SliceLinkLogic"):
-    """Generic reload method for any scripted module.
-    ModuleWizard will subsitute correct default moduleName.
-    """
-    import imp, sys, os, slicer
-
-    widgetName = moduleName + "Widget"
-
-    # reload the source code
-    # - set source file path
-    # - load the module to the global space
-    filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-    p = os.path.dirname(filePath)
-    if not sys.path.__contains__(p):
-      sys.path.insert(0,p)
-    fp = open(filePath, "r")
-    globals()[moduleName] = imp.load_module(
-        moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-    fp.close()
-
-    # rebuild the widget
-    # - find and hide the existing widget
-    # - create a new widget in the existing parent
-    parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent()
-    for child in parent.children():
-      try:
-        child.hide()
-      except AttributeError:
-        pass
-    # Remove spacer items
-    item = parent.layout().itemAt(0)
-    while item:
-      parent.layout().removeItem(item)
-      item = parent.layout().itemAt(0)
-    # create new widget inside existing parent
-    globals()[widgetName.lower()] = eval(
-        'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-    globals()[widgetName.lower()].setup()
-
-  def onReloadAndTest(self,moduleName="SliceLinkLogic"):
-    self.onReload()
-    evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
-    tester = eval(evalString)
-    tester.runTest()
+    print("Hello World !")
 
 #
 # SliceLinkLogicLogic
 #
 
-class SliceLinkLogicLogic:
-  """This class should implement all the actual 
-  computation done by your module.  The interface 
+class SliceLinkLogicLogic(ScriptedLoadableModuleLogic):
+  """This class should implement all the actual
+  computation done by your module.  The interface
   should be such that other python code can import
   this class and make use of the functionality without
-  requiring an instance of the Widget
+  requiring an instance of the Widget.
+  Uses ScriptedLoadableModuleLogic base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-  def __init__(self):
-    pass
 
   def hasImageData(self,volumeNode):
-    """This is a dummy logic method that 
+    """This is a dummy logic method that
     returns true if the passed in volume
     node has valid image data
     """
     if not volumeNode:
       print('no volume node')
       return False
-    if volumeNode.GetImageData() == None:
+    if volumeNode.GetImageData() is None:
       print('no image data')
       return False
     return True
 
 
-class SliceLinkLogicTest(unittest.TestCase):
+class SliceLinkLogicTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
+  Uses ScriptedLoadableModuleTest base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
 
   def setUp(self):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
@@ -201,7 +109,7 @@ class SliceLinkLogicTest(unittest.TestCase):
 
   def test_SliceLinkLogic1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
-    tests sould exercise the functionality of the logic with different inputs
+    tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
     way the user would interact with your code and confirm that it still works
     the way you intended.
@@ -215,37 +123,30 @@ class SliceLinkLogicTest(unittest.TestCase):
     #
     # first, get some data
     #
-    import urllib
-    downloads = (
-        ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-        )
-
-    for url,name,loader in downloads:
-      filePath = slicer.app.temporaryPath + '/' + name
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        print('Requesting download %s from %s...\n' % (name, url))
-        urllib.urlretrieve(url, filePath)
-      if loader:
-        print('Loading %s...\n' % (name,))
-        loader(filePath)
+    import SampleData
+    SampleData.downloadFromURL(
+      nodeNames='FA',
+      fileNames='FA.nrrd',
+      uris='http://slicer.kitware.com/midas3/download?items=5767',
+      checksums='SHA256:12d17fba4f2e1f1a843f0757366f28c3f3e1a8bb38836f0de2a32bb1cd476560')
     self.delayDisplay('Finished with download and loading')
     print('')
 
     volumeNode = slicer.util.getNode(pattern="FA")
     logic = SliceLinkLogicLogic()
-    self.assertTrue( logic.hasImageData(volumeNode) )
+    self.assertIsNotNone( logic.hasImageData(volumeNode) )
 
-    eps = 1e-2
+    eps = 0.02 # on high-DPI screens FOV difference can be up to 1.25%, so set the tolerance to 2%
     print('eps = ' + str(eps) + '\n')
 
     # Change to a CompareView
-    ln = slicer.util.getNode(pattern='vtkMRMLLayoutNode*')
+    ln = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLLayoutNode')
     ln.SetNumberOfCompareViewRows(3)
     ln.SetNumberOfCompareViewLightboxColumns(4)
     ln.SetViewArrangement(12)
     self.delayDisplay('Compare View')
     print('')
-    
+
     # Get the slice logic, slice node and slice composite node for the
     # first compare viewer
     logic = slicer.app.layoutManager().sliceWidget('Compare1').sliceLogic()
@@ -260,17 +161,17 @@ class SliceLinkLogicTest(unittest.TestCase):
     logic.StartSliceCompositeNodeInteraction(1)  #ForegroundVolumeFlag
     compareCNode.SetForegroundVolumeID(volumeNode.GetID())
     logic.EndSliceCompositeNodeInteraction()
-    self.assertTrue( compareCNode.GetForegroundVolumeID() == volumeNode.GetID())
+    self.assertEqual( compareCNode.GetForegroundVolumeID(), volumeNode.GetID())
     print('')
-    
+
     # Check that whether the volume was propagated
     self.delayDisplay('Broadcasted volume selection to all Compare Views')
     compareNode2 = slicer.util.getNode('vtkMRMLSliceNodeCompare2')
     compareCNode2 = slicer.util.getNode('vtkMRMLSliceCompositeNodeCompare2')
-    self.assertTrue(compareCNode2.GetForegroundVolumeID() == volumeNode.GetID())
+    self.assertEqual(compareCNode2.GetForegroundVolumeID(), volumeNode.GetID())
     compareNode3 = slicer.util.getNode('vtkMRMLSliceNodeCompare3')
     compareCNode3 = slicer.util.getNode('vtkMRMLSliceCompositeNodeCompare3')
-    self.assertTrue(compareCNode3.GetForegroundVolumeID() == volumeNode.GetID())
+    self.assertEqual(compareCNode3.GetForegroundVolumeID(), volumeNode.GetID())
     print('')
 
     # Set the orientation to axial
@@ -289,14 +190,14 @@ class SliceLinkLogicTest(unittest.TestCase):
     # differ by a few units)
     self.delayDisplay('Broadcasted a reset of the field of view to all Compare Views')
     diff = abs(compareNode2.GetFieldOfView()[1]-compareNode.GetFieldOfView()[1]) / compareNode.GetFieldOfView()[1]
-    print "Field of view of comparison (y) between compare viewers #1 and #2: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Field of view of comparison (y) between compare viewers #1 and #2: " + str(diff))
+    self.assertLess(diff, eps)
 
-    diff = abs(compareNode3.GetFieldOfView()[1]-compareNode.GetFieldOfView()[1]) / compareNode.GetFieldOfView()[1] 
-    print "Field of view of comparison (y) between compare viewers #1 and #3: " + str(diff)
-    self.assertTrue(diff < eps)
+    diff = abs(compareNode3.GetFieldOfView()[1]-compareNode.GetFieldOfView()[1]) / compareNode.GetFieldOfView()[1]
+    print("Field of view of comparison (y) between compare viewers #1 and #3: " + str(diff))
+    self.assertLess(diff, eps)
     print('')
-    
+
     # Changed the number of lightboxes
     ln.SetNumberOfCompareViewLightboxColumns(6)
     logic.StartSliceNodeInteraction(8)  #ResetFieldOfViewFlag
@@ -308,14 +209,14 @@ class SliceLinkLogicTest(unittest.TestCase):
     # differ by a few units)
     self.delayDisplay('Changed the number of lightboxes')
     diff = abs(compareNode2.GetFieldOfView()[1]-compareNode.GetFieldOfView()[1]) / compareNode.GetFieldOfView()[1]
-    print "Field of view of comparison (y) between compare viewers #1 and #2: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Field of view of comparison (y) between compare viewers #1 and #2: " + str(diff))
+    self.assertLess(diff, eps)
 
     diff = abs(compareNode3.GetFieldOfView()[1]-compareNode.GetFieldOfView()[1]) / compareNode.GetFieldOfView()[1]
-    print "Field of view of comparison between compare viewers #1 and #3: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Field of view of comparison between compare viewers #1 and #3: " + str(diff))
+    self.assertLess(diff, eps)
     print('')
-    
+
     # Pan
     logic.StartSliceNodeInteraction(32) #XYZOriginFlag
     xyz = compareNode.GetXYZOrigin()
@@ -324,12 +225,12 @@ class SliceLinkLogicTest(unittest.TestCase):
 
     self.delayDisplay('Broadcasted a pan to all Compare Views')
     diff = abs(compareNode2.GetXYZOrigin()[0]-compareNode.GetXYZOrigin()[0])
-    print "Origin comparison (x) between compare viewers #1 and #2: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Origin comparison (x) between compare viewers #1 and #2: " + str(diff))
+    self.assertLess(diff, eps)
 
     diff = abs(compareNode3.GetXYZOrigin()[0]-compareNode.GetXYZOrigin()[0])
-    print "Origin comparison (x) between compare viewers #1 and #3: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Origin comparison (x) between compare viewers #1 and #3: " + str(diff))
+    self.assertLess(diff, eps)
     print('')
 
     # Zoom
@@ -337,32 +238,32 @@ class SliceLinkLogicTest(unittest.TestCase):
     fov = compareNode.GetFieldOfView()
     compareNode.SetFieldOfView(fov[0] * 0.5, fov[1] * 0.5, fov[2])
     logic.EndSliceNodeInteraction()
-    # Note: we validate on fov[0] when zooming (fov[1] can differ by 
+    # Note: we validate on fov[0] when zooming (fov[1] can differ by
     # a few units)
     self.delayDisplay('Broadcasted a zoom to all Compare Views')
     diff = abs(compareNode2.GetFieldOfView()[0]-compareNode.GetFieldOfView()[0]) / compareNode.GetFieldOfView()[0]
-    print "Field of view of comparison (x) between compare viewers #1 and #2: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Field of view of comparison (x) between compare viewers #1 and #2: " + str(diff))
+    self.assertLess(diff, eps)
 
     diff = abs(compareNode3.GetFieldOfView()[0]-compareNode.GetFieldOfView()[0]) / compareNode.GetFieldOfView()[0]
-    print "Field of view of comparison (x) between compare viewers #1 and #3: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Field of view of comparison (x) between compare viewers #1 and #3: " + str(diff))
+    self.assertLess(diff, eps)
     print('')
-    
+
     # Change the slice
     logic.StartSliceNodeInteraction(1)   #SliceToRAS
     logic.SetSliceOffset(80)
     logic.EndSliceNodeInteraction()
     self.delayDisplay('Broadcasted a change in slice offset to all Compare Views')
     diff = abs(compareNode2.GetSliceOffset()-compareNode.GetSliceOffset())
-    print "Slice offset comparison between compare viewers #1 and #2: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Slice offset comparison between compare viewers #1 and #2: " + str(diff))
+    self.assertLess(diff, eps)
 
     diff = abs(compareNode3.GetSliceOffset()-compareNode.GetSliceOffset())
-    print "Slice offset comparison between compare viewers #1 and #3: " + str(diff)
-    self.assertTrue(diff < eps)
+    print("Slice offset comparison between compare viewers #1 and #3: " + str(diff))
+    self.assertLess(diff, eps)
     print('')
-    
+
     # Change the orientation
     logic.StartSliceNodeInteraction(12)  #OrientationFlag & ResetFieldOfViewFlag
     compareNode.SetOrientation('Sagittal')
@@ -370,8 +271,8 @@ class SliceLinkLogicTest(unittest.TestCase):
     compareNode.UpdateMatrices()
     logic.EndSliceNodeInteraction()
     self.delayDisplay('Broadcasted a change in slice orientation to all Compare Views')
-    self.assertTrue(compareNode2.GetOrientationString() == compareNode.GetOrientationString())
-    self.assertTrue(compareNode3.GetOrientationString() == compareNode.GetOrientationString())
+    self.assertEqual(compareNode2.GetOrientationString(), compareNode.GetOrientationString())
+    self.assertEqual(compareNode3.GetOrientationString(), compareNode.GetOrientationString())
     print('')
-    
+
     self.delayDisplay('Test passed!')

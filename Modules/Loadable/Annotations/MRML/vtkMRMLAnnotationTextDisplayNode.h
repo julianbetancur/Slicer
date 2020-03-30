@@ -1,8 +1,8 @@
 // .NAME vtkMRMLAnnotationTextDisplayNode - MRML node to represent display properties for tractography.
 // .SECTION Description
-// vtkMRMLAnnotationTextDisplayNode nodes store display properties of trajectories 
-// from tractography in diffusion MRI data, including color type (by bundle, by fiber, 
-// or by scalar invariants), display on/off for tensor glyphs and display of 
+// vtkMRMLAnnotationTextDisplayNode nodes store display properties of trajectories
+// from tractography in diffusion MRI data, including color type (by bundle, by fiber,
+// or by scalar invariants), display on/off for tensor glyphs and display of
 // trajectory as a line or tube.
 //
 
@@ -18,53 +18,53 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationTextDisplayNod
 {
  public:
   static vtkMRMLAnnotationTextDisplayNode *New (  );
-  vtkTypeMacro ( vtkMRMLAnnotationTextDisplayNode,vtkMRMLAnnotationDisplayNode )
-  void PrintSelf ( ostream& os, vtkIndent indent );
-  
+  vtkTypeMacro ( vtkMRMLAnnotationTextDisplayNode,vtkMRMLAnnotationDisplayNode );
+  void PrintSelf ( ostream& os, vtkIndent indent ) override;
+
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance (  );
+  vtkMRMLNode* CreateNodeInstance () override;
 
   // Description:
   // Read node attributes from XML (MRML) file
-  virtual void ReadXMLAttributes ( const char** atts );
+  void ReadXMLAttributes ( const char** atts ) override;
 
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML ( ostream& of, int indent );
+  void WriteXML ( ostream& of, int indent ) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy ( vtkMRMLNode *node );
-  
+  void Copy ( vtkMRMLNode *node ) override;
+
   // Description:
   // Get node XML tag name (like Volume, Annotation)
-  virtual const char* GetNodeTagName() {return "AnnotationTextDisplay";}
+  const char* GetNodeTagName() override {return "AnnotationTextDisplay";}
 
   // Description:
   // Finds the storage node and read the data
-  virtual void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
   // Description:
   // Get/Set for Text scale
   void SetTextScale(double scale);
-  vtkGetMacro(TextScale,double)
+  vtkGetMacro(TextScale,double);
 
   /// Enable/disable using automatic line wrap on text lines that are longer than MaxCharactersPerLine
   vtkSetMacro(UseLineWrap,int);
   vtkGetMacro(UseLineWrap,int);
   vtkBooleanMacro(UseLineWrap,int);
 
-  /// Set teh maximum number of characters in a text line, used if UseLineWrap is true
+  /// Set the maximum number of characters in a text line, used if UseLineWrap is true
   vtkSetMacro(MaxCharactersPerLine, unsigned int);
   vtkGetMacro(MaxCharactersPerLine, unsigned int);
 
@@ -116,11 +116,11 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationTextDisplayNod
   vtkSetMacro(AttachEdgeOnly,int);
   vtkGetMacro(AttachEdgeOnly,int);
   vtkBooleanMacro(AttachEdgeOnly,int);
- 
+
   /// Create a backup of this node and attach it.
-  void CreateBackup();
+  void CreateBackup() override;
   /// Restore an attached backup of this node.
-  void RestoreBackup();
+  void RestoreBackup() override;
 
   /// Utility function to return a new string with \n's inserted in the input
   /// string to bring each line down below the MaxCharactersPerLine. Tries to
@@ -129,7 +129,7 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationTextDisplayNod
   std::string GetLineWrappedText(std::string inputText);
 protected:
   vtkMRMLAnnotationTextDisplayNode();
-  ~vtkMRMLAnnotationTextDisplayNode() { }
+  ~vtkMRMLAnnotationTextDisplayNode() override  = default;
   vtkMRMLAnnotationTextDisplayNode( const vtkMRMLAnnotationTextDisplayNode& );
   void operator= ( const vtkMRMLAnnotationTextDisplayNode& );
 

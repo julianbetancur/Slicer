@@ -1,80 +1,146 @@
 
-# Make sure this file is included only once
-get_filename_component(CMAKE_CURRENT_LIST_FILENAME ${CMAKE_CURRENT_LIST_FILE} NAME_WE)
-if(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED)
-  return()
+set(proj SimpleITK)
+
+# Set dependency list
+set(${proj}_DEPENDENCIES ITK Swig python python-setuptools)
+
+# Include dependent projects if any
+ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
+
+if(Slicer_USE_SYSTEM_${proj})
+  message(FATAL_ERROR "Enabling Slicer_USE_SYSTEM_${proj} is not supported !")
 endif()
-set(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED 1)
 
 # Sanity checks
 if(DEFINED SimpleITK_DIR AND NOT EXISTS ${SimpleITK_DIR})
-  message(FATAL_ERROR "SimpleITK_DIR variable is defined but corresponds to non-existing directory")
+  message(FATAL_ERROR "SimpleITK_DIR variable is defined but corresponds to nonexistent directory")
 endif()
 
-# Set dependency list
-set(SimpleITK_DEPENDENCIES ITKv4 Swig python)
+if(NOT Slicer_USE_SYSTEM_${proj})
 
-# Include dependent projects if any
-SlicerMacroCheckExternalProjectDependency(SimpleITK)
+  include(ExternalProjectForNonCMakeProject)
 
-#
-#  SimpleITK externalBuild
-#
-include(ExternalProject)
+  # environment
+  set(_env_script ${CMAKE_BINARY_DIR}/${proj}_Env.cmake)
+  ExternalProject_Write_SetPythonSetupEnv_Commands(${_env_script})
 
-if(APPLE)
-  set(SIMPLEITK_PYTHON_ARGS
-    -DPYTHON_EXECUTABLE:PATH=${slicer_PYTHON_EXECUTABLE}
-    -DPYTHON_FRAMEWORKS:PATH=${slicer_PYTHON_FRAMEWORK}
-    -DPYTHON_LIBRARY:FILEPATH=${slicer_PYTHON_LIBRARY}
-    -DPYTHON_INCLUDE_DIR:PATH=${slicer_PYTHON_INCLUDE}
+  set(EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS)
+
+  set(SimpleITK_ADDITONAL_CMAKE_CACHE_ARGS)
+  if(APPLE)
+    # To ensure dynamic_cast for ITK symbols works across libraries,
+    # and with the Slicer runtime, make all implicit symbols visible
+    # on OSX.
+    list(APPEND EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS  "-DCMAKE_CXX_VISIBILITY_PRESET:BOOL=default")
+  endif()
+
+  # install step - the working path must be set to the location of the SimpleITK.py
+  # file so that it will be picked up by distuils setup, and installed
+  set(_install_script ${CMAKE_BINARY_DIR}/${proj}_install_step.cmake)
+  file(WRITE ${_install_script}
+"include(\"${_env_script}\")
+set(${proj}_WORKING_DIR \"${CMAKE_BINARY_DIR}/${proj}-build/SimpleITK-build/Wrapping/Python\")
+ExternalProject_Execute(${proj} \"install\" \"${PYTHON_EXECUTABLE}\" Packaging/setup.py install)
+")
+
+  ExternalProject_SetIfNotDefined(
+    Slicer_${proj}_GIT_REPOSITORY
+    "${EP_GIT_PROTOCOL}://github.com/Slicer/SimpleITK.git"
+    QUIET
     )
+
+  ExternalProject_SetIfNotDefined(
+    Slicer_${proj}_GIT_TAG
+    "slicer-v1.2.4-2020-02-07-777520bd"  # pre-v2.0 (ITK 5 as default), with patch "Propagate CMake visibility variables in external projects"
+    QUIET
+    )
+
+  set(EP_SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj})
+  set(EP_BINARY_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+  set(EP_INSTALL_DIR ${CMAKE_BINARY_DIR}/${proj}-install)
+
+
+  # A separate project is used to download, so that the SuperBuild
+  # subdirectory can be use for SimpleITK's SuperBuild to build
+  # required Lua, GTest etc. dependencies not in Slicer SuperBuild
+  ExternalProject_add(SimpleITK-download
+    SOURCE_DIR ${EP_SOURCE_DIR}
+    GIT_REPOSITORY "${Slicer_${proj}_GIT_REPOSITORY}"
+    GIT_TAG "${Slicer_${proj}_GIT_TAG}"
+    CONFIGURE_COMMAND ""
+    INSTALL_COMMAND ""
+    BUILD_COMMAND ""
+    )
+
+  ExternalProject_GenerateProjectDescription_Step(SimpleITK-download
+    SOURCE_DIR ${EP_SOURCE_DIR}
+    NAME ${proj}
+    )
+
+  ExternalProject_add(SimpleITK
+    ${${proj}_EP_ARGS}
+    SOURCE_DIR ${EP_SOURCE_DIR}/SuperBuild
+    BINARY_DIR ${EP_BINARY_DIR}
+    INSTALL_DIR ${EP_INSTALL_DIR}
+    DOWNLOAD_COMMAND ""
+    UPDATE_COMMAND ""
+    CMAKE_CACHE_ARGS
+      -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
+      -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
+      -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
+      -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
+      -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
+      -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=${CMAKE_CXX_STANDARD_REQUIRED}
+      -DCMAKE_CXX_EXTENSIONS:BOOL=${CMAKE_CXX_EXTENSIONS}
+      -DCMAKE_CXX_VISIBILITY_PRESET:BOOL=default
+      -DBUILD_SHARED_LIBS:BOOL=${Slicer_USE_SimpleITK_SHARED}
+      -DBUILD_EXAMPLES:BOOL=OFF
+      -DSimpleITK_BUILD_STRIP:BOOL=1
+      -DSimpleITK_PYTHON_THREADS:BOOL=ON
+      -DSimpleITK_INSTALL_ARCHIVE_DIR:PATH=${Slicer_INSTALL_LIB_DIR}
+      -DSimpleITK_INSTALL_LIBRARY_DIR:PATH=${Slicer_INSTALL_LIB_DIR}
+      -DSimpleITK_INT64_PIXELIDS:BOOL=OFF
+      -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+      -DSimpleITK_USE_SYSTEM_ITK:BOOL=ON
+      -DITK_DIR:PATH=${ITK_DIR}
+      -DSimpleITK_USE_SYSTEM_SWIG:BOOL=ON
+      -DSWIG_EXECUTABLE:PATH=${SWIG_EXECUTABLE}
+      -DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}
+      -DPYTHON_LIBRARY:FILEPATH=${PYTHON_LIBRARY}
+      -DPYTHON_INCLUDE_DIR:PATH=${PYTHON_INCLUDE_DIR}
+      -DBUILD_TESTING:BOOL=OFF
+      -DBUILD_DOXYGEN:BOOL=OFF
+      -DWRAP_DEFAULT:BOOL=OFF
+      -DWRAP_PYTHON:BOOL=ON
+      -DSimpleITK_BUILD_DISTRIBUTE:BOOL=ON # Shorten version and install path removing -g{GIT-HASH} suffix.
+      -DExternalData_OBJECT_STORES:PATH=${ExternalData_OBJECT_STORES}
+      ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS}
+    #
+    INSTALL_COMMAND ${CMAKE_COMMAND} -P ${_install_script}
+    #
+    DEPENDS SimpleITK-download ${${proj}_DEPENDENCIES}
+    )
+  set(SimpleITK_DIR ${CMAKE_BINARY_DIR}/SimpleITK-build/SimpleITK-build)
+
+  set(_lib_subdir lib)
+  if(WIN32)
+    set(_lib_subdir bin)
+  endif()
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${SimpleITK_DIR}/${_lib_subdir}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
 else()
-  set(SIMPLEITK_PYTHON_ARGS
-    -DPYTHON_EXECUTABLE:PATH=${slicer_PYTHON_EXECUTABLE}
-    -DPYTHON_LIBRARY:FILEPATH=${slicer_PYTHON_LIBRARY}
-    -DPYTHON_INCLUDE_DIR:PATH=${slicer_PYTHON_INCLUDE}
-    )
+  ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})
 endif()
 
-configure_file(SuperBuild/SimpleITK_install_step.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/SimpleITK_install_step.cmake
-  @ONLY)
-
-set(SimpleITK_INSTALL_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/SimpleITK_install_step.cmake)
-
-
-ExternalProject_add(SimpleITK
-  SOURCE_DIR SimpleITK
-  BINARY_DIR SimpleITK-build
-  GIT_REPOSITORY http://itk.org/SimpleITK.git
-  GIT_TAG badde952e25e99db1c2af57c2903c36ca088b573
-  "${slicer_external_update}"
-  CMAKE_ARGS
-    -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
-    -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
-    -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
-    -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags}
-    ${CMAKE_OSX_EXTERNAL_PROJECT_ARGS}
-    -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-  # SimpleITK does not work with shared libs turned on
-  -DBUILD_SHARED_LIBS:BOOL=OFF
-  -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}
-  -DITK_DIR:PATH=${ITK_DIR}
-  -DBUILD_EXAMPLES:BOOL=OFF
-  -DBUILD_TESTING:BOOL=OFF
-  -DBUILD_DOXYGEN:BOOL=OFF
-  -DWRAP_PYTHON:BOOL=ON
-  -DWRAP_TCL:BOOL=OFF
-  -DWRAP_JAVA:BOOL=OFF
-  -DWRAP_RUBY:BOOL=OFF
-  -DWRAP_LUA:BOOL=OFF
-  -DWRAP_CSHARP:BOOL=OFF
-  -DWRAP_R:BOOL=OFF
-  ${SIMPLEITK_PYTHON_ARGS}
-  -DSWIG_EXECUTABLE:PATH=${SWIG_EXECUTABLE}
-  #
-  INSTALL_COMMAND ${SimpleITK_INSTALL_COMMAND}
-  #
-  DEPENDS ${SimpleITK_DEPENDENCIES}
+mark_as_superbuild(
+  VARS SimpleITK_DIR:PATH
+  LABELS "FIND_PACKAGE"
   )

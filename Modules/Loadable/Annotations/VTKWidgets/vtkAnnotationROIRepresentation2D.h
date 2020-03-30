@@ -13,7 +13,7 @@
 
 =========================================================================*/
 ///  vtkAnnotationROIRepresentation2D - a class defining the representation for the vtkSlicerBoxWidget2
-/// 
+///
 /// This class is a concrete representation for the vtkSlicerBoxWidget2. It
 /// represents a box with seven handles: one on each of the six faces, plus a
 /// center handle. Through interaction with the widget, the box
@@ -54,7 +54,6 @@ class vtkMatrix4x4;
 class vtkActor2D;
 class vtkPolyDataMapper2D;
 class vtkPlane;
-class vtkCutter;
 class vtkTransform;
 class vtkTransformPolyDataFilter;
 
@@ -64,61 +63,66 @@ vtkAnnotationROIRepresentation2D
   : public vtkAnnotationROIRepresentation
 {
 public:
-  /// 
+  ///
   /// Instantiate the class.
   static vtkAnnotationROIRepresentation2D *New();
 
-  /// 
+  ///
   /// Standard methods for the class.
-  vtkTypeRevisionMacro(vtkAnnotationROIRepresentation2D,vtkAnnotationROIRepresentation);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkAnnotationROIRepresentation2D,vtkAnnotationROIRepresentation);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  /// 
+  ///
   /// Get the intersecting plane;
   vtkGetObjectMacro(IntersectionPlane,vtkPlane);
 
   /// Get Intersection transform to 2D coordinate system
   vtkGetObjectMacro(IntersectionPlaneTransform,vtkTransform);
 
-  virtual void GetActors2D(vtkPropCollection *actors);
+  void GetActors2D(vtkPropCollection *actors) override;
 
   void GetIntersectionActors(vtkPropCollection *actors);
 
-  virtual int ComputeInteractionState(int X, int Y, int modify=0);
-  virtual void StartWidgetInteraction(double e[2]);
-  virtual void WidgetInteraction(double e[2]);
-  virtual void SetInteractionState(int state);
+  int ComputeInteractionState(int X, int Y, int modify=0) override;
+  void StartWidgetInteraction(double e[2]) override;
+  void WidgetInteraction(double e[2]) override;
+  void SetInteractionState(int state) override;
 
-  /// 
+  ///
   /// Methods supporting, and required by, the rendering process.
-  virtual void ReleaseGraphicsResources(vtkWindow*);
-  virtual int RenderOpaqueGeometry(vtkViewport*);
-  virtual int RenderTranslucentPolygonalGeometry(vtkViewport*);
-  virtual int RenderOverlay(vtkViewport *viewport);
+  void ReleaseGraphicsResources(vtkWindow*) override;
+  int RenderOpaqueGeometry(vtkViewport*) override;
+  int RenderTranslucentPolygonalGeometry(vtkViewport*) override;
+  int RenderOverlay(vtkViewport *viewport) override;
 
-  virtual int HasTranslucentPolygonalGeometry();
+  int HasTranslucentPolygonalGeometry() override;
 
-  virtual void SizeHandles();
+  void SizeHandles() override;
+
+  vtkGetMacro(SliceIntersectionVisibility, int);
+  vtkSetMacro(SliceIntersectionVisibility, int);
 
   vtkGetMacro(HandlesVisibility, int);
   vtkSetMacro(HandlesVisibility, int);
 
-  virtual int HighlightHandle(vtkProp *prop);
-  virtual void HighlightFace(int cellId);
+  int HighlightHandle(vtkProp *prop) override;
+  void HighlightFace(int cellId) override;
 
-  vtkSetMacro(HandleSizeInPixels,int);
-  vtkGetMacro(HandleSizeInPixels,int);
-
+  ///
+  /// Set/Get the handle diameter as a fraction of the window diagonal.
+  /// Valid range is between 0.0001 and 0.5.
+  vtkSetClampMacro(HandleSize, double, 0.0001, 0.5);
+  vtkGetMacro(HandleSize, double);
 
   void PrintIntersections(ostream& os);
 
 protected:
   vtkAnnotationROIRepresentation2D();
-  ~vtkAnnotationROIRepresentation2D();
-  
-  /// A face of the hexahedron
-  vtkActor2D          *HexFace2D;
-  vtkPolyDataMapper2D *HexFaceMapper2D;
+  ~vtkAnnotationROIRepresentation2D() override;
+
+  // Compute intersection line of the inputIntersectionFace and the slice plane
+  // It is 50x faster than computing the intersection using vtkCutter
+  virtual void ComputeIntersectionLine(vtkPolyData* inputIntersectionFace, vtkPlane* inputPlane, vtkPolyData* outputIntersectionFacesIntersection);
 
   /// glyphs representing hot spots (e.g., handles)
   vtkActor2D          **Handle2D;
@@ -128,7 +132,7 @@ protected:
   /// Plane/Face intersection pipelines
   vtkPlane *IntersectionPlane;
   vtkTransform *IntersectionPlaneTransform;
-  vtkCutter *IntersectionCutters[6];
+  vtkPolyData *IntersectionLines[6]; // intersection lines of IntersectionFaces
   vtkPolyData *IntersectionFaces[6];
   vtkTransformPolyDataFilter *IntersectionPlaneTransformFilters[6];
   vtkActor2D *IntersectionActors[6];
@@ -149,15 +153,17 @@ protected:
 
   double ComputeHandleRadiusInWorldCoordinates(double radInPixels);
 
-  virtual void CreateDefaultProperties();
-  virtual void PositionHandles();
+  void CreateDefaultProperties() override;
+  void PositionHandles() override;
 
-  double  HandleSizeInPixels;
+  int SliceIntersectionVisibility;
+
+  double HandleSize;
   int HandlesVisibility;
 
 private:
-  vtkAnnotationROIRepresentation2D(const vtkAnnotationROIRepresentation2D&);  //Not implemented
-  void operator=(const vtkAnnotationROIRepresentation2D&);  //Not implemented
+  vtkAnnotationROIRepresentation2D(const vtkAnnotationROIRepresentation2D&) = delete;
+  void operator=(const vtkAnnotationROIRepresentation2D&) = delete;
 };
 
 #endif

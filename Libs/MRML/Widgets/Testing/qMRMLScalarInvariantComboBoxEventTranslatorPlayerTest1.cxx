@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -38,7 +41,8 @@
 #include <vtkMRMLDiffusionTensorDisplayPropertiesNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -58,7 +62,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLScalarInvariantComboBoxEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -70,10 +76,9 @@ int qMRMLScalarInvariantComboBoxEventTranslatorPlayerTest1(int argc, char * argv
   // Test case 1
   qMRMLScalarInvariantComboBox* widget = new qMRMLScalarInvariantComboBox();
 
-  vtkSmartPointer<vtkMRMLDiffusionTensorDisplayPropertiesNode> displayPropertiesNode
-    = vtkSmartPointer<vtkMRMLDiffusionTensorDisplayPropertiesNode>::New();
+  vtkNew<vtkMRMLDiffusionTensorDisplayPropertiesNode> displayPropertiesNode;
 
-  widget->setDisplayPropertiesNode(displayPropertiesNode);
+  widget->setDisplayPropertiesNode(displayPropertiesNode.GetPointer());
 
   etpWidget.addTestCase(widget,
                         xmlDirectory + "qMRMLScalarInvariantComboBoxEventTranslatorPlayerTest1.xml",

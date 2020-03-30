@@ -24,9 +24,11 @@
 // MRML includes
 #include <vtkMRMLDoubleArrayNode.h>
 #include <vtkMRMLDoubleArrayStorageNode.h>
+#include <vtkMRMLScene.h>
 
 // VTK includes
 #include <vtkNew.h>
+#include <vtkObjectFactory.h>
 
 // STD includes
 
@@ -35,13 +37,11 @@ vtkStandardNewMacro(vtkSlicerDoubleArraysLogic);
 
 //----------------------------------------------------------------------------
 vtkSlicerDoubleArraysLogic::vtkSlicerDoubleArraysLogic()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkSlicerDoubleArraysLogic::~vtkSlicerDoubleArraysLogic()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkSlicerDoubleArraysLogic::PrintSelf(ostream& os, vtkIndent indent)
@@ -53,9 +53,17 @@ void vtkSlicerDoubleArraysLogic::PrintSelf(ostream& os, vtkIndent indent)
 vtkMRMLDoubleArrayNode* vtkSlicerDoubleArraysLogic
 ::AddDoubleArray(const char* fileName, const char* name)
 {
-  if (this->GetMRMLScene() == 0 || fileName == 0)
+  if (!fileName)
     {
-    return 0;
+    return nullptr;
+    }
+  if (fileName[0] == '\0')
+    {
+    return nullptr;
+    }
+  if (this->GetMRMLScene() == nullptr)
+    {
+    return nullptr;
     }
 
   // Storage node
@@ -73,7 +81,7 @@ vtkMRMLDoubleArrayNode* vtkSlicerDoubleArraysLogic
     {
     this->GetMRMLScene()->RemoveNode(doubleArrayStorageNode.GetPointer());
     this->GetMRMLScene()->RemoveNode(doubleArrayNode.GetPointer());
-    return 0;
+    return nullptr;
     }
   if (name)
     {

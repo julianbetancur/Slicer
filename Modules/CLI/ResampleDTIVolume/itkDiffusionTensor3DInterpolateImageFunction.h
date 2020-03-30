@@ -11,8 +11,8 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DInterpolateImageFunction_h
-#define __itkDiffusionTensor3DInterpolateImageFunction_h
+#ifndef itkDiffusionTensor3DInterpolateImageFunction_h
+#define itkDiffusionTensor3DInterpolateImageFunction_h
 
 #include <itkObject.h>
 #include "itkDiffusionTensor3D.h"
@@ -45,12 +45,17 @@ public:
   typedef SmartPointer<Self>                        Pointer;
   typedef SmartPointer<const Self>                  ConstPointer;
   typedef typename TensorDataType::RealValueType    TensorRealType;
+
   typedef ImageFunction<Image<DiffusionTensor3D<TData>, 3>,
                         DiffusionTensor3D<TData>,
                         TCoordRep
                         > Superclass;
+
   typedef typename Superclass::ContinuousIndexType ContinuousIndexType;
   typedef typename Superclass::IndexType           IndexType;
+
+  /** Run-time type information (and related methods). */
+  itkTypeMacro(DiffusionTensor3DInterpolateImageFunction, ImageFunction);
 
 // ///Copied from itkInterpolateImageFunction.h
 
@@ -62,7 +67,7 @@ public:
    *
    * ImageFunction::IsInsideBuffer() can be used to check bounds before
    * calling the method. */
-  virtual TensorDataType Evaluate( const PointType& point ) const
+  TensorDataType Evaluate( const PointType& point ) const override
   {
     ContinuousIndexType index;
 
@@ -80,7 +85,7 @@ public:
    *
    * ImageFunction::IsInsideBuffer() can be used to check bounds before
    * calling the method. */
-  virtual TensorDataType EvaluateAtContinuousIndex( const ContinuousIndexType & index ) const = 0;
+  TensorDataType EvaluateAtContinuousIndex( const ContinuousIndexType & index ) const override = 0;
 
   /** Interpolate the image at an index position.
    *
@@ -91,7 +96,7 @@ public:
    * ImageFunction::IsInsideBuffer() can be used to check bounds before
    * calling the method. */
 
-  virtual TensorDataType EvaluateAtIndex( const IndexType & index ) const
+  TensorDataType EvaluateAtIndex( const IndexType & index ) const override
   {
     return this->GetInputImage()->GetPixel( index );
   }
@@ -100,7 +105,7 @@ public:
 //  itkGetMacro( DefaultPixelValue , TensorRealType ) ;
 protected:
   DiffusionTensor3DInterpolateImageFunction();
-  unsigned long latestTime;
+  unsigned long m_LatestTime;
 //  TensorRealType m_DefaultPixelValue ;
 //  TensorDataType m_DefaultPixel ;
 };

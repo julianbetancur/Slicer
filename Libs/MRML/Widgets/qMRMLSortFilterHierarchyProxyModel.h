@@ -33,15 +33,15 @@ class QMRML_WIDGETS_EXPORT qMRMLSortFilterHierarchyProxyModel
   Q_OBJECT
 public:
   typedef qMRMLSortFilterProxyModel Superclass;
-  qMRMLSortFilterHierarchyProxyModel(QObject *parent=0);
-  virtual ~qMRMLSortFilterHierarchyProxyModel();
+  qMRMLSortFilterHierarchyProxyModel(QObject *parent=nullptr);
+  ~qMRMLSortFilterHierarchyProxyModel() override;
 
 protected:
   // Don't show vtkMRMLHierarchyNode if they are tied to a vtkMRMLModelNode
   // The only vtkMRMLHierarchyNode to display are the ones who reference other
   // vtkMRMLHierarchyNode (tree parent) or empty (tree parent to be)
-  virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent)const;
-  
+  AcceptType filterAcceptsNode(vtkMRMLNode* node)const override;
+
 protected:
   QScopedPointer<qMRMLSortFilterHierarchyProxyModelPrivate> d_ptr;
 

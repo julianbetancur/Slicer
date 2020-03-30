@@ -22,30 +22,35 @@
 #define __qSlicerExtensionsManageWidget_h
 
 // Qt includes
-#include <QWidget>
+#include <QListWidget>
+#include <QUrl>
 
 // QtGUI includes
 #include "qSlicerBaseQTGUIExport.h"
 
+class qSlicerExtensionsItemDelegate;
 class qSlicerExtensionsManagerModel;
 class qSlicerExtensionsManageWidgetPrivate;
 
 class Q_SLICER_BASE_QTGUI_EXPORT qSlicerExtensionsManageWidget
-  : public QWidget
+  : public QListWidget
 {
   Q_OBJECT
 public:
   /// Superclass typedef
-  typedef QWidget Superclass;
+  typedef QListWidget Superclass;
 
   /// Constructor
-  explicit qSlicerExtensionsManageWidget(QWidget* parent = 0);
+  explicit qSlicerExtensionsManageWidget(QWidget* parent = nullptr);
 
   /// Destructor
-  virtual ~qSlicerExtensionsManageWidget();
+  ~qSlicerExtensionsManageWidget() override;
 
   Q_INVOKABLE qSlicerExtensionsManagerModel* extensionsManagerModel()const;
   Q_INVOKABLE void setExtensionsManagerModel(qSlicerExtensionsManagerModel* model);
+
+signals:
+  void linkActivated(const QUrl& link);
 
 public slots:
   void displayExtensionDetails(const QString& extensionName);
@@ -53,12 +58,21 @@ public slots:
 protected slots:
   void setExtensionEnabled(const QString& extensionName);
   void setExtensionDisabled(const QString& extensionName);
+  void setExtensionUpdateAvailable(const QString& extensionName);
   void scheduleExtensionForUninstall(const QString& extensionName);
   void cancelExtensionScheduledForUninstall(const QString& extensionName);
+  void scheduleExtensionForUpdate(const QString& extensionName);
+  void cancelExtensionScheduledForUpdate(const QString& extensionName);
   void onModelUpdated();
+  void onIconDownloadComplete(const QString& extensionName);
+  void onLinkActivated(const QString& link);
   void onExtensionInstalled(const QString& extensionName);
   void onExtensionScheduledForUninstall(const QString& extensionName);
   void onExtensionCancelledScheduleForUninstall(const QString& extensionName);
+  void setExtensionUpdateScheduled(const QString& extensionName);
+  void setExtensionUpdateCanceled(const QString& extensionName);
+  void setExtensionUpdateDownloadProgress(
+    const QString& extensionName, qint64 received, qint64 total);
   void onModelExtensionEnabledChanged(const QString& extensionName, bool enabled);
 
 protected:
@@ -67,6 +81,8 @@ protected:
 private:
   Q_DECLARE_PRIVATE(qSlicerExtensionsManageWidget);
   Q_DISABLE_COPY(qSlicerExtensionsManageWidget);
+
+  friend class qSlicerExtensionsItemDelegate;
 };
 
 #endif

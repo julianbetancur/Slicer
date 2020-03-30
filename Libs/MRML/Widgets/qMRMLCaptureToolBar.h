@@ -45,18 +45,27 @@ class QMRML_WIDGETS_EXPORT qMRMLCaptureToolBar : public QToolBar
   Q_OBJECT
   QVTK_OBJECT
 
+  Q_PROPERTY(bool popupsTimeOut READ popupsTimeOut WRITE setPopupsTimeOut)
+
 public:
   typedef QToolBar Superclass;
 
   /// Constructor
   /// Title is the name of the toolbar (can appear using right click on the toolbar area)
-  qMRMLCaptureToolBar(const QString& title, QWidget* parent = 0);
-  qMRMLCaptureToolBar(QWidget* parent = 0);
-  virtual ~qMRMLCaptureToolBar();
+  qMRMLCaptureToolBar(const QString& title, QWidget* parent = nullptr);
+  qMRMLCaptureToolBar(QWidget* parent = nullptr);
+  ~qMRMLCaptureToolBar() override;
+
+  // Get popupsTimeOut setting
+  bool popupsTimeOut() const;
 
 public slots:
   virtual void setMRMLScene(vtkMRMLScene* newScene);
   void setActiveMRMLThreeDViewNode(vtkMRMLViewNode * newActiveMRMLThreeDViewNode);
+
+  /// Set flag to time out pop ups, set from the qSlicerAppMainWindow according to the
+  /// AA_EnableTesting attribute
+  void setPopupsTimeOut(bool flag);
 
 signals:
   void screenshotButtonClicked();

@@ -1,27 +1,19 @@
 set(KIT qSlicer${MODULE_NAME}Module)
 
-set(KIT_TEST_SRCS)
-set(KIT_TEST_NAMES)
-set(KIT_TEST_NAMES_CXX)
-SlicerMacroConfigureGenericCxxModuleTests(${MODULE_NAME} KIT_TEST_SRCS KIT_TEST_NAMES KIT_TEST_NAMES_CXX)
-
-set(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "DEBUG_LEAKS_ENABLE_EXIT_ERROR();" )
-create_test_sourcelist(Tests ${KIT}CxxTests.cxx
-  ${KIT_TEST_NAMES_CXX}
+#-----------------------------------------------------------------------------
+set(KIT_TEST_SRCS
   qSlicerCamerasModuleWidgetTest1.cxx
   vtkSlicerCamerasModuleLogicCopyImportedCamerasTest.cxx
-  EXTRA_INCLUDE vtkMRMLDebugLeaksMacro.h
   )
 
-list(REMOVE_ITEM Tests ${KIT_TEST_NAMES_CXX})
-list(APPEND Tests ${KIT_TEST_SRCS})
+#-----------------------------------------------------------------------------
+slicerMacroConfigureModuleCxxTestDriver(
+  NAME ${KIT}
+  SOURCES ${KIT_TEST_SRCS}
+  WITH_VTK_DEBUG_LEAKS_CHECK
+  WITH_VTK_ERROR_OUTPUT_CHECK
+  )
 
-add_executable(${KIT}CxxTests ${Tests})
-set_target_properties(${KIT}CxxTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${Slicer_BIN_DIR})
-target_link_libraries(${KIT}CxxTests ${KIT})
-
-foreach(testname ${KIT_TEST_NAMES})
-  SIMPLE_TEST( ${testname} )
-endforeach()
-SIMPLE_TEST(qSlicerCamerasModuleWidgetTest1)
-SIMPLE_TEST(vtkSlicerCamerasModuleLogicCopyImportedCamerasTest)
+#-----------------------------------------------------------------------------
+simple_test(qSlicerCamerasModuleWidgetTest1)
+simple_test(vtkSlicerCamerasModuleLogicCopyImportedCamerasTest)

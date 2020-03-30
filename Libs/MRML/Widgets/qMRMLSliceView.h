@@ -28,9 +28,11 @@
 #include "qMRMLWidgetsExport.h"
 
 class qMRMLSliceViewPrivate;
+class vtkCollection;
+class vtkMRMLAbstractDisplayableManager;
 class vtkMRMLScene;
 class vtkMRMLSliceNode;
-class vtkSliceViewInteractorStyle;
+class vtkMRMLSliceViewInteractorStyle;
 
 /// \brief 2D view for slice nodes.
 /// For performance reasons, the view block refreshs when the scene is in
@@ -45,8 +47,8 @@ public:
   typedef ctkVTKSliceView Superclass;
 
   /// Constructors
-  explicit qMRMLSliceView(QWidget* parent = 0);
-  virtual ~qMRMLSliceView();
+  explicit qMRMLSliceView(QWidget* parent = nullptr);
+  ~qMRMLSliceView() override;
 
   /// Add a displayable manager to the view,
   /// the displayable manager is proper to the 2D view and is not shared
@@ -57,31 +59,44 @@ public:
   /// By default: vtkMRMLModelSliceDisplayableManager,
   /// vtkMRMLVolumeGlyphSliceDisplayableManager and
   /// vtkMRMLCrosshairDisplayableManager are registered.
-  void addDisplayableManager(const QString& displayableManager);
+  /// \sa getDisplayableManagers
+  Q_INVOKABLE void addDisplayableManager(const QString& displayableManager);
+  /// Get the displayable managers registered in this view
+  /// \sa addDisplayableManager
+  Q_INVOKABLE void getDisplayableManagers(vtkCollection *displayableManagers);
+
+  /// Return a DisplayableManager given its class name
+  Q_INVOKABLE  vtkMRMLAbstractDisplayableManager* displayableManagerByClassName(const char* className);
 
   /// Get the 3D View node observed by view.
   Q_INVOKABLE vtkMRMLSliceNode* mrmlSliceNode()const;
 
   /// Returns the interactor style of the view
-  vtkSliceViewInteractorStyle* sliceViewInteractorStyle()const;
+  Q_INVOKABLE vtkMRMLSliceViewInteractorStyle* sliceViewInteractorStyle()const;
 
   /// Convert device coordinates to XYZ coordinates. The x and y
   /// components of the return value are the positions within a
   /// LightBox pane and the z component of the return value (rounded
   /// to the nearest integer) is the pane in the LightBox
-  Q_INVOKABLE QList<double> convertDeviceToXYZ(const QList<int>&xy);
+  Q_INVOKABLE QList<double> convertDeviceToXYZ(const QList<int>&xy)const;
 
   /// Convert RAS to XYZ coordinates. parameters ras and return value
   /// are of length 3. Z component of the return value is the pane in
   /// the LightBox.
-  Q_INVOKABLE QList<double> convertRASToXYZ(const QList<double>& ras);
+  Q_INVOKABLE QList<double> convertRASToXYZ(const QList<double>& ras)const;
 
   /// Convert XYZ to RAS coordinates. parameters xyz and return value
   /// are of length 3. Z component of parameter xyz is the LightBox
   /// pane and the X and Y components of parameter xyz is the position
   /// in the LightBox pane.
-  Q_INVOKABLE QList<double> convertXYZToRAS(const QList<double> &xyz);
-  
+  Q_INVOKABLE QList<double> convertXYZToRAS(const QList<double> &xyz)const;
+
+  /// Set cursor in the view area
+  Q_INVOKABLE void setViewCursor(const QCursor &);
+  /// Restore default cursor in the view area
+  Q_INVOKABLE void unsetViewCursor();
+  /// Set default cursor in the view area
+  Q_INVOKABLE void setDefaultViewCursor(const QCursor &cursor);
 
 public slots:
 

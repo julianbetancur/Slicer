@@ -21,6 +21,17 @@
 #ifndef __qMRMLViewControllerBar_p_h
 #define __qMRMLViewControllerBar_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 #include <QObject>
 class QLabel;
@@ -46,7 +57,7 @@ protected:
 public:
   typedef QObject Superclass;
   qMRMLViewControllerBarPrivate(qMRMLViewControllerBar& object);
-  virtual ~qMRMLViewControllerBarPrivate();
+  ~qMRMLViewControllerBarPrivate() override;
 
   virtual void init();
   virtual void setColor(QColor color);
@@ -61,7 +72,7 @@ public:
   qMRMLViewControllerBar::LayoutBehavior  LayoutBehavior;
   QColor                           BarColor;
 
-  virtual bool eventFilter(QObject* object, QEvent* event);
+  bool eventFilter(QObject* object, QEvent* event) override;
 
 protected:
   virtual void setupPopupUi();

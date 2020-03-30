@@ -21,6 +21,9 @@
 // Qt includes
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQT includes
 #include "qSlicerApplication.h"
 #include "qSlicerColorsModule.h"
@@ -30,6 +33,10 @@
 #include <vtkMRMLColorLogic.h>
 
 // MRML includes
+#include <vtkMRMLScene.h>
+
+// VTK includes
+#include "qMRMLWidget.h"
 
 // STD includes
 
@@ -37,7 +44,9 @@
 
 int qSlicerColorsModuleWidgetTest1(int argc, char * argv [] )
 {
-  qSlicerApplication app(argc, argv);
+  qMRMLWidget::preInitializeApplication();
+  QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
   vtkSmartPointer<vtkMRMLColorLogic> colorLogic = vtkSmartPointer<vtkMRMLColorLogic>::New();
@@ -45,19 +54,20 @@ int qSlicerColorsModuleWidgetTest1(int argc, char * argv [] )
 
   qSlicerColorsModule colorsModule;
   colorsModule.setMRMLScene(scene);
-  colorsModule.initialize(0);
+  colorsModule.initialize(nullptr);
 
   qSlicerColorsModuleWidget* colorsWidget =
     dynamic_cast<qSlicerColorsModuleWidget*>(colorsModule.widgetRepresentation());
-  scene->InitTraversal();
-  vtkMRMLNode* node = scene->GetNextNodeByClass("vtkMRMLColorNode");
-  while (node)
+  colorsWidget->show();
+
+  std::vector< vtkMRMLNode* > nodes;
+  scene->GetNodesByClass("vtkMRMLColorNode", nodes);
+  for (std::vector< vtkMRMLNode* >::iterator nodeIt = nodes.begin(); nodeIt != nodes.end(); ++nodeIt)
     {
-    colorsWidget->setCurrentColorNode(node);
-    node = scene->GetNextNodeByClass("vtkMRMLColorNode");
+    colorsWidget->setCurrentColorNode(*nodeIt);
     }
 
-  colorsWidget->show();
+  // colorsWidget->show();
 
   if (argc < 2 || QString(argv[1]) != "-I")
     {

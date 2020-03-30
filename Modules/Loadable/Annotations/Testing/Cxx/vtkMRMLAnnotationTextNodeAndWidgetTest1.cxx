@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -15,7 +15,7 @@
 #include <vtkMRMLDisplayableManagerGroup.h>
 #include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
 #include <vtkMRMLViewDisplayableManager.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
@@ -35,7 +35,7 @@
 #include <vtkRegressionTestImage.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
-#include <vtkRenderWindowInteractor.h> 
+#include <vtkRenderWindowInteractor.h>
 #include <vtkSmartPointer.h>
 #include <vtkTextRepresentation.h>
 #include <vtkTextWidget.h>
@@ -92,7 +92,7 @@ int vtkMRMLAnnotationTextNodeAndWidgetTest1(int argc, char* argv[])
   rw->SetInteractor(ri);
 
   // Set Interactor Style
-  vtkThreeDViewInteractorStyle * iStyle = vtkThreeDViewInteractorStyle::New();
+  vtkMRMLThreeDViewInteractorStyle * iStyle = vtkMRMLThreeDViewInteractorStyle::New();
   ri->SetInteractorStyle(iStyle);
   iStyle->Delete();
 
@@ -186,11 +186,11 @@ int vtkMRMLAnnotationTextNodeAndWidgetTest1(int argc, char* argv[])
     return EXIT_FAILURE;
     }
 
-  // Interactor style should be vtkThreeDViewInteractorStyle
+  // Interactor style should be vtkMRMLThreeDViewInteractorStyle
   vtkInteractorObserver * currentInteractoryStyle = ri->GetInteractorStyle();
-  if (!vtkThreeDViewInteractorStyle::SafeDownCast(currentInteractoryStyle))
+  if (!vtkMRMLThreeDViewInteractorStyle::SafeDownCast(currentInteractoryStyle))
     {
-    std::cerr << "Expected interactorStyle: vtkThreeDViewInteractorStyle" << std::endl;
+    std::cerr << "Expected interactorStyle: vtkMRMLThreeDViewInteractorStyle" << std::endl;
     std::cerr << "Current RenderWindowInteractor: "
       << (currentInteractoryStyle ? currentInteractoryStyle->GetClassName() : "Null") << std::endl;
     return EXIT_FAILURE;

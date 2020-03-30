@@ -21,6 +21,9 @@
 #ifndef __qSlicerFileReader_h
 #define __qSlicerFileReader_h
 
+// Qt includes
+#include <QFileInfo>
+
 // QtCore includes
 #include "qSlicerIO.h"
 #include "qSlicerBaseQTCoreExport.h"
@@ -34,8 +37,8 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerFileReader
   Q_OBJECT
 public:
   typedef qSlicerIO Superclass;
-  explicit qSlicerFileReader(QObject* parent = 0);
-  virtual ~qSlicerFileReader();
+  explicit qSlicerFileReader(QObject* parent = nullptr);
+  ~qSlicerFileReader() override;
 
   /// Return  a list of the supported extensions. Please read
   /// QFileDialog::nameFilters for the allowed formats
@@ -51,7 +54,10 @@ public:
   /// and the supported extensions are "Volumes (*.mha *.nrrd *.raw)",
   /// "Images (*.png" *.jpg")", "DICOM (*)" then it returns
   /// "Volumes (*.mha *.nrrd *.raw), DICOM (*)"
-  QStringList supportedNameFilters(const QString& fileName)const;
+  /// \param longestExtensionMatchPtr If non-zero then the method returns
+  /// the length of the longest matched extension length in this argument.
+  /// It can be used to determine how specifically extension matched.
+  QStringList supportedNameFilters(const QString& fileName, int* longestExtensionMatchPtr = nullptr)const;
 
   /// Properties availables : fileMode, multipleFiles, fileType.
   virtual bool load(const IOProperties& properties);
@@ -60,6 +66,11 @@ public:
   /// Empty list of load() failed
   /// \sa setLoadedNodes(), load()
   QStringList loadedNodes()const;
+
+  /// Implements the file list examination for the corresponding method in the core
+  /// IO manager.
+  /// \sa qSlicerCoreIOManager
+  virtual bool examineFileInfoList(QFileInfoList &fileInfoList, QFileInfo &archetypeFileInfo, qSlicerIO::IOProperties &ioProperties)const;
 
 protected:
   /// Must be called in load() on success with the list of nodes added into the

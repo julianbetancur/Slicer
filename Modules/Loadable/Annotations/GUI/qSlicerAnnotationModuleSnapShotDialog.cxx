@@ -11,15 +11,19 @@
 // AnnotationLogics includes
 #include "Logic/vtkSlicerAnnotationModuleLogic.h"
 
+// MRML includes
+#include <vtkMRMLScene.h>
+
 // VTK includes
 #include <vtkImageData.h>
+#include <vtkStdString.h>
 
 //-----------------------------------------------------------------------------
 qSlicerAnnotationModuleSnapShotDialog
 ::qSlicerAnnotationModuleSnapShotDialog(QWidget* parentWidget)
   :Superclass(parentWidget)
 {
-  this->m_Logic = 0;
+  this->m_Logic = nullptr;
   this->setLayoutManager(qSlicerApplication::application()->layoutManager());
   this->setWindowTitle("Annotation Screenshot");
 }
@@ -29,7 +33,7 @@ qSlicerAnnotationModuleSnapShotDialog::~qSlicerAnnotationModuleSnapShotDialog()
 {
   if (this->m_Logic)
     {
-    this->m_Logic = 0;
+    this->m_Logic = nullptr;
     }
 }
 
@@ -72,6 +76,14 @@ void qSlicerAnnotationModuleSnapShotDialog::loadNode(const char* nodeId)
   int screenshotType = this->m_Logic->GetSnapShotScreenshotType(nodeId);
 
   // ..and set it in the GUI
+  // double check that the screen shot type is in range
+  if (screenshotType < qMRMLScreenShotDialog::ThreeD ||
+      screenshotType > qMRMLScreenShotDialog::FullLayout)
+    {
+    // reset to full layout
+    qErrnoWarning("Screen shot type is out of range, resetting to full layout");
+    screenshotType = qMRMLScreenShotDialog::FullLayout;
+    }
   this->setWidgetType((qMRMLScreenShotDialog::WidgetType)screenshotType);
 
   double scaleFactor = this->m_Logic->GetSnapShotScaleFactor(nodeId);
@@ -89,15 +101,17 @@ void qSlicerAnnotationModuleSnapShotDialog::reset()
   // dialog causes it to reset and calling GetUniqueNameByString increments
   // the number each time).
   vtkCollection *col =
-    this->m_Logic->GetMRMLScene()->GetNodesByName(name.toLatin1());
+    this->m_Logic->GetMRMLScene()->GetNodesByName(name.toUtf8());
   if (col->GetNumberOfItems() > 0)
     {
     // get a new unique name
-    name = this->m_Logic->GetMRMLScene()->GetUniqueNameByString(name.toLatin1());
+    name = this->m_Logic->GetMRMLScene()->GetUniqueNameByString(name.toUtf8());
     }
 
   this->resetDialog();
   this->setNameEdit(name);
+  col->RemoveAllItems();
+  col->Delete();
 }
 
 //-----------------------------------------------------------------------------
@@ -105,11 +119,11 @@ void qSlicerAnnotationModuleSnapShotDialog::accept()
 {
   // name
   QString name = this->nameEdit();
-  QByteArray nameBytes = name.toLatin1();
+  QByteArray nameBytes = name.toUtf8();
 
   // description
   QString description = this->description();
-  QByteArray descriptionBytes = description.toLatin1();
+  QByteArray descriptionBytes = description.toUtf8();
 
   // we need to know of which type the screenshot is
   int screenshotType = static_cast<int>(this->widgetType());
@@ -126,7 +140,7 @@ void qSlicerAnnotationModuleSnapShotDialog::accept()
   else
     {
     // this snapshot already exists
-    this->m_Logic->ModifySnapShot(vtkStdString(this->data().toString().toLatin1()),
+    this->m_Logic->ModifySnapShot(vtkStdString(this->data().toString().toUtf8()),
                                   nameBytes.data(),
                                   descriptionBytes.data(),
                                   screenshotType,

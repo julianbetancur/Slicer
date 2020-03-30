@@ -13,14 +13,15 @@
   =========================================================================auto=*/
 #include "vtkDiffusionTensorGlyph.h"
 
-
 #include "vtkCellArray.h"
 #include "vtkFloatArray.h"
 #include "vtkMath.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
+#include <vtkNew.h>
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include "vtkTransform.h"
 
 #include "vtkImageData.h"
@@ -32,10 +33,7 @@ vtkCxxSetObjectMacro(vtkDiffusionTensorGlyph,Mask,vtkImageData);
 vtkCxxSetObjectMacro(vtkDiffusionTensorGlyph,VolumePositionMatrix,vtkMatrix4x4);
 vtkCxxSetObjectMacro(vtkDiffusionTensorGlyph,TensorRotationMatrix,vtkMatrix4x4);
 
-
-vtkCxxRevisionMacro(vtkDiffusionTensorGlyph, "$Revision: 1.57.12.1 $");
 vtkStandardNewMacro(vtkDiffusionTensorGlyph);
-
 
 // Construct object with default values for diffusion tensor data.
 vtkDiffusionTensorGlyph::vtkDiffusionTensorGlyph()
@@ -46,11 +44,11 @@ vtkDiffusionTensorGlyph::vtkDiffusionTensorGlyph()
   this->ScalarInvariant = vtkDiffusionTensorMathematics::VTK_TENS_FRACTIONAL_ANISOTROPY;
 
   // These can be optionally set by the user
-  this->VolumePositionMatrix = NULL;
-  this->TensorRotationMatrix = NULL;
+  this->VolumePositionMatrix = nullptr;
+  this->TensorRotationMatrix = nullptr;
 
   this->MaskGlyphs = 0;
-  this->Mask = NULL;
+  this->Mask = nullptr;
 
   // Default to highest rendering resolution
   this->Resolution = 1;
@@ -58,7 +56,7 @@ vtkDiffusionTensorGlyph::vtkDiffusionTensorGlyph()
   this->DimensionResolution[0] = 20;
   this->DimensionResolution[1] = 20;
 
-  // Default large scalar factor for diffusion data. 
+  // Default large scalar factor for diffusion data.
   // Display small magnitude eigenvalues in mm space.
   this->ScaleFactor = 1000;
 
@@ -67,23 +65,21 @@ vtkDiffusionTensorGlyph::vtkDiffusionTensorGlyph()
 
 vtkDiffusionTensorGlyph::~vtkDiffusionTensorGlyph()
 {
-
   // Delete all objects (reduce ref count by one)
-  if ( this->VolumePositionMatrix != NULL )
+  if ( this->VolumePositionMatrix != nullptr )
     {
     this->VolumePositionMatrix->Delete( );
     }
 
-  if ( this->TensorRotationMatrix != NULL )
+  if ( this->TensorRotationMatrix != nullptr )
     {
     this->TensorRotationMatrix->Delete( );
     }
 
-  if ( this->Mask != NULL )
+  if ( this->Mask != nullptr )
     {
     this->Mask->Delete( );
     }
-
 }
 
 void vtkDiffusionTensorGlyph::ColorGlyphsByLinearMeasure() {
@@ -94,6 +90,12 @@ void vtkDiffusionTensorGlyph::ColorGlyphsBySphericalMeasure() {
 }
 void vtkDiffusionTensorGlyph::ColorGlyphsByPlanarMeasure() {
   this->ColorGlyphsBy(vtkDiffusionTensorMathematics::VTK_TENS_PLANAR_MEASURE);
+}
+void vtkDiffusionTensorGlyph::ColorGlyphsByParallelDiffusivity() {
+  this->ColorGlyphsBy(vtkDiffusionTensorMathematics::VTK_TENS_PARALLEL_DIFFUSIVITY);
+}
+void vtkDiffusionTensorGlyph::ColorGlyphsByPerpendicularDiffusivity() {
+  this->ColorGlyphsBy(vtkDiffusionTensorMathematics::VTK_TENS_PERPENDICULAR_DIFFUSIVITY);
 }
 void vtkDiffusionTensorGlyph::ColorGlyphsByMaxEigenvalue() {
   this->ColorGlyphsBy(vtkDiffusionTensorMathematics::VTK_TENS_MAX_EIGENVALUE);
@@ -119,7 +121,7 @@ void vtkDiffusionTensorGlyph::ColorGlyphsByTrace() {
 }
 
 void vtkDiffusionTensorGlyph::ColorGlyphsBy(int invariant) {
-  if (this->ScalarInvariant != invariant) 
+  if (this->ScalarInvariant != invariant)
     {
     // superclass flag to output scalars
     this->ColorGlyphs = 1;
@@ -148,7 +150,7 @@ int vtkDiffusionTensorGlyph::RequestData(
   vtkInformation *sourceInfo = inputVector[1]->GetInformationObject(0);
   vtkInformation *outInfo = outputVector->GetInformationObject(0);
 
-  // get the input and ouptut
+  // get the input and output
   vtkDataSet *input = vtkDataSet::SafeDownCast(
                                                inInfo->Get(vtkDataObject::DATA_OBJECT()));
   vtkPolyData *source = vtkPolyData::SafeDownCast(
@@ -162,10 +164,10 @@ int vtkDiffusionTensorGlyph::RequestData(
   int j;
   vtkPoints *sourcePts;
   vtkDataArray *sourceNormals;
-  vtkCellArray *sourceCells, *cells;  
+  vtkCellArray *sourceCells, *cells;
   vtkPoints *newPts;
-  vtkFloatArray *newScalars=NULL;
-  vtkFloatArray *newNormals=NULL;
+  vtkFloatArray *newScalars=nullptr;
+  vtkFloatArray *newNormals=nullptr;
   double x[3], x2[3], s;
   vtkTransform *trans;
   vtkCell *cell;
@@ -188,26 +190,27 @@ int vtkDiffusionTensorGlyph::RequestData(
   vtkIdType ptOffset = 0;
 
   // coordinate systems for DTI
-  vtkTransform *userVolumeTransform = NULL;
+  vtkTransform *userVolumeTransform = nullptr;
   // masking of glyphs
   vtkDataArray *inMask;
   // glyph timing
-  clock_t tStart=0;
-  tStart = clock();
+#ifndef NDEBUG
+  clock_t tStart = clock();
+#endif
 
   // use simpler 3x3 array, not 9D as in vtkTensorGlyph class
   double tensor[3][3];
 
   // the number of eigenvectors to glyph * if there are two glyphs per vector
   numDirs = (this->ThreeGlyphs?3:1)*(this->Symmetric+1);
-  
+
   pts = new vtkIdType[source->GetMaxCellSize()];
   trans = vtkTransform::New();
   matrix = vtkMatrix4x4::New();
-  
+
   // set up working matrices
-  m[0] = m0; m[1] = m1; m[2] = m2; 
-  v[0] = v0; v[1] = v1; v[2] = v2; 
+  m[0] = m0; m[1] = m1; m[2] = m2;
+  v[0] = v0; v[1] = v1; v[2] = v2;
 
   vtkDebugMacro(<<"Generating tensor glyphs");
 
@@ -230,12 +233,11 @@ int vtkDiffusionTensorGlyph::RequestData(
   int skipRows = 0;
   int skipCols = this->Resolution;
   int rowLength = numPts;
-  int colLength = 1;
   int row = 0;
   int col = 0;
   // TODO: use UpdateExtent not WholeExtent
   int inWholeExtent[6];
-  input->GetWholeExtent(inWholeExtent);
+  inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), inWholeExtent);
   int dimensions[3];
   dimensions[0] = inWholeExtent[1] - inWholeExtent[0] + 1;
   dimensions[1] = inWholeExtent[3] - inWholeExtent[2] + 1;
@@ -245,12 +247,11 @@ int vtkDiffusionTensorGlyph::RequestData(
     skipRows = DimensionResolution[1];
     skipCols = DimensionResolution[0];
     rowLength = dimensions[0];
-    colLength = dimensions[1];
-    if (skipCols) 
+    if (skipCols)
       {
       numInputPts = (numInputPts+1)/skipCols;
       }
-    if (skipRows) 
+    if (skipRows)
       {
       numInputPts = (numInputPts+1)/skipRows;
       }
@@ -299,13 +300,12 @@ int vtkDiffusionTensorGlyph::RequestData(
     cells->Delete();
     }
 
-
   // Get point data, decide how to allocate scalars
   pd = this->GetSource()->GetPointData();
 
   // generate scalars if eigenvalues are chosen or if scalars exist.
-  if (this->ColorGlyphs && 
-      ((this->ColorMode == COLOR_BY_EIGENVALUES) || 
+  if (this->ColorGlyphs &&
+      ((this->ColorMode == COLOR_BY_EIGENVALUES) ||
        (inScalars && (this->ColorMode == COLOR_BY_SCALARS)) ) )
     {
     newScalars = vtkFloatArray::New();
@@ -330,15 +330,15 @@ int vtkDiffusionTensorGlyph::RequestData(
   // we are not necessarily outputting a glyph for every point.
 
   // Figure out if we are masking some of the glyphs
-  inMask = NULL;
-  
+  inMask = nullptr;
+
   if (this->MaskGlyphs)
     {
-    if (this->Mask != NULL)
+    if (this->Mask != nullptr)
       {
       inMask = this->Mask->GetPointData()->GetScalars();
       }
-    else 
+    else
       {
       vtkErrorMacro("User has not set input mask, but has requested MaskGlyphs");
       }
@@ -349,7 +349,7 @@ int vtkDiffusionTensorGlyph::RequestData(
     {
     // user transform to move points
     userVolumeTransform = vtkTransform::New();
-    
+
     userVolumeTransform->SetMatrix(this->VolumePositionMatrix);
     userVolumeTransform->PreMultiply();
     }
@@ -359,7 +359,7 @@ int vtkDiffusionTensorGlyph::RequestData(
   vtkDebugMacro("Scalar coloring (" <<  this->ColorMode << ")  ["<< vtkTensorGlyph::COLOR_BY_EIGENVALUES << "] is evals. Scalar Invariant (" << this->ScalarInvariant << ")") ;
 
   //
-  // Traverse all Input points, transforming glyph in this->Source by tensor, 
+  // Traverse all Input points, transforming glyph in this->Source by tensor,
   // and outputting it at each point.  (Input points are not all used, only
   // those not masked and included by this->Resolution.)
   //
@@ -379,29 +379,27 @@ int vtkDiffusionTensorGlyph::RequestData(
       }
     col += skipCols;
     // progress notification
-    if ( ! (inPtId % 10000) ) 
+    if ( ! (inPtId % 10000) )
       {
-      this->UpdateProgress ((vtkFloatingPointType)inPtId/numPts);
+      this->UpdateProgress ((double)inPtId/numPts);
 
-      vtkDebugMacro(<<"Generating diffusion tensor glyphs: PROGRESS" << (vtkFloatingPointType)inPtId/numPts);
+      vtkDebugMacro(<<"Generating diffusion tensor glyphs: PROGRESS" << (double)inPtId/numPts);
       if (this->GetAbortExecute())
         {
         break;
         }
       }
 
-
-
     inTensors->GetTuple(inPtId, (double *)tensor);
 
     // Decide whether this tensor will be glyphed:
     // Threshold by trace ( must be > 0)
     double trace = vtkDiffusionTensorMathematics::Trace(tensor);
-      
+
     // Only display this glyph if either:
     // a) we are masking and the mask is 1 at this location.
-    // b) the trace is positive and we are not masking (default).   
-    if (( ( inMask != NULL ) && inMask->GetTuple1( inPtId ) ) || ( !this->MaskGlyphs && trace > 0 )) 
+    // b) the trace is positive and we are not masking (default).
+    if (( ( inMask != nullptr ) && inMask->GetTuple1( inPtId ) ) || ( !this->MaskGlyphs && trace > 0 ))
       {
       // copy topology of output glyph for this point
       for (cellId=0; cellId < numSourceCells; cellId++)
@@ -411,7 +409,7 @@ int vtkDiffusionTensorGlyph::RequestData(
         npts = cellPts->GetNumberOfIds();
         for (dir=0; dir < numDirs; dir++)
           {
-          // This variable may be removed, but that 
+          // This variable may be removed, but that
           // will not improve readability
           //subIncr = ptIncr + dir*numSourcePts;
 
@@ -434,7 +432,7 @@ int vtkDiffusionTensorGlyph::RequestData(
           for (i=0; i<3; i++)
             {
             // this line from vtkTensorGlyph actually transposes
-            //m[i][j] = tensor[i+3*j];  
+            //m[i][j] = tensor[i+3*j];
             // simpler code with 3x3 array:
             m[i][j] = tensor[j][i];
             }
@@ -454,7 +452,7 @@ int vtkDiffusionTensorGlyph::RequestData(
         for (i=0; i<3; i++)
           {
           //xv[i] = tensor[i]; // from vtkTensorGlyph
-          //yv[i] = tensor[i+3]; 
+          //yv[i] = tensor[i+3];
           //zv[i] = tensor[i+6];
           xv[i] = tensor[0][i]; // with 3x3 matrix
           yv[i] = tensor[1][i];
@@ -465,23 +463,21 @@ int vtkDiffusionTensorGlyph::RequestData(
         w[2] = vtkMath::Normalize(zv);
         }
 
-
       // Calculate output scalars before computing glyph scale factors from eigenvalues.
       // First, pass through input scalars if requested.
-      if ( inScalars && this->ColorGlyphs && ( this->ColorMode == vtkTensorGlyph::COLOR_BY_SCALARS ) ) 
+      if ( inScalars && this->ColorGlyphs && ( this->ColorMode == vtkTensorGlyph::COLOR_BY_SCALARS ) )
         {
         // Copy point data from source
         s = inScalars->GetComponent(inPtId, 0);
         }
 
-      // Output scalar invariants if requested 
-      else if ( this->ColorGlyphs && ( this->ColorMode == vtkTensorGlyph::COLOR_BY_EIGENVALUES ) ) 
+      // Output scalar invariants if requested
+      else if ( this->ColorGlyphs && ( this->ColorMode == vtkTensorGlyph::COLOR_BY_EIGENVALUES ) )
         {
-
         // Correct for negative eigenvalues: use logic coded in vtkDiffusionTensorMathematics
         vtkDiffusionTensorMathematics::FixNegativeEigenvaluesMethod(w);
 
-        switch (this->ScalarInvariant) 
+        switch (this->ScalarInvariant)
           {
           case vtkDiffusionTensorMathematics::VTK_TENS_LINEAR_MEASURE:
             s = vtkDiffusionTensorMathematics::LinearMeasure(w);
@@ -499,7 +495,13 @@ int vtkDiffusionTensorGlyph::RequestData(
             s = w[1];
             break;
           case vtkDiffusionTensorMathematics::VTK_TENS_MIN_EIGENVALUE:
-            s = w[2]; 
+            s = w[2];
+            break;
+          case vtkDiffusionTensorMathematics::VTK_TENS_PARALLEL_DIFFUSIVITY:
+            s = w[0];
+            break;
+          case vtkDiffusionTensorMathematics::VTK_TENS_PERPENDICULAR_DIFFUSIVITY:
+            s = 0.5*(w[1]+w[2]);
             break;
           case vtkDiffusionTensorMathematics::VTK_TENS_COLOR_ORIENTATION:
             double v_maj[3];
@@ -508,10 +510,9 @@ int vtkDiffusionTensorGlyph::RequestData(
             v_maj[2]=v[2][0];
             if (this->TensorRotationMatrix)
               {
-              vtkTransform *rotate = vtkTransform::New();
+              vtkNew<vtkTransform> rotate;
               rotate->SetMatrix(this->TensorRotationMatrix);
               rotate->TransformPoint(v_maj,v_maj);
-              rotate->Delete();
               }
             // TO DO: here output as RGB. Need to allocate 3-component scalars first.
             s = 0;
@@ -530,21 +531,20 @@ int vtkDiffusionTensorGlyph::RequestData(
             s = 0;
             break;
           }
-
         }
 
       // Use the square root of the eigenvalues for scaling
-      // for DTI 
+      // for DTI
       w[0] = sqrt( w[0] );
       w[1] = sqrt( w[1] );
       w[2] = sqrt( w[2] );
 
-      // compute scale factors (this modifies eigenvalues so 
+      // compute scale factors (this modifies eigenvalues so
       // scalar invariants were computed already above)
       w[0] *= this->ScaleFactor;
       w[1] *= this->ScaleFactor;
       w[2] *= this->ScaleFactor;
-    
+
       if ( this->ClampScaling )
         {
         for (maxScale=0.0, i=0; i<3; i++)
@@ -566,7 +566,7 @@ int vtkDiffusionTensorGlyph::RequestData(
 
       // normalization is postponed
 
-      // make sure scale is okay (non-zero) and scale data 
+      // make sure scale is okay (non-zero) and scale data
       // this scale checking is from superclass code
       for (maxScale=0.0, i=0; i<3; i++)
         {
@@ -591,14 +591,14 @@ int vtkDiffusionTensorGlyph::RequestData(
       // This is a loop over each eigenvector allowing
       // a separate glyph for each (or two loops per eigenvector
       // allowing two symmetric glyphs for each)
-      
+
       int flipNormals = 0;
       if ( this->TensorRotationMatrix && this->TensorRotationMatrix->Determinant() < 0 )
         {
         flipNormals = 1;
         }
 
-      for (dir=0; dir < numDirs; dir++) 
+      for (dir=0; dir < numDirs; dir++)
         {
         eigen_dir = dir%(this->ThreeGlyphs?3:1);
         symmetric_dir = dir/(this->ThreeGlyphs?3:1);
@@ -606,20 +606,17 @@ int vtkDiffusionTensorGlyph::RequestData(
         // Remove previous scales ...
         trans->Identity();
 
-
-
         // Actually output the scalar invariant calculated above
-        if ( newScalars != NULL )
+        if ( newScalars != nullptr )
           {
-          for (i=0; i < numSourcePts; i++) 
+          for (i=0; i < numSourcePts; i++)
             {
-
             newScalars->InsertTuple(ptOffset+i, &s);
-            }        
+            }
           }
         else
           {
-          for (i=0; i < numSourcePts; i++) 
+          for (i=0; i < numSourcePts; i++)
             {
             // TO DO: why does superclass have this if no scalar output?
             // in this case it appears copy scalars is on (above in
@@ -630,19 +627,18 @@ int vtkDiffusionTensorGlyph::RequestData(
 
         // translate Source to Input point
         input->GetPoint(inPtId, x);
-        
+
         // If we have a user-specified matrix modifying the output point locations
-        if ( userVolumeTransform != NULL )
+        if ( userVolumeTransform != nullptr )
           {
           userVolumeTransform->TransformPoint(x,x2);
           trans->Translate(x2[0], x2[1], x2[2]);
-          }  
+          }
         else
           {
           trans->Translate(x[0], x[1], x[2]);
           }
 
-        
         // If we have a user-specified matrix rotating each tensor
         if (this->TensorRotationMatrix)
           {
@@ -661,7 +657,7 @@ int vtkDiffusionTensorGlyph::RequestData(
         matrix->Element[2][2] = zv[2];
         trans->Concatenate(matrix);
 
-        if (eigen_dir == 1) 
+        if (eigen_dir == 1)
           {
           trans->RotateZ(90.0);
           }
@@ -671,15 +667,13 @@ int vtkDiffusionTensorGlyph::RequestData(
           trans->RotateY(-90.0);
           }
 
-        if (this->ThreeGlyphs) 
+        if (this->ThreeGlyphs)
           {
           trans->Scale(w[eigen_dir], this->ScaleFactor, this->ScaleFactor);
           }
         else
           {
-
           trans->Scale(w[0], w[1], w[2]);
-
           }
 
         // Mirror second set to the symmetric position
@@ -689,10 +683,10 @@ int vtkDiffusionTensorGlyph::RequestData(
           }
 
         // if the eigenvalue is negative, shift to reverse direction.
-        // The && is there to ensure that we do not change the 
-        // old behaviour of vtkTensorGlyphs (which only used one dir), 
+        // The && is there to ensure that we do not change the
+        // old behaviour of vtkTensorGlyphs (which only used one dir),
         // in case there is an oriented glyph, e.g. an arrow.
-        if (w[eigen_dir] < 0 && numDirs > 1) 
+        if (w[eigen_dir] < 0 && numDirs > 1)
           {
           trans->Translate(-this->Length, 0., 0.);
           }
@@ -700,9 +694,9 @@ int vtkDiffusionTensorGlyph::RequestData(
         // multiply points (and normals if available) by resulting
         // matrix.
         // This also appends them to the output "new" data.
-        trans->TransformPoints(sourcePts,newPts); 
+        trans->TransformPoints(sourcePts,newPts);
 
-        // Apply the transformation to a series of points, 
+        // Apply the transformation to a series of points,
         // and append the results to outPts.
         if ( newNormals )
           {
@@ -717,18 +711,12 @@ int vtkDiffusionTensorGlyph::RequestData(
             trans->TransformNormals(sourceNormals,newNormals);
             }
           }
-        
 
         // Keep track of the number of points output so far.
         ptOffset += numSourcePts;
-
         } // end for number of dirs
- 
       } // end if mask is 1 OR trace is ok (so tensor was glyphed)
-
     } // end loop over input points
-
-
 
   vtkDebugMacro(<<"Generated " << numInputPts <<" tensor glyphs");
 
@@ -764,9 +752,7 @@ int vtkDiffusionTensorGlyph::RequestData(
 
   vtkDebugMacro("glyph time: " << clock() - tStart );
 
-
   return 1;
-
 }
 
 void vtkDiffusionTensorGlyph::PrintSelf(ostream& os, vtkIndent indent)
@@ -807,30 +793,29 @@ void vtkDiffusionTensorGlyph::PrintSelf(ostream& os, vtkIndent indent)
     {
     os << indent << "Mask: (none)\n";
     }
-
 }
 
 //----------------------------------------------------------------------------
 // Account for the MTime of objects we use
 //
-unsigned long int vtkDiffusionTensorGlyph::GetMTime()
+vtkMTimeType vtkDiffusionTensorGlyph::GetMTime()
 {
-  unsigned long mTime=this->vtkObject::GetMTime();
-  unsigned long time;
+  vtkMTimeType mTime=this->vtkObject::GetMTime();
+  vtkMTimeType time;
 
-  if ( this->Mask != NULL )
+  if ( this->Mask != nullptr )
     {
     time = this->Mask->GetMTime();
     mTime = ( time > mTime ? time : mTime );
     }
 
-  if ( this->VolumePositionMatrix != NULL )
+  if ( this->VolumePositionMatrix != nullptr )
     {
     time = this->VolumePositionMatrix->GetMTime();
     mTime = ( time > mTime ? time : mTime );
     }
 
-  if ( this->TensorRotationMatrix != NULL )
+  if ( this->TensorRotationMatrix != nullptr )
     {
     time = this->TensorRotationMatrix->GetMTime();
     mTime = ( time > mTime ? time : mTime );

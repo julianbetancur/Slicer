@@ -27,37 +27,41 @@ class VTK_MRML_EXPORT vtkMRMLVectorVolumeNode : public vtkMRMLTensorVolumeNode
   public:
   static vtkMRMLVectorVolumeNode *New();
   vtkTypeMacro(vtkMRMLVectorVolumeNode,vtkMRMLTensorVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "VectorVolume";};
+  const char* GetNodeTagName() override {return "VectorVolume";}
 
-  /// 
+  ///
   /// Associated display MRML node
   virtual vtkMRMLVectorVolumeDisplayNode* GetVectorVolumeDisplayNode();
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
+
+  ///
+  /// Create and observe default display node
+  void CreateDefaultDisplayNodes() override;
 
 protected:
   vtkMRMLVectorVolumeNode();
-  ~vtkMRMLVectorVolumeNode();
+  ~vtkMRMLVectorVolumeNode() override;
   vtkMRMLVectorVolumeNode(const vtkMRMLVectorVolumeNode&);
   void operator=(const vtkMRMLVectorVolumeNode&);
 

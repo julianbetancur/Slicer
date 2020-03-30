@@ -1,5 +1,5 @@
-#ifndef __TransformDeformationFieldFilter_txx
-#define __TransformDeformationFieldFilter_txx
+#ifndef itkTransformDeformationFieldFilter_txx
+#define itkTransformDeformationFieldFilter_txx
 
 #include "itkTransformDeformationFieldFilter.h"
 
@@ -14,7 +14,7 @@ TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
 }
 
 template <class TInput, class TOutput, int NDimensions>
-unsigned long
+ModifiedTimeType
 TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
 ::GetMTime() const
 {
@@ -45,28 +45,10 @@ TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
     }
 }
 
-#if 0 // HACK ITK_VERSION_MAJOR < 4
 template <class TInput, class TOutput, int NDimensions>
 void
 TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
-::SetInput( const InputDeformationFieldType * inputImage )
-{
-  this->Superclass::SetInput( 0, inputImage );
-}
-
-#endif
-
-template <class TInput, class TOutput, int NDimensions>
-void
-#if ITK_VERSION_MAJOR < 4
-TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
-::ThreadedGenerateData( const OutputImageRegionType & outputRegionForThread,
-                        int itkNotUsed(threadId) )
-#else
-TransformDeformationFieldFilter<TInput, TOutput, NDimensions>
-::ThreadedGenerateData( const OutputImageRegionType &outputRegionForThread,
-                        ThreadIdType itkNotUsed(threadId) )
-#endif
+::DynamicThreadedGenerateData( const OutputImageRegionType &outputRegionForThread)
   {
   OutputDeformationFieldPointerType outputImagePtr = this->GetOutput( 0 );
   InputIteratorType                 it( this->GetInput( 0 ), outputRegionForThread );

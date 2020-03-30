@@ -2,8 +2,14 @@
 
 #include "SFLSRobustStatSegmentor3DLabelMap_single.h"
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
+// ITK includes
+#include <itkImageFileReader.h>
+#include <itkImageFileWriter.h>
+
+// ITK includes
+#include <itkConfigure.h>
+#include <itkFactoryRegistration.h>
+
 
 #include "labelMapPreprocessor.h"
 
@@ -13,6 +19,8 @@ getFinalMask(typename itk::Image<TPixel, 3>::Pointer img, unsigned char l, TPixe
 
 int main(int argc, char* * argv)
 {
+  itk::itkFactoryRegistration();
+
   if( argc != 7 )
     {
     std::cerr << "Parameters: inputImage labelImageName outputImage expectedVolume intensityHomo[0~1] lambda[0~1]\n";
@@ -79,7 +87,7 @@ int main(int argc, char* * argv)
   SFLSRobustStatSegmentor3DLabelMap_c seg;
   seg.setImage(img);
 
-  seg.setNumIter(10000); // a large enough number, s.t. will not be stoped by this creteria.
+  seg.setNumIter(10000); // a large enough number, s.t. will not be stopped by this creteria.
   seg.setMaxVolume(expectedVolume);
   seg.setInputLabelImage(newLabelMap);
 

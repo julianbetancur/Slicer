@@ -20,6 +20,7 @@
 
 // Qt includes
 #include <QDebug>
+#include <QSettings>
 
 // CTK includes
 #include "qSlicerAbstractModule.h"
@@ -38,8 +39,13 @@ public:
   void init();
   void addDefaultCategories();
 
-  void addModuleAction(QMenu* menu, QAction* moduleAction, bool useIndex = true);
-  QMenu* menu(QMenu* parentMenu, QStringList subCategories);
+  void addModuleAction(QMenu* menu, QAction* moduleAction, bool useIndex = true, bool builtIn = true);
+  QMenu* menu(QMenu* parentMenu, QStringList subCategories, bool builtIn = true);
+
+  bool removeTopLevelModuleAction(QAction* moduleAction);
+
+  /// Return menus for each subCategories
+  QList<QMenu*> categoryMenus(QMenu* topLevelMenu, QStringList subCategories);
 
   QAction* action(const QVariant& actionData, const QMenu* parentMenu)const;
   QAction* action(const QString& text, const QMenu* parentMenu)const;
@@ -51,23 +57,32 @@ public:
   QString               CurrentModule;
   bool                  DuplicateActions;
   bool                  ShowHiddenModules;
+  bool                  AllModulesCategoryVisible;
+  QStringList           TopLevelCategoryOrder;
 };
 
 //---------------------------------------------------------------------------
 qSlicerModulesMenuPrivate::qSlicerModulesMenuPrivate(qSlicerModulesMenu& object)
   : q_ptr(&object)
 {
-  this->ModuleManager = 0;
-  this->AllModulesMenu = 0;
-  this->NoModuleAction = 0;
+  this->ModuleManager = nullptr;
+  this->AllModulesMenu = nullptr;
+  this->NoModuleAction = nullptr;
   this->DuplicateActions = false;
   this->ShowHiddenModules = false;
+  this->AllModulesCategoryVisible = true;
+  this->TopLevelCategoryOrder << "Wizards" << "Informatics" << "Registration"
+    << "Segmentation" << "Quantification" << "Diffusion" << "IGT"
+    << "Filtering" << "Surface Models" << "Converters" << "Endoscopy"
+    << "Utilities" << "Developer Tools" << "Legacy" << "Testing";
 }
 
 //---------------------------------------------------------------------------
 void qSlicerModulesMenuPrivate::init()
 {
   Q_Q(qSlicerModulesMenu);
+  this->AllModulesMenu = new QMenu(qSlicerModulesMenu::tr("All Modules"), q);
+
   this->addDefaultCategories();
 
   // Invisible action, don't add it anywhere.
@@ -80,29 +95,17 @@ void qSlicerModulesMenuPrivate::init()
 void qSlicerModulesMenuPrivate::addDefaultCategories()
 {
   Q_Q(qSlicerModulesMenu);
-  this->AllModulesMenu = q->addMenu(QObject::tr("All Modules"));
+  if(this->AllModulesCategoryVisible)
+    {
+    q->addMenu(this->AllModulesMenu);
+    q->addSeparator();
+    }
+  // between the 2 separators are the top level modules (with no category)
   q->addSeparator();
-  // between the 2 separators goes the top level modules (with no category)
+  // after the top level modules are the non-built-in categories (from
+  // extensions or any user defined external folder)
   q->addSeparator();
-  q->addMenu("Wizards");
-  q->addMenu("Informatics");
-  q->addMenu("Registration");
-  q->addMenu("Segmentation");
-  q->addMenu("Quantification");
-  q->addMenu("Diffusion");
-  //q->addMenu("Tractography");
-  q->addMenu("IGT");
-  //q->addMenu("Time Series");
-  q->addMenu("Filtering");
-  q->addMenu("Surface Models");
-  q->addMenu("Converters");
-  q->addMenu("Endoscopy");
-  q->addMenu("Utilities");
-  q->addMenu("Developer Tools");
-  q->addMenu("Legacy");
-  q->addMenu("Testing");
-  q->addSeparator();
-  // after the separator goes custom modules
+  // after the separator are the predefined categories
 }
 
 //---------------------------------------------------------------------------
@@ -123,7 +126,7 @@ QAction* qSlicerModulesMenuPrivate::action(const QVariant& actionData, const QMe
         }
       }
     }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -144,21 +147,31 @@ QAction* qSlicerModulesMenuPrivate::action(const QString& text, const QMenu* par
         }
       }
     }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
-void qSlicerModulesMenuPrivate::addModuleAction(QMenu* menu, QAction* moduleAction, bool useIndex)
+void qSlicerModulesMenuPrivate::addModuleAction(QMenu* menu, QAction* moduleAction, bool useIndex, bool builtIn)
 {
   Q_Q(qSlicerModulesMenu);
   QList<QAction*> actions = menu->actions();
+  QStringList orderedList;
   if (menu == q)
     {
-    // special ordering at the top level, the actions need to be added
-    // between the submenu AllModules and the other submenus
-    actions.removeFirst(); // remove AllModules
-    actions.removeFirst(); // remove first separator
+    if (this->AllModulesCategoryVisible)
+      {
+      // special ordering at the top level, the actions need to be added
+      // between the submenu AllModules and the other submenus
+      actions.removeFirst(); // remove AllModules
+      actions.removeFirst(); // remove first separator
+      }
+    if (moduleAction->menu())
+      {
+      orderedList = this->TopLevelCategoryOrder;
+      }
     }
+  // Set built-in property to action
+  moduleAction->setProperty("builtIn", QVariant(builtIn));
   // The actions are before submenus and inserted based on their index or alphabetically
   bool ok = false;
   int index = moduleAction->property("index").toInt(&ok);
@@ -166,6 +179,7 @@ void qSlicerModulesMenuPrivate::addModuleAction(QMenu* menu, QAction* moduleActi
     {
     index = 65535; // big enough
     }
+  // Search where moduleAction should be inserted. Before what action.
   foreach(QAction* action, actions)
     {
     Q_ASSERT(action);
@@ -174,29 +188,123 @@ void qSlicerModulesMenuPrivate::addModuleAction(QMenu* menu, QAction* moduleActi
       {
       actionIndex = 65535;
       }
+    bool actionBuiltIn = action->property("builtIn").toBool();
+    // Sort alphabetically if the indexes are the same
+    if (actionIndex == index)
+      {
+      if (action->text().compare(moduleAction->text(), Qt::CaseInsensitive) > 0)
+        {
+        actionIndex = index + 1;
+        }
+      }
+    int order = orderedList.indexOf(moduleAction->text());
+    int actionOrder = orderedList.indexOf(action->text());
+    if (order != -1 || actionOrder != -1)
+      {
+      if (order == -1)
+        {// insert (with index or alphabetically) at the end of the ordered list.
+        index = actionIndex;
+        }
+      else if (actionOrder == -1)
+        {// insert it now
+        actionIndex = index + 1;
+        }
+      else
+        {
+        actionIndex = actionOrder;
+        index = order;
+        }
+      }
+    // If the action to add is NOT a menu
     if (!moduleAction->menu() && (action->menu() ||
                                   action->isSeparator() ||
-                                  actionIndex > index ||
-                                  (actionIndex == index &&
-                                   (action->text().compare(moduleAction->text(), Qt::CaseInsensitive) > 0))))
+                                  actionIndex > index))
       {
       menu->insertAction(action, moduleAction);
       return;
       }
+    // If the action to add is a menu
     else if (moduleAction->menu() && action->menu() &&
-             (actionIndex > index ||
-              (actionIndex == index &&
-               (action->text().compare(moduleAction->text(), Qt::CaseInsensitive) > 0))))
+             (actionIndex > index) && actionBuiltIn)
       {
       menu->insertAction(action, moduleAction);
       return;
       }
     }
+  // if top level and not built-in, then add it to the external section
+  if (menu == q && !builtIn && !orderedList.isEmpty())
+    {
+    // look for third separator (second, as the first one was removed above)
+    int separatorCount = 0;
+    foreach(QAction* action, actions)
+      {
+      Q_ASSERT(action);
+      if (action->isSeparator())
+        {
+        ++separatorCount;
+        if (separatorCount == 2)
+          {
+          menu->insertAction(action, moduleAction);
+          return;
+          }
+        }
+      }
+    }
+  // otherwise, simply add it to the end of the menu list
   menu->addAction(moduleAction);
 }
 
 //---------------------------------------------------------------------------
-QMenu* qSlicerModulesMenuPrivate::menu(QMenu* menu, QStringList subCategories)
+bool qSlicerModulesMenuPrivate::removeTopLevelModuleAction(QAction* moduleAction)
+{
+  Q_Q(qSlicerModulesMenu);
+  if (!moduleAction)
+    {
+    return false;
+    }
+  QMenu* menu = this->actionMenu(moduleAction, q);
+  if (!menu)
+    {
+    return false;
+    }
+  menu->removeAction(moduleAction);
+  if (menu == q)
+    {
+    // If the action is removed from the top-level category, re-add the
+    // connection.
+    QObject::connect(moduleAction, SIGNAL(triggered(bool)),
+                     q, SLOT(onActionTriggered()));
+    }
+  return true;
+}
+
+//---------------------------------------------------------------------------
+QList<QMenu*> qSlicerModulesMenuPrivate::categoryMenus(QMenu* topLevelMenu, QStringList subCategories)
+{
+  if (subCategories.isEmpty())
+    {
+    return QList<QMenu*>();
+    }
+  QString category = subCategories.takeFirst();
+  if (category.isEmpty())
+    {
+    return QList<QMenu*>();
+    }
+  foreach(QAction* action, topLevelMenu->actions())
+    {
+    if (action->text() == category)
+      {
+      QList<QMenu*> menus;
+      menus.append(action->menu());
+      menus.append(this->categoryMenus(action->menu(), subCategories));
+      return menus;
+      }
+    }
+  return QList<QMenu*>();
+}
+
+//---------------------------------------------------------------------------
+QMenu* qSlicerModulesMenuPrivate::menu(QMenu* menu, QStringList subCategories, bool builtIn)
 {
   Q_Q(qSlicerModulesMenu);
   if (subCategories.isEmpty())
@@ -208,7 +316,7 @@ QMenu* qSlicerModulesMenuPrivate::menu(QMenu* menu, QStringList subCategories)
     {
     return menu;
     }
-  // The action are inserted alphabetically
+  // The actions are inserted alphabetically
   foreach(QAction* action, menu->actions())
     {
     if (action->text() == category)
@@ -218,8 +326,8 @@ QMenu* qSlicerModulesMenuPrivate::menu(QMenu* menu, QStringList subCategories)
     }
   // if we are here that means the category has not been found, create it.
   QMenu* subMenu = new QMenu(category, q);
-  this->addModuleAction(menu, subMenu->menuAction());
-  return this->menu(subMenu, subCategories);
+  this->addModuleAction(menu, subMenu->menuAction(), true, builtIn);
+  return this->menu(subMenu, subCategories, builtIn);
 }
 
 //---------------------------------------------------------------------------
@@ -247,7 +355,7 @@ QMenu* qSlicerModulesMenuPrivate::actionMenu(QAction* action, QMenu* parentMenu)
         }
       }
     }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -271,8 +379,7 @@ qSlicerModulesMenu::qSlicerModulesMenu(QWidget* parentWidget)
 
 //---------------------------------------------------------------------------
 qSlicerModulesMenu::~qSlicerModulesMenu()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qSlicerModulesMenu::setDuplicateActions(bool duplicate)
@@ -300,6 +407,76 @@ bool qSlicerModulesMenu::showHiddenModules()const
 {
   Q_D(const qSlicerModulesMenu);
   return d->ShowHiddenModules;
+}
+
+//---------------------------------------------------------------------------
+QMenu* qSlicerModulesMenu::allModulesCategory()const
+{
+  Q_D(const qSlicerModulesMenu);
+  return d->AllModulesMenu;
+}
+
+//---------------------------------------------------------------------------
+void qSlicerModulesMenu::setAllModulesCategoryVisible(bool visible)
+{
+  Q_D(qSlicerModulesMenu);
+  if (d->AllModulesCategoryVisible == visible)
+    {
+    return;
+    }
+  QList<QAction*> actions = this->actions();
+  if (!visible)
+    {
+    this->removeAction(actions.at(0)); // remove AllModules
+    this->removeAction(actions.at(1)); // remove first separator
+    }
+  else
+    {
+    QAction* separator = this->insertSeparator(actions.at(0));
+    this->insertMenu(separator, d->AllModulesMenu);
+    }
+  d->AllModulesCategoryVisible = visible;
+}
+
+//---------------------------------------------------------------------------
+bool qSlicerModulesMenu::isAllModulesCategoryVisible()const
+{
+  Q_D(const qSlicerModulesMenu);
+  return d->AllModulesCategoryVisible;
+}
+
+//---------------------------------------------------------------------------
+void qSlicerModulesMenu::setTopLevelCategoryOrder(const QStringList& categories)
+{
+  Q_D(qSlicerModulesMenu);
+  d->TopLevelCategoryOrder = categories;
+}
+
+//---------------------------------------------------------------------------
+QStringList qSlicerModulesMenu::topLevelCategoryOrder()const
+{
+  Q_D(const qSlicerModulesMenu);
+  return d->TopLevelCategoryOrder;
+}
+
+//---------------------------------------------------------------------------
+bool qSlicerModulesMenu::removeCategory(const QString& categoryName)
+{
+  Q_D(qSlicerModulesMenu);
+  QMenu* parentCategory = this;
+  QStringList categoryNames = categoryName.split('.');
+  QList<QMenu*> menus = d->categoryMenus(parentCategory, categoryNames);
+  if (menus.isEmpty() || menus.count() != categoryNames.count())
+    {
+    return false;
+    }
+  QMenu* category = menus.takeLast();
+  if (!menus.isEmpty())
+    {
+    parentCategory = menus.takeLast();
+    }
+  parentCategory->removeAction(category->menuAction());
+  return true;
 }
 
 //---------------------------------------------------------------------------
@@ -353,14 +530,14 @@ qSlicerModuleManager* qSlicerModulesMenu::moduleManager()const
 QAction* qSlicerModulesMenu::moduleAction(const QString& moduleName)const
 {
   Q_D(const qSlicerModulesMenu);
-  return d->action(QVariant(moduleName), this);
+  return d->action(QVariant(moduleName), d->AllModulesMenu);
 }
 
 //---------------------------------------------------------------------------
 void qSlicerModulesMenu::addModule(const QString& moduleName)
 {
   Q_D(qSlicerModulesMenu);
-  this->addModule(d->ModuleManager ? d->ModuleManager->module(moduleName) : 0);
+  this->addModule(d->ModuleManager ? d->ModuleManager->module(moduleName) : nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -378,6 +555,29 @@ void qSlicerModulesMenu::addModule(qSlicerAbstractCoreModule* moduleToAdd)
     // ignore hidden modules
     return;
     }
+
+  // Only show modules in Testing category if developer mode is enabled
+  // to not clutter the module list for regular users with tests
+  QSettings settings;
+  bool developerModeEnabled = settings.value("Developer/DeveloperMode", false).toBool();
+  if (!developerModeEnabled)
+    {
+    bool testOnlyModule = true;
+    foreach(const QString& category, module->categories())
+      {
+      if (category.split('.').takeFirst()!="Testing")
+        {
+        testOnlyModule = false;
+        }
+      }
+    if (testOnlyModule)
+      {
+      // This module only appears in the Testing category but we are not in developer mode,
+      // so do not add this module to the module menu
+      return;
+      }
+    }
+
   QAction* moduleAction = module->action();
   Q_ASSERT(moduleAction);
   if (d->DuplicateActions)
@@ -393,41 +593,50 @@ void qSlicerModulesMenu::addModule(qSlicerAbstractCoreModule* moduleToAdd)
 
   foreach(const QString& category, module->categories())
     {
-    QMenu* menu = d->menu(this, category.split('.'));
-    d->addModuleAction(menu, moduleAction);
+    QMenu* menu = d->menu(this, category.split('.'), module->isBuiltIn());
+    d->addModuleAction(menu, moduleAction, true, module->isBuiltIn());
     }
   // Add in "All Modules" as well
-  d->addModuleAction(d->AllModulesMenu, moduleAction, false);
+  d->addModuleAction(d->AllModulesMenu, moduleAction, false, true);
 
   // Maybe the module was set current before it was added into the menu
   if (d->CurrentModule == moduleAction->data().toString())
     {
+    moduleAction->trigger();
     emit currentModuleChanged(d->CurrentModule);
     }
 }
 
 //---------------------------------------------------------------------------
-void qSlicerModulesMenu::removeModule(const QString& moduleName)
+bool qSlicerModulesMenu::removeModule(const QString& moduleName, bool removeFromAllModules)
 {
    Q_D(qSlicerModulesMenu);
-  this->removeModule(d->ModuleManager ? d->ModuleManager->module(moduleName) : 0);
+  return this->removeModule(d->ModuleManager ? d->ModuleManager->module(moduleName) : nullptr, removeFromAllModules);
 }
 
 //---------------------------------------------------------------------------
-void qSlicerModulesMenu::removeModule(qSlicerAbstractCoreModule* moduleToRemove)
+bool qSlicerModulesMenu::removeModule(qSlicerAbstractCoreModule* moduleToRemove, bool removeFromAllModules)
 {
   Q_D(qSlicerModulesMenu);
   qSlicerAbstractModule* module = qobject_cast<qSlicerAbstractModule*>(moduleToRemove);
   if (!module)
     {
     qWarning() << "A module needs a QAction to be handled by qSlicerModulesMenu";
-    return;
+    return false;
     }
   QAction* moduleAction = d->action(module->action()->data(), d->AllModulesMenu);
-  QMenu* menu = d->actionMenu(moduleAction, this);
-  menu->removeAction(moduleAction);
-  d->AllModulesMenu->removeAction(moduleAction);
+  if (!moduleAction)
+    {
+    return false;
+    }
+  bool success = d->removeTopLevelModuleAction(moduleAction);
+  if (removeFromAllModules)
+    {
+    d->AllModulesMenu->removeAction(moduleAction);
+    success = true;
+    }
   // TBD: what if the module is the current module ?
+  return success;
 }
 
 //---------------------------------------------------------------------------

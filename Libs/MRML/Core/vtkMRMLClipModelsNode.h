@@ -28,32 +28,32 @@ class VTK_MRML_EXPORT vtkMRMLClipModelsNode : public vtkMRMLNode
 public:
   static vtkMRMLClipModelsNode *New();
   vtkTypeMacro(vtkMRMLClipModelsNode,vtkMRMLNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-  
-  /// 
-  /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "ClipModels";};
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
+  /// Get node XML tag name (like Volume, Model)
+  const char* GetNodeTagName() override {return "ClipModels";}
+
+  ///
   /// Indicates the type of clipping
   /// "Intersection" or "Union"
   vtkGetMacro(ClipType, int);
@@ -65,20 +65,20 @@ public:
       ClipUnion = 1
     };
 
-  /// 
-  /// Indicates if the Red slice clipping is Off, 
+  ///
+  /// Indicates if the Red slice clipping is Off,
   /// Positive space, or Negative space
   vtkGetMacro(RedSliceClipState, int);
   vtkSetMacro(RedSliceClipState, int);
 
-  /// 
-  /// Indicates if the Yellow slice clipping is Off, 
+  ///
+  /// Indicates if the Yellow slice clipping is Off,
   /// Positive space, or Negative space
   vtkGetMacro(YellowSliceClipState, int);
   vtkSetMacro(YellowSliceClipState, int);
 
-  /// 
-  /// Indicates if the Green slice clipping is Off, 
+  ///
+  /// Indicates if the Green slice clipping is Off,
   /// Positive space, or Negative space
   vtkGetMacro(GreenSliceClipState, int);
   vtkSetMacro(GreenSliceClipState, int);
@@ -89,10 +89,27 @@ public:
       ClipPositiveSpace = 1,
       ClipNegativeSpace = 2,
     };
-  
+
+  ///
+  ///Indicates what clipping method should be used
+  ///Straight cut, whole cell extraction, or whole cell extraction with boundary cells
+  typedef enum
+  {
+    Straight = 0,
+    WholeCells,
+    WholeCellsWithBoundary,
+  } ClippingMethodType;
+
+  vtkGetMacro(ClippingMethod, ClippingMethodType);
+  vtkSetMacro(ClippingMethod, ClippingMethodType);
+
+  //Convert between enum and string
+  static int GetClippingMethodFromString(const char* name);
+  static const char* GetClippingMethodAsString(ClippingMethodType id);
+
 protected:
   vtkMRMLClipModelsNode();
-  ~vtkMRMLClipModelsNode();
+  ~vtkMRMLClipModelsNode() override;
   vtkMRMLClipModelsNode(const vtkMRMLClipModelsNode&);
   void operator=(const vtkMRMLClipModelsNode&);
 
@@ -101,6 +118,8 @@ protected:
   int RedSliceClipState;
   int YellowSliceClipState;
   int GreenSliceClipState;
+
+  ClippingMethodType ClippingMethod;
 
 
 };

@@ -26,7 +26,7 @@ class vtkImageExtractComponents;
 ///
 /// Diffusion Weigthed Volume nodes describe data sets that encode diffusion weigthed
 /// images. These images are the basis for computing the diffusion tensor.
-/// The node is a container for the neccesary information to interpert DW images:
+/// The node is a container for the necessary information to interpert DW images:
 /// 1. Gradient information.
 /// 2. B value for each gradient.
 /// 3. Measurement frame that relates the coordinate system where the gradients are given
@@ -36,38 +36,38 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionWeightedVolumeNode : public vtkMRMLScalarV
   public:
   static vtkMRMLDiffusionWeightedVolumeNode *New();
   vtkTypeMacro(vtkMRMLDiffusionWeightedVolumeNode,vtkMRMLScalarVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "DiffusionWeightedVolume";};
+  const char* GetNodeTagName() override {return "DiffusionWeightedVolume";}
 
-  /// 
+  ///
   void SetNumberOfGradients(int val);
-  vtkGetMacro(NumberOfGradients,int);
+  int GetNumberOfGradients();
 
-  /// 
+  ///
   void SetDiffusionGradient(int val, const double g[3]);
   void SetDiffusionGradients(vtkDoubleArray *grad);
   double *GetDiffusionGradient(int val);
-  void GetDiffusionGradient(int val, double g[3]);  
+  void GetDiffusionGradient(int val, double g[3]);
   vtkGetObjectMacro(DiffusionGradients,vtkDoubleArray);
 
-  /// 
+  ///
   void SetBValue (int val, const double b);
   void SetBValues (vtkDoubleArray *bValue);
 /// Work around issue that GetBValue is defined as a macro in windows.h
@@ -87,34 +87,36 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionWeightedVolumeNode : public vtkMRMLScalarV
 
   void SetMeasurementFrameMatrix(vtkMatrix4x4 *mat);
   void GetMeasurementFrameMatrix(vtkMatrix4x4 *mat);
- 
-  /// 
+
+  ///
   /// Associated display MRML node
   virtual vtkMRMLDiffusionWeightedVolumeDisplayNode* GetDiffusionWeightedVolumeDisplayNode();
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
+
+  ///
+  /// Create and observe default display node
+  void CreateDefaultDisplayNodes() override;
 
 protected:
   vtkMRMLDiffusionWeightedVolumeNode();
-  ~vtkMRMLDiffusionWeightedVolumeNode();
+  ~vtkMRMLDiffusionWeightedVolumeNode() override;
   vtkMRMLDiffusionWeightedVolumeNode(const vtkMRMLDiffusionWeightedVolumeNode&);
   void operator=(const vtkMRMLDiffusionWeightedVolumeNode&);
-  
+
+  void SetNumberOfGradientsInternal(int val);
+
   double MeasurementFrameMatrix[3][3];
-  
+
   vtkDoubleArray *DiffusionGradients;
   vtkDoubleArray *BValues;
-  
-  int NumberOfGradients;
-
-  vtkImageExtractComponents *ExtractComponents;
 
 };
 
 #endif
 
 
- 
+
 

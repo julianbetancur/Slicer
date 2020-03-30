@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -14,13 +14,9 @@
 #include "vtkMRMLCameraNode.h"
 #include "vtkMRMLCoreTestingMacros.h"
 
-// VTK includes
-#include <vtkNew.h>
-
 int vtkMRMLCameraNodeTest1(int , char * [] )
 {
-  vtkNew< vtkMRMLCameraNode > node1;
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1.GetPointer() );
+  vtkNew<vtkMRMLCameraNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

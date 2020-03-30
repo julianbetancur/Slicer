@@ -1,5 +1,5 @@
-#ifndef __itkTimeSeriesDatabaseHelper_h
-#define __itkTimeSeriesDatabaseHelper_h
+#ifndef itkTimeSeriesDatabaseHelper_h
+#define itkTimeSeriesDatabaseHelper_h
 #include <list>
 #include <iostream>
 #include <map>
@@ -16,71 +16,54 @@ namespace itk {
      * The is a non-intrusive implementation that allocates an additional
      * int and pointer for every counted object.
      */
-    /* For ANSI-challenged compilers, you may want to #define
-     * NO_MEMBER_TEMPLATES or explicit */
-#define NO_MEMBER_TEMPLATES
-    template <class X> class counted_ptr
+
+    template <class ElementType> class counted_ptr
       {
       public:
-        typedef X element_type;
-        
-        explicit counted_ptr(X* p = 0) /// allocate a new counter
-          : itsCounter(0) {if (p) itsCounter = new counter(p);}
+
+        explicit counted_ptr(ElementType* p = 0) /// allocate a new counter
+          : m_ItsCounter(nullptr) {if (p) m_ItsCounter = new counter(p);}
         ~counted_ptr()
           {release();}
         counted_ptr(const counted_ptr& r) throw()
-          {acquire(r.itsCounter);}
+          {acquire(r.m_ItsCounter);}
         counted_ptr& operator=(const counted_ptr& r)
           {
             if (this != &r) {
               release();
-              acquire(r.itsCounter);
+              acquire(r.m_ItsCounter);
             }
             return *this;
           }
-        
-#ifndef NO_MEMBER_TEMPLATES
-        template <class Y> friend class counted_ptr<Y>;
-        template <class Y> counted_ptr(const counted_ptr<Y>& r) throw()
-          {acquire(r.itsCounter);}
-        template <class Y> counted_ptr& operator=(const counted_ptr<Y>& r)
-          {
-            if (this != &r) {
-              release();
-              acquire(r.itsCounter);
-            }
-            return *this;
-          }
-#endif /// NO_MEMBER_TEMPLATES
-        
-        X& operator*()  const throw()   {return *itsCounter->ptr;}
-        X* operator->() const throw()   {return itsCounter->ptr;}
-        X* get()        const throw()   {return itsCounter ? itsCounter->ptr : 0;}
+
+        ElementType& operator*()  const throw()   {return *m_ItsCounter->ptr;}
+        ElementType* operator->() const throw()   {return m_ItsCounter->ptr;}
+        ElementType* get()        const throw()   {return m_ItsCounter ? m_ItsCounter->ptr : nullptr;}
         bool unique()   const throw()
-        {return (itsCounter ? itsCounter->count == 1 : true);}
-        
+        {return (m_ItsCounter ? m_ItsCounter->count == 1 : true);}
+
       private:
-        
+
         struct counter {
-        counter(X* p = 0, unsigned c = 1) : ptr(p), count(c) {}
-          X*          ptr;
+        counter(ElementType* p = 0, unsigned c = 1) : ptr(p), count(c) {}
+          ElementType*          ptr;
           unsigned    count;
-        }* itsCounter;
-        
+        }* m_ItsCounter;
+
         void acquire(counter* c) throw()
         { /// increment the count
-          itsCounter = c;
+          m_ItsCounter = c;
           if (c) ++c->count;
         }
 
         void release()
         { /// decrement the count, delete if it is 0
-          if (itsCounter) {
-            if (--itsCounter->count == 0) {
-              delete itsCounter->ptr;
-              delete itsCounter;
+          if (m_ItsCounter) {
+            if (--m_ItsCounter->count == 0) {
+              delete m_ItsCounter->ptr;
+              delete m_ItsCounter;
             }
-            itsCounter = 0;
+            m_ItsCounter = nullptr;
           }
         }
       };
@@ -94,7 +77,7 @@ namespace itk {
 #define IF_DEBUG(x)
 #else
 #define IF_DEBUG(x) x
-#endif 
+#endif
 
 
     /// A cache class.
@@ -115,7 +98,7 @@ namespace itk {
     /// rate that may be useful while debugging. The statistics
     /// counting works only if NDEBUG is not defined.
     ///
-    template <typename key_type, typename value_type>
+    template <typename KeyType, typename ValueType>
       class LRUCache
     {
     public:
@@ -123,8 +106,8 @@ namespace itk {
       ///
       /// \param maxsize_ maximal size of the cache
       ///
-    LRUCache(unsigned maxsize_ = 100) 
-      : maxsize(maxsize_) 
+    LRUCache(unsigned maxsize_ = 100)
+      : maxsize(maxsize_)
       {
       }
 
@@ -136,7 +119,7 @@ namespace itk {
         return maxsize;
       }
 
-      ~LRUCache() 
+      ~LRUCache()
         {
           clear();
         }
@@ -166,16 +149,16 @@ namespace itk {
 
       /// Inserts a key/value pair to the cache.
       ///
-      void insert(const key_type& key, const value_type& value)
+      void insert(const KeyType& key, const ValueType& value)
       {
         /// Is the key already in the cache ?
         /// Note: find() is used intentionally - if
         /// an element gets updated, it should be moved
         /// to be MRU.
         //
-        value_type* valptr = find(key);
+        ValueType* valptr = find(key);
 
-        /// Found ? 
+        /// Found ?
         //
         if (valptr)
           {
@@ -184,10 +167,10 @@ namespace itk {
             *valptr = value;
           }
         else
-          { 
+          {
             /// Add it to the table and to the front of the
             /// list (mark it MRU).
-            /// 
+            ///
             lru_list.push_front(key);
             cached_value cv(value, lru_list.begin());
             table.insert(make_pair(key, cv));
@@ -197,7 +180,7 @@ namespace itk {
             //
             if (lru_list.size() > maxsize)
               {
-                key_type lru_key = lru_list.back();
+                KeyType lru_key = lru_list.back();
                 table.erase(lru_key);
                 lru_list.pop_back();
 
@@ -214,21 +197,21 @@ namespace itk {
       /// risk. The pointer may become invalid at some time,
       /// so it should be used immediately.
       ///
-      value_type* find(const key_type& key)
+      ValueType* find(const KeyType& key)
       {
-        table_iter ti = table.find(key);
+        TableIteratorType ti = table.find(key);
 
         IF_DEBUG(stats.finds++);
 
         if (ti == table.end())
-          return 0;
+          return nullptr;
 
         IF_DEBUG(stats.finds_hit++);
 
         /// An access moves the element to the front of
         /// the list (marking it MRU).
         //
-        list_iter li = ti->second.cache_i;
+        ListIteratorType li = ti->second.cache_i;
         lru_list.splice(lru_list.begin(), lru_list, li);
 
         return &(ti->second.value);
@@ -239,7 +222,7 @@ namespace itk {
       /// Useful for debugging. Expects key/value types to have
       /// an output operator (<<) defined.
       ///
-      void debug_dump(ostream& ostr = cerr) 
+      void debug_dump(ostream& ostr = cerr)
       {
         ostr << "Debug dump of LRUCache\n";
         ostr << "-------------------\n\n";
@@ -251,11 +234,11 @@ namespace itk {
 
         ostr << "Sorted from MRU to LRU:\n\n";
 
-        for (list_iter i = lru_list.begin(); i != lru_list.end(); ++i)
+        for (ListIteratorType i = lru_list.begin(); i != lru_list.end(); ++i)
           {
             ostr << "Key: " << *i << endl;
 
-            table_iter ti = table.find(*i);
+            TableIteratorType ti = table.find(*i);
             assert(ti != table.end());
 
             ostr << "Value: " << ti->second.value << "\n|\n";
@@ -303,20 +286,20 @@ namespace itk {
 #endif /// NDEBUG
 
     private:
-      typedef typename list<key_type>::iterator list_iter;
+      typedef typename list<KeyType>::iterator ListIteratorType;
 
       struct cached_value
       {
-      cached_value(value_type value_, list_iter cache_i_)
+      cached_value(ValueType value_, ListIteratorType cache_i_)
       : value(value_), cache_i(cache_i_)
         {
         }
 
-        value_type value;
-        list_iter cache_i;
+        ValueType value;
+        ListIteratorType cache_i;
       };
 
-      typedef typename map<key_type, cached_value>::iterator table_iter;
+      typedef typename map<KeyType, cached_value>::iterator TableIteratorType;
 
       /// Maximal cache size.
       ///
@@ -328,11 +311,11 @@ namespace itk {
       /// Note: the elements in lru_list and table are always
       /// the same.
       ///
-      list<key_type> lru_list;
+      list<KeyType> lru_list;
 
       /// Table storing cache elements for quick access.
       ///
-      map<key_type, cached_value> table;
+      map<KeyType, cached_value> table;
 
 #ifndef NDEBUG
 
@@ -348,11 +331,9 @@ namespace itk {
           finds = finds_hit = removed = 0;
         }
 
-        typedef unsigned long ulong;
-
-        ulong finds;
-        ulong finds_hit;
-        ulong removed;
+        unsigned long finds;
+        unsigned long finds_hit;
+        unsigned long removed;
       } stats;
 #endif
     };

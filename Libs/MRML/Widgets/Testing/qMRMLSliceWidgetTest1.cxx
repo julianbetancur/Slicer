@@ -22,25 +22,32 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLSliceWidget.h"
 #include "qMRMLNodeObject.h"
 
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLColorTableNode.h>
 #include <vtkMRMLDisplayNode.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLSliceNode.h>
+#include <vtkMRMLSliceViewDisplayableManagerFactory.h>
 #include <vtkMRMLVolumeNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
 #include <vtkMultiThreader.h>
-// STD includes
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 int qMRMLSliceWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
   vtkMultiThreader::SetGlobalMaximumNumberOfThreads(1);
   if( argc < 2 )
     {
@@ -50,7 +57,10 @@ int qMRMLSliceWidgetTest1(int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
+  vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+  vtkMRMLSliceViewDisplayableManagerFactory::GetInstance()->SetMRMLApplicationLogic(applicationLogic);
+  applicationLogic->SetMRMLScene(scene.GetPointer());
   scene->SetURL(argv[1]);
   scene->Connect();
   if (scene->GetNumberOfNodes() == 0)
@@ -58,7 +68,7 @@ int qMRMLSliceWidgetTest1(int argc, char * argv [] )
     std::cerr << "Can't load scene:" << argv[1] << " error: " <<scene->GetErrorMessage() << std::endl;
     return EXIT_FAILURE;
     }
-  vtkMRMLSliceNode* redSliceNode = 0;
+  vtkMRMLSliceNode* redSliceNode = nullptr;
   // search for a red slice node
   std::vector<vtkMRMLNode*> sliceNodes;
   scene->GetNodesByClass("vtkMRMLSliceNode", sliceNodes);
@@ -76,8 +86,7 @@ int qMRMLSliceWidgetTest1(int argc, char * argv [] )
     std::cerr << "Scene must contain a valid vtkMRMLSliceNode:" << redSliceNode << std::endl;
     return EXIT_FAILURE;
     }
-  scene->InitTraversal();
-  vtkMRMLNode* node = scene->GetNextNodeByClass("vtkMRMLScalarVolumeNode");
+  vtkMRMLNode* node = scene->GetFirstNodeByClass("vtkMRMLScalarVolumeNode");
   vtkMRMLVolumeNode* volumeNode = vtkMRMLVolumeNode::SafeDownCast(node);
   if (!volumeNode)
     {
@@ -96,10 +105,10 @@ int qMRMLSliceWidgetTest1(int argc, char * argv [] )
 
   // "Red" slice by default
   qMRMLSliceWidget sliceWidget;
-  sliceWidget.setMRMLScene(scene);
+  sliceWidget.setMRMLScene(scene.GetPointer());
   sliceWidget.setMRMLSliceNode(redSliceNode);
   sliceWidget.show();
-  
+
   qMRMLNodeObject nodeObject(volumeNode, &sliceWidget);
   QTimer modifyTimer;
   modifyTimer.setInterval(2000);

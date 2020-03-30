@@ -59,14 +59,13 @@ qMRMLChartViewControllerWidgetPrivate::qMRMLChartViewControllerWidgetPrivate(
   qMRMLChartViewControllerWidget& object)
   : Superclass(object)
 {
-  this->ChartViewNode = 0;
-  this->ChartView = 0;
+  this->ChartViewNode = nullptr;
+  this->ChartView = nullptr;
 }
 
 //---------------------------------------------------------------------------
 qMRMLChartViewControllerWidgetPrivate::~qMRMLChartViewControllerWidgetPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLChartViewControllerWidgetPrivate::setupPopupUi()
@@ -76,7 +75,7 @@ void qMRMLChartViewControllerWidgetPrivate::setupPopupUi()
   this->Superclass::setupPopupUi();
   this->PopupWidget->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
   this->Ui_qMRMLChartViewControllerWidget::setupUi(this->PopupWidget);
-  
+
   // Connect Chart selector
   this->connect(this->chartComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                 SLOT(onChartNodeSelected(vtkMRMLNode*)));
@@ -97,7 +96,7 @@ void qMRMLChartViewControllerWidgetPrivate::setupPopupUi()
                    q, SLOT(showGrid(bool)));
   QObject::connect(this->actionShow_Legend, SIGNAL(toggled(bool)),
                    q, SLOT(showLegend(bool)));
-  
+
   // Connect the buttons
   this->showLinesToolButton->setDefaultAction(this->actionShow_Lines);
   this->showMarkersToolButton->setDefaultAction(this->actionShow_Markers);
@@ -132,7 +131,7 @@ void qMRMLChartViewControllerWidgetPrivate::setupPopupUi()
   // Connect the scene
   QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    this->chartComboBox, SLOT(setMRMLScene(vtkMRMLScene*)));
-  
+
   QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    this->arrayComboBox, SLOT(setMRMLScene(vtkMRMLScene*)));
 }
@@ -156,11 +155,11 @@ vtkMRMLChartNode* qMRMLChartViewControllerWidgetPrivate::chartNode()
   if (!this->ChartViewNode || !q->mrmlScene())
     {
     // qDebug() << "No ChartViewNode or no Scene";
-    return 0;
+    return nullptr;
     }
 
   // Get the current chart node
-  vtkMRMLChartNode *chartNode 
+  vtkMRMLChartNode *chartNode
     = vtkMRMLChartNode::SafeDownCast(q->mrmlScene()->GetNodeByID(this->ChartViewNode->GetChartNodeID()));
 
   return chartNode;
@@ -183,8 +182,8 @@ void qMRMLChartViewControllerWidgetPrivate::onChartNodeSelected(vtkMRMLNode * no
 
   this->qvtkReconnect(this->chartNode(), node, vtkCommand::ModifiedEvent,
                       q, SLOT(updateWidgetFromMRML()));
-  
-  this->ChartViewNode->SetChartNodeID(node ? node->GetID() : 0);
+
+  this->ChartViewNode->SetChartNodeID(node ? node->GetID() : nullptr);
 
   q->updateWidgetFromMRML();
 }
@@ -256,8 +255,8 @@ void qMRMLChartViewControllerWidgetPrivate::onChartTypeSelected(const QString& t
     {
     return;
     }
-  
-  this->chartNode()->SetProperty("default", "type", type.toLatin1());
+
+  this->chartNode()->SetProperty("default", "type", type.toUtf8());
 }
 
 // --------------------------------------------------------------------------
@@ -274,7 +273,7 @@ qMRMLChartViewControllerWidget::qMRMLChartViewControllerWidget(QWidget* parentWi
 // --------------------------------------------------------------------------
 qMRMLChartViewControllerWidget::~qMRMLChartViewControllerWidget()
 {
-  this->setMRMLScene(0);
+  this->setMRMLScene(nullptr);
 }
 
 // --------------------------------------------------------------------------
@@ -318,7 +317,7 @@ void qMRMLChartViewControllerWidget::setMRMLChartViewNode(
 void qMRMLChartViewControllerWidget::updateWidgetFromMRML()
 {
   Q_D(qMRMLChartViewControllerWidget);
-  
+
   //qDebug() << "qMRMLChartViewControllerWidget::updateWidgetFromMRML()";
 
   if (!d->ChartViewNode || !this->mrmlScene())
@@ -346,14 +345,14 @@ void qMRMLChartViewControllerWidget::updateWidgetFromMRML()
     }
 
   // ChartNode selector
-  d->chartComboBox->setCurrentNode(chartNode->GetID());
+  d->chartComboBox->setCurrentNodeID(chartNode->GetID());
 
   // Array selector
   vtkStringArray *arrayIDs = chartNode->GetArrays();
   bool arrayBlockSignals = d->arrayComboBox->blockSignals(true);
   for (int idx = 0; idx < d->arrayComboBox->nodeCount(); ++idx)
     {
-    d->arrayComboBox->setCheckState(d->arrayComboBox->nodeFromIndex(idx), 
+    d->arrayComboBox->setCheckState(d->arrayComboBox->nodeFromIndex(idx),
                                     Qt::Unchecked);
     }
   for (int idx = 0; idx < arrayIDs->GetNumberOfValues(); idx++)
@@ -366,7 +365,7 @@ void qMRMLChartViewControllerWidget::updateWidgetFromMRML()
     }
   d->arrayComboBox->blockSignals(arrayBlockSignals);
 
-  // ChartType selector 
+  // ChartType selector
   const char *type;
   std::string stype("Line");
   type = chartNode->GetProperty("default", "type");
@@ -465,7 +464,7 @@ void qMRMLChartViewControllerWidget::updateWidgetFromMRML()
 void qMRMLChartViewControllerWidget::setMRMLScene(vtkMRMLScene* newScene)
 {
   Q_D(qMRMLChartViewControllerWidget);
-  
+
   if (this->mrmlScene() == newScene)
     {
     return;
@@ -475,7 +474,7 @@ void qMRMLChartViewControllerWidget::setMRMLScene(vtkMRMLScene* newScene)
                     this, SLOT(updateWidgetFromMRML()));
 
   // Disable the node selectors as they would fire signal currentIndexChanged(0)
-  // meaning that there is no current node anymore. It's not true, it just means 
+  // meaning that there is no current node anymore. It's not true, it just means
   // that the current node was not in the combo box list menu before
   bool chartBlockSignals = d->chartComboBox->blockSignals(true);
   bool arrayBlockSignals = d->arrayComboBox->blockSignals(true);
@@ -490,7 +489,7 @@ void qMRMLChartViewControllerWidget::setMRMLScene(vtkMRMLScene* newScene)
     this->updateWidgetFromMRML();
     }
 }
-  
+
 // --------------------------------------------------------------------------
 void qMRMLChartViewControllerWidget::showLines(bool show)
 {
@@ -630,7 +629,7 @@ void qMRMLChartViewControllerWidget::setTitle(const QString &str)
     }
 
   // Set the parameter
-  chartNode->SetProperty("default", "title", str.toLatin1());
+  chartNode->SetProperty("default", "title", str.toUtf8());
 
   //qDebug() << "Regetting property: " << chartNode->GetProperty("default", "title");
 }
@@ -648,7 +647,7 @@ void qMRMLChartViewControllerWidget::setXAxisLabel(const QString &str)
     }
 
   // Set the parameter
-  chartNode->SetProperty("default", "xAxisLabel", str.toLatin1());
+  chartNode->SetProperty("default", "xAxisLabel", str.toUtf8());
 
   //qDebug() << "Regetting property: " << chartNode->GetProperty("default", "xAxisLabel");
 }
@@ -667,7 +666,7 @@ void qMRMLChartViewControllerWidget::setYAxisLabel(const QString &str)
     }
 
   // Set the parameter
-  chartNode->SetProperty("default", "yAxisLabel", str.toLatin1());
+  chartNode->SetProperty("default", "yAxisLabel", str.toUtf8());
 
   //qDebug() << "Regetting property: " << chartNode->GetProperty("default", "yAxisLabel");
 }

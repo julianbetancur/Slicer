@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,19 +10,15 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLScalarVolumeNode.h"
-#include <vtkPolyData.h>
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLScalarVolumeNode.h"
+#include "vtkMRMLScene.h"
 
 int vtkMRMLScalarVolumeNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLScalarVolumeNode > node1 = vtkSmartPointer< vtkMRMLScalarVolumeNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_DISPLAYABLE_MRML_METHODS(vtkMRMLScalarVolumeNode, node1);
-
+  vtkNew<vtkMRMLScalarVolumeNode> node1;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

@@ -29,44 +29,44 @@ class VTK_MRML_EXPORT vtkMRMLProceduralColorNode : public vtkMRMLColorNode
 public:
   static vtkMRMLProceduralColorNode *New();
   vtkTypeMacro(vtkMRMLProceduralColorNode,vtkMRMLColorNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
-  
-  /// 
+  void WriteXML(ostream& of, int indent) override;
+
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-  
-  /// 
+  void Copy(vtkMRMLNode *node) override;
+
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "ProceduralColor";};
+  const char* GetNodeTagName() override {return "ProceduralColor";};
 
-  /// 
-  /// 
-  virtual void UpdateScene(vtkMRMLScene *scene);
+  ///
+  ///
+  void UpdateScene(vtkMRMLScene *scene) override;
 
-  /// 
+  ///
   /// return a text string describing the colour look up table type
-  virtual const char * GetTypeAsString();
+  const char * GetTypeAsString() override;
 
-  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData );
+  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData ) override;
 
   /// The list of valid procedural types
   //enum
   //{
-  ///  
+  ///
   //};
 
   /// DisplayModifiedEvent is generated when display node parameters is changed
@@ -75,30 +75,74 @@ public:
       DisplayModifiedEvent = 20000
     };
 
-  /// 
   /// Get the color transfer function for this node
+  /// \sa ColorTransferFunction, GetScalarsToColors(),
+  /// SetAndObserveColorTransferFunction()
   vtkGetObjectMacro(ColorTransferFunction, vtkColorTransferFunction);
+
+  /// Set the color transfer function
+  /// \sa ColorTransferFunction, GetColorTransferFunction()
+  virtual void SetAndObserveColorTransferFunction(vtkColorTransferFunction *ctf);
+
+  /// Compare two color transfer functions
+  /// Only compares the color map (x->RGB mapping)
+  static bool IsColorMapEqual(vtkColorTransferFunction* tf1, vtkColorTransferFunction* tf2);
+
+  /// Reimplemented vtkMRMLColorNode::GetLookupTable() to convert
+  /// the continuous color transfer function to a look up table
+  /// with a number of entries defined by NumberOfTableValues
+  /// \sa ConvertedCTFtoLUT, SetNumberOfTableValues()
+  vtkLookupTable * GetLookupTable() override;
 
   /// Reimplemented vtkMRMLColorNode::GetScalarsToColors() to return the
   /// transfer function instead of the empty lookuptable
-  virtual vtkScalarsToColors* GetScalarsToColors();
+  /// \sa ColorTransferFunction, GetColorTransferFunction()
+  vtkScalarsToColors* GetScalarsToColors() override;
 
-  /// 
   /// set up some names, going from the points defined in the transfer function
-  bool SetNameFromColor(int index);
-  
-  virtual int GetNumberOfColors();
-  virtual bool GetColor(int entry, double* color);
+  /// \sa vtkMRMLColorNode::SetColorName()
+  bool SetNameFromColor(int index) override;
+
+  /// Returns how many nodes define the color
+  /// transfer function
+  int GetNumberOfColors() override;
+
+  /// Retrieve color transfer function entry value
+  bool GetColor(int entry, double color[4]) override;
+
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
+
+  /// Get number of entries used when discretizing
+  /// the color transfer function into a lookup table
+  /// \sa SetNumberOfTableValues(), GetLookupTable()
+  vtkGetMacro(NumberOfTableValues, unsigned int)
+
+  /// Set number of entries used when discretizing
+  /// the color transfer function into a lookup table
+  /// \sa GetNumberOfTableValues(), GetLookupTable()
+  vtkSetMacro(NumberOfTableValues, unsigned int)
 
 protected:
   vtkMRMLProceduralColorNode();
-  ~vtkMRMLProceduralColorNode();
+  ~vtkMRMLProceduralColorNode() override;
   vtkMRMLProceduralColorNode(const vtkMRMLProceduralColorNode&);
   void operator=(const vtkMRMLProceduralColorNode&);
-  
-  /// 
+
   /// a color transfer function built up by calls to AddRGBPoint and Build
+  /// \sa SetAndObserveColorTransferFunction(), GetColorTransferFunction()
   vtkColorTransferFunction *ColorTransferFunction;
+
+  /// A lookup table created by discretizing
+  /// the continuous color transfer function
+  /// \sa GetLookupTable(), NumberOfTableValues
+  vtkLookupTable *ConvertedCTFtoLUT;
+
+  /// Number of entries to use when discretizing
+  /// the color transfer function into a lookup table
+  /// \sa GetNumberOfTableValues(), SetNumberOfTableValues(),
+  /// GetLookupTable()
+  unsigned int NumberOfTableValues;
 };
 
 #endif

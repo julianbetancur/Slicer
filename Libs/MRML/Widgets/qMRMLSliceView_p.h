@@ -21,6 +21,17 @@
 #ifndef __qMRMLSliceView_p_h
 #define __qMRMLSliceView_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // CTK includes
 #include <ctkVTKObject.h>
 
@@ -50,7 +61,7 @@ protected:
   qMRMLSliceView* const q_ptr;
 public:
   qMRMLSliceViewPrivate(qMRMLSliceView& object);
-  ~qMRMLSliceViewPrivate();
+  ~qMRMLSliceViewPrivate() override;
 
   virtual void init();
 
@@ -84,24 +95,24 @@ class qMRMLSliceViewPrivate::vtkInternalLightBoxRendererManagerProxy
 {
 public:
   static vtkInternalLightBoxRendererManagerProxy* New();
-  vtkTypeRevisionMacro(vtkInternalLightBoxRendererManagerProxy,
+  vtkTypeMacro(vtkInternalLightBoxRendererManagerProxy,
                        vtkMRMLLightBoxRendererManagerProxy);
 
 
   /// Method to query the mapping from an id of a LightBox frame to
   /// the Renderer for that frame
-  virtual vtkRenderer *GetRenderer(int id);
+  vtkRenderer *GetRenderer(int id) override;
 
   /// Method to set the real LightBoxManager
   virtual void SetLightBoxRendererManager(vtkLightBoxRendererManager *mgr);
 
 protected:
   vtkInternalLightBoxRendererManagerProxy();
-  virtual ~vtkInternalLightBoxRendererManagerProxy();
+  ~vtkInternalLightBoxRendererManagerProxy() override;
 
 private:
-  vtkInternalLightBoxRendererManagerProxy(const vtkInternalLightBoxRendererManagerProxy&); // Not implemented
-  void operator=(const vtkInternalLightBoxRendererManagerProxy&);                    // Not implemented
+  vtkInternalLightBoxRendererManagerProxy(const vtkInternalLightBoxRendererManagerProxy&) = delete;
+  void operator=(const vtkInternalLightBoxRendererManagerProxy&) = delete;
 
   vtkWeakPointer<vtkLightBoxRendererManager> LightBoxRendererManager;
 

@@ -23,18 +23,19 @@
 
 #include "qSlicerQTGUIAbstractPlugin.h"
 
-class Q_SLICER_BASE_QTGUI_PLUGINS_EXPORT qSlicerMouseModeToolBarPlugin
-  : public qSlicerQTGUIAbstractPlugin
+class Q_SLICER_DESIGNER_PLUGINS_EXPORT qSlicerMouseModeToolBarPlugin
+  : public QObject,
+    public qSlicerQTGUIAbstractPlugin
 {
   Q_OBJECT
 public:
-  qSlicerMouseModeToolBarPlugin(QObject* parent = 0);
+  qSlicerMouseModeToolBarPlugin(QObject* parent = nullptr);
 
-  QWidget *createWidget(QWidget* parent);
-  QString domXml() const;
-  QString includeFile() const;
-  bool isContainer() const;
-  QString name() const;
+  QWidget *createWidget(QWidget* parent) override;
+  QString domXml() const override;
+  QString includeFile() const override;
+  bool isContainer() const override;
+  QString name() const override;
 };
 
 #endif

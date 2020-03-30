@@ -22,11 +22,16 @@
 #define __qSlicerApplicationHelper_h
 
 // Qt includes
+#include <QScopedPointer>
 #include <QObject>
+#include <QSplashScreen>
+
+// Slicer includes
+#include <qSlicerApplication.h>
 
 #include "qSlicerBaseQTAppExport.h"
 
-class ctkPythonConsole;
+class ctkProxyStyle;
 class qSlicerModuleFactoryManager;
 
 class Q_SLICER_BASE_QTAPP_EXPORT qSlicerApplicationHelper : public QObject
@@ -36,21 +41,39 @@ public:
   typedef QObject Superclass;
   typedef qSlicerApplicationHelper Self;
 
-  qSlicerApplicationHelper(QObject * parent = 0);
-  virtual ~qSlicerApplicationHelper();
+  qSlicerApplicationHelper(QObject * parent = nullptr);
+  ~qSlicerApplicationHelper() override;
+
+  static void preInitializeApplication(const char* argv0, ctkProxyStyle* style);
+
+  /// Perform initialization steps on the application.
+  /// \return If return value is non-zero then the application will terminate using
+  /// the returned value as exit code.
+  template<typename SlicerMainWindowType>
+  static int postInitializeApplication(
+      qSlicerApplication& app,
+      QScopedPointer<QSplashScreen>& splashScreen,
+      QScopedPointer<SlicerMainWindowType>& window);
 
   static void setupModuleFactoryManager(qSlicerModuleFactoryManager * moduleFactoryManager);
 
-  static void loadTranslations(const QString& dir);
-
-  static void loadLanguage();
-
   static void showMRMLEventLoggerWidget();
 
-  static void initializePythonConsole(ctkPythonConsole* pythonConsole);
+  /// Display a warning popup if rendering capabilities do not meet requirements.
+  /// If user chooses not to continue then this method returns false.
+  /// Known limitation: currently this method only works reliably on Windows operating system.
+  /// See more information at https://issues.slicer.org/view.php?id=4252
+  Q_INVOKABLE static bool checkRenderingCapabilities();
+
+  /// Run command as administrator (UAC on Windows, sudo on linux)
+  /// Currently only works on Windows.
+  /// Returns error code (0=success).
+  Q_INVOKABLE static int runAsAdmin(QString executable, QString parameters = QString(), QString workingDir = QString());
 
 private:
   Q_DISABLE_COPY(qSlicerApplicationHelper);
 };
+
+#include "qSlicerApplicationHelper.txx"
 
 #endif

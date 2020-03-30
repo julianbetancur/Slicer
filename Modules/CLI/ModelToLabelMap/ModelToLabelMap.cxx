@@ -26,9 +26,7 @@
 #include "itkFloodFilledImageFunctionConditionalIterator.h"
 #include "itkImageFileWriter.h"
 #include "itkPluginUtilities.h"
-#ifdef ITKV3_COMPATIBILITY
-#include "itkAnalyzeImageIOFactory.h"
-#endif
+#include <itksys/SystemTools.hxx>
 
 // VTK includes
 #include <vtkDebugLeaks.h>
@@ -37,6 +35,7 @@
 #include <vtkPolyDataPointSampler.h>
 #include <vtkPolyDataReader.h>
 #include <vtkXMLPolyDataReader.h>
+#include <vtkVersion.h>
 
 typedef itk::Image<unsigned char, 3> LabelImageType;
 
@@ -129,13 +128,12 @@ int DoIt( int argc, char * argv[])
   vtkSmartPointer<vtkXMLPolyDataReader> pdxReader;
 
   // do we have vtk or vtp models?
-  std::string::size_type loc = surface.find_last_of(".");
-  if( loc == std::string::npos )
+  std::string extension = itksys::SystemTools::LowerCase( itksys::SystemTools::GetFilenameLastExtension(surface) );
+  if( extension.empty() )
     {
     std::cerr << "Failed to find an extension for " << surface << std::endl;
     return EXIT_FAILURE;
     }
-  std::string extension = surface.substr(loc);
 
   if( extension == std::string(".vtk") )
     {
@@ -151,7 +149,7 @@ int DoIt( int argc, char * argv[])
     pdxReader->Update();
     polyData = pdxReader->GetOutput();
     }
-  if( polyData == NULL )
+  if( polyData == nullptr )
     {
     std::cerr << "Failed to read surface " << surface << std::endl;
     return EXIT_FAILURE;
@@ -171,7 +169,7 @@ int DoIt( int argc, char * argv[])
   // do it
   vtkNew<vtkPolyDataPointSampler> sampler;
 
-  sampler->SetInput( polyData );
+  sampler->SetInputData( polyData );
   sampler->SetDistance( sampleDistance );
   sampler->GenerateEdgePointsOn();
   sampler->GenerateInteriorPointsOn();
@@ -197,7 +195,8 @@ int DoIt( int argc, char * argv[])
     }
 
   // do morphological closing
-  LabelImageType::Pointer                           closedLabel = BinaryClosingFilter3D( label, 2);
+  unsigned int                                      kernelRadius = 2;
+  LabelImageType::Pointer                           closedLabel = BinaryClosingFilter3D( label, kernelRadius );
   itk::ImageRegionIteratorWithIndex<LabelImageType> itLabel(closedLabel, closedLabel->GetLargestPossibleRegion() );
 
   // do flood fill using binary threshold image function
@@ -233,11 +232,18 @@ int DoIt( int argc, char * argv[])
     LabelImageType::IndexType i = floodFill.GetIndex();
     closedLabel->SetPixel( i, 255 );
     }
-  LabelImageType::Pointer finalLabel = BinaryClosingFilter3D( closedLabel, 2);
+  LabelImageType::Pointer finalLabel = BinaryClosingFilter3D( closedLabel, kernelRadius );
   for( itLabel.GoToBegin(); !itLabel.IsAtEnd(); ++itLabel )
     {
     LabelImageType::IndexType i = itLabel.GetIndex();
-    label->SetPixel( i, finalLabel->GetPixel(i) );
+    if (finalLabel->GetPixel(i) == 255)
+      {
+      label->SetPixel( i, labelValue );
+      }
+    else
+      {
+      label->SetPixel( i, finalLabel->GetPixel(i) );
+      }
     }
 
   typename WriterType::Pointer writer = WriterType::New();
@@ -258,9 +264,7 @@ int main( int argc, char * argv[] )
 
   itk::ImageIOBase::IOPixelType     pixelType;
   itk::ImageIOBase::IOComponentType componentType;
-#ifdef ITKV3_COMPATIBILITY
-  itk::ObjectFactoryBase::RegisterFactory( itk::AnalyzeImageIOFactory::New() );
-#endif
+
   try
     {
     itk::GetImageType(InputVolume, pixelType, componentType);

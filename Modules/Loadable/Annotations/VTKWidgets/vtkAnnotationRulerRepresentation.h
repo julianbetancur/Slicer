@@ -29,8 +29,8 @@ vtkAnnotationRulerRepresentation
 public:
 
   static vtkAnnotationRulerRepresentation *New();
-  vtkTypeRevisionMacro(vtkAnnotationRulerRepresentation, vtkDistanceRepresentation2D);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkAnnotationRulerRepresentation, vtkDistanceRepresentation2D);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   void SetDistance(double distance);
 
@@ -41,14 +41,14 @@ public:
 protected:
 
   vtkAnnotationRulerRepresentation();
-  virtual ~vtkAnnotationRulerRepresentation();
+  ~vtkAnnotationRulerRepresentation() override;
 
-  virtual void BuildRepresentation();
+  void BuildRepresentation() override;
 
 private:
 
-  vtkAnnotationRulerRepresentation(const vtkAnnotationRulerRepresentation&); /// Not implemented
-  void operator=(const vtkAnnotationRulerRepresentation&); /// Not Implemented
+  vtkAnnotationRulerRepresentation(const vtkAnnotationRulerRepresentation&) = delete;
+  void operator=(const vtkAnnotationRulerRepresentation&) = delete;
 
   double m_Distance;
 

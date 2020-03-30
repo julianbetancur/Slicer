@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLModelInfoWidget.h"
 
@@ -31,13 +34,16 @@
 // VTK includes
 #include <vtkSmartPointer.h>
 #include <vtkPolyData.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLModelInfoWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
+  qMRMLWidget::postInitializeApplication();
+
   vtkSmartPointer< vtkMRMLModelNode > modelNode = vtkSmartPointer< vtkMRMLModelNode >::New();
 
   vtkSmartPointer< vtkPolyData > polyData = vtkSmartPointer< vtkPolyData >::New();
@@ -46,7 +52,7 @@ int qMRMLModelInfoWidgetTest1(int argc, char * argv [] )
   qMRMLModelInfoWidget modelInfo;
   modelInfo.setMRMLModelNode(modelNode);
   modelInfo.show();
-  
+
   if (argc < 2 || QString(argv[1]) != "-I" )
     {
     QTimer::singleShot(200, &app, SLOT(quit()));

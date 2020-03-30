@@ -19,10 +19,13 @@
 ==============================================================================*/
 
 // Qt includes
+#include <QDebug>
 #include <QDesktopServices>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QSettings>
+#include <QSignalMapper>
+#include <QTextStream>
 
 // Slicer includes
 #include "vtkSlicerConfigure.h" // For Slicer_BUILD_DICOM_SUPPORT
@@ -30,7 +33,7 @@
 
 // SlicerQt includes
 #include "qSlicerWelcomeModuleWidget.h"
-#include "ui_qSlicerWelcomeModule.h"
+#include "ui_qSlicerWelcomeModuleWidget.h"
 #include "qSlicerApplication.h"
 #include "qSlicerIO.h"
 #include "qSlicerIOManager.h"
@@ -38,6 +41,7 @@
 #include "qSlicerModuleManager.h"
 #include "qSlicerAbstractCoreModule.h"
 #include "qSlicerModulePanel.h"
+#include "qSlicerUtils.h"
 
 // CTK includes
 #include "ctkButtonGroup.h"
@@ -46,7 +50,7 @@ class qSlicerAppMainWindow;
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_SlicerWelcome
-class qSlicerWelcomeModuleWidgetPrivate: public Ui_qSlicerWelcomeModule
+class qSlicerWelcomeModuleWidgetPrivate: public Ui_qSlicerWelcomeModuleWidget
 {
   Q_DECLARE_PUBLIC(qSlicerWelcomeModuleWidget);
 protected:
@@ -56,6 +60,8 @@ public:
   void setupUi(qSlicerWidget* widget);
 
   bool selectModule(const QString& moduleName);
+
+  QSignalMapper CollapsibleButtonMapper;
 };
 
 //-----------------------------------------------------------------------------
@@ -70,7 +76,9 @@ qSlicerWelcomeModuleWidgetPrivate::qSlicerWelcomeModuleWidgetPrivate(qSlicerWelc
 //-----------------------------------------------------------------------------
 void qSlicerWelcomeModuleWidgetPrivate::setupUi(qSlicerWidget* widget)
 {
-  this->Ui_qSlicerWelcomeModule::setupUi(widget);
+  Q_Q(qSlicerWelcomeModuleWidget);
+
+  this->Ui_qSlicerWelcomeModuleWidget::setupUi(widget);
 
   // Create the button group ensuring that only one collabsibleWidgetButton will be open at a time
   ctkButtonGroup * group = new ctkButtonGroup(widget);
@@ -80,6 +88,67 @@ void qSlicerWelcomeModuleWidgetPrivate::setupUi(qSlicerWidget* widget)
   foreach(ctkCollapsibleButton* collapsible, collapsibles)
     {
     group->addButton(collapsible);
+    }
+
+  QObject::connect(this->OpenExtensionsManagerButton, SIGNAL(clicked()),
+                   qSlicerApplication::application(), SLOT(openExtensionsManagerDialog()));
+
+
+  // Lazily set the fitted browser source to avoid overhead when the module
+  // is loaded.
+  this->FeedbackCollapsibleWidget->setProperty("source", ":HTML/Feedback.html");
+  this->WelcomeAndAboutCollapsibleWidget->setProperty("source", ":HTML/About.html");
+  this->OtherUsefulHintsCollapsibleWidget->setProperty("source", ":HTML/OtherUsefulHints.html");
+  this->AcknowledgmentCollapsibleWidget->setProperty("source", ":HTML/Acknowledgment.html");
+
+  foreach(QWidget* widget, QWidgetList()
+          << this->FeedbackCollapsibleWidget
+          << this->WelcomeAndAboutCollapsibleWidget
+          << this->OtherUsefulHintsCollapsibleWidget
+          << this->AcknowledgmentCollapsibleWidget
+          )
+    {
+    this->CollapsibleButtonMapper.setMapping(widget, widget);
+    QObject::connect(widget, SIGNAL(contentsCollapsed(bool)),
+                     &this->CollapsibleButtonMapper, SLOT(map()));
+    }
+
+  QObject::connect(&this->CollapsibleButtonMapper, SIGNAL(mapped(QWidget*)),
+                   q, SLOT(loadSource(QWidget*)));
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerWelcomeModuleWidget::loadSource(QWidget* widget)
+{
+  // Lookup fitted browser
+  ctkFittedTextBrowser* fittedTextBrowser =
+      widget->findChild<ctkFittedTextBrowser*>();
+  Q_ASSERT(fittedTextBrowser);
+  if (fittedTextBrowser->source().isEmpty())
+    {
+    // Read content
+    QString url = widget->property("source").toString();
+    QFile source(url);
+    if(!source.open(QIODevice::ReadOnly))
+      {
+      qWarning() << Q_FUNC_INFO << ": Failed to read" << url;
+      return;
+      }
+    QTextStream in(&source);
+    QString html = in.readAll();
+    source.close();
+
+    qSlicerCoreApplication* app = qSlicerCoreApplication::application();
+
+    // Update occurrences of wiki URLs
+    QString wikiVersion = "Nightly";
+    if (app->releaseType() == "Stable")
+      {
+      wikiVersion = QString("%1.%2").arg(app->majorVersion()).arg(app->minorVersion());
+      }
+    html = qSlicerUtils::replaceWikiUrlVersion(html, wikiVersion);
+
+    fittedTextBrowser->setHtml(html);
     }
 }
 
@@ -96,8 +165,8 @@ bool qSlicerWelcomeModuleWidgetPrivate::selectModule(const QString& moduleName)
   if(!module)
     {
     QMessageBox::warning(
-          q, q->tr("Raising %1 Module:").arg(moduleName),
-          q->tr("Unfortunately, this requested module is not available in this Slicer session."),
+          q, qSlicerWelcomeModuleWidget::tr("Raising %1 Module:").arg(moduleName),
+          qSlicerWelcomeModuleWidget::tr("Unfortunately, this requested module is not available in this Slicer session."),
           QMessageBox::Ok);
     return false;
     }
@@ -122,8 +191,7 @@ qSlicerWelcomeModuleWidget::qSlicerWelcomeModuleWidget(QWidget* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerWelcomeModuleWidget::~qSlicerWelcomeModuleWidget()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerWelcomeModuleWidget::setup()
@@ -139,12 +207,16 @@ void qSlicerWelcomeModuleWidget::setup()
           this, SLOT (loadRemoteSampleData()));
   connect(d->EditApplicationSettingsButton, SIGNAL(clicked()),
           this, SLOT (editApplicationSettings()));
+  connect(d->ExploreLoadedDataPushButton, SIGNAL(clicked()),
+          this, SLOT (exploreLoadedData()));
 
 #ifndef Slicer_BUILD_DICOM_SUPPORT
   d->LoadDicomDataButton->setDisabled(true);
 #endif
 
   this->Superclass::setup();
+
+  d->FeedbackCollapsibleWidget->setCollapsed(false);
 }
 
 
@@ -192,4 +264,11 @@ bool qSlicerWelcomeModuleWidget::presentTutorials()
       .arg(Slicer_VERSION_MAJOR)
       .arg(Slicer_VERSION_MINOR)));
   return true;
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerWelcomeModuleWidget::exploreLoadedData()
+{
+  Q_D(qSlicerWelcomeModuleWidget);
+  return d->selectModule("Data");
 }

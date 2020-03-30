@@ -27,13 +27,16 @@
 #include <vtkMRMLApplicationLogic.h>
 
 // MRML includes
+#include <vtkMRMLAbstractViewNode.h>
 #include <vtkMRMLInteractionNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLSelectionNode.h>
 
 // VTK includes
 #include <vtkCallbackCommand.h>
 #include <vtkInteractorStyle.h>
 #include <vtkNew.h>
+#include <vtkObjectFactory.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
@@ -43,14 +46,18 @@
 // STD includes
 #include <cassert>
 #include <algorithm>
+#include <functional>
 
+#if (_MSC_VER >= 1700 && _MSC_VER < 1800)
+// Visual Studio 2012 moves bind1st to <functional>
+#include <functional>
+#endif
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLAbstractDisplayableManager);
-vtkCxxRevisionMacro(vtkMRMLAbstractDisplayableManager, "$Revision: 13525 $");
 
 
-struct EventEquals 
+struct EventEquals
 {
   typedef int first_argument_type;
   typedef std::pair<int,float> second_argument_type;
@@ -120,7 +127,6 @@ public:
   vtkRenderer*                              Renderer;
   vtkMRMLNode*                              MRMLDisplayableNode;
   vtkSmartPointer<vtkIntArray>              MRMLDisplayableNodeObservableEvents;
-  vtkMRMLSelectionNode*                     MRMLSelectionNode;
   vtkMRMLInteractionNode*                   MRMLInteractionNode;
   vtkSmartPointer<vtkCallbackCommand>       MRMLInteractionNodeCallBackCommand;
   vtkMRMLDisplayableManagerGroup*           DisplayableManagerGroup;
@@ -145,29 +151,29 @@ vtkMRMLAbstractDisplayableManager::vtkInternal::vtkInternal(
   this->Created = false;
   this->WidgetsObserverManager = vtkObserverManager::New();
   this->UpdateFromMRMLRequested = false;
-  this->Renderer = 0;
-  this->LightBoxRendererManagerProxy = 0;
-  this->MRMLDisplayableNode = 0;
+  this->Renderer = nullptr;
+  this->LightBoxRendererManagerProxy = nullptr;
+  this->MRMLDisplayableNode = nullptr;
   this->MRMLDisplayableNodeObservableEvents = vtkSmartPointer<vtkIntArray>::New();
-  this->DisplayableManagerGroup = 0;
+  this->DisplayableManagerGroup = nullptr;
 
   this->DeleteCallBackCommand = vtkSmartPointer<vtkCallbackCommand>::New();
   this->DeleteCallBackCommand->SetCallback(
       vtkMRMLAbstractDisplayableManager::vtkInternal::DoDeleteCallback);
 
-  this->Interactor = 0;
+  this->Interactor = nullptr;
   this->InteractorCallBackCommand = vtkSmartPointer<vtkCallbackCommand>::New();
   this->InteractorCallBackCommand->SetCallback(
       vtkMRMLAbstractDisplayableManager::vtkInternal::DoInteractorCallback);
   this->InteractorCallBackCommand->SetClientData(this->External);
 
-  this->MRMLInteractionNode = 0;
+  this->MRMLInteractionNode = nullptr;
   this->MRMLInteractionNodeCallBackCommand = vtkSmartPointer<vtkCallbackCommand>::New();
   this->MRMLInteractionNodeCallBackCommand->SetCallback(
       vtkMRMLAbstractDisplayableManager::vtkInternal::DoMRMLInteractionNodeCallback);
   this->MRMLInteractionNodeCallBackCommand->SetClientData(this->External);
 
-  this->InteractorStyle = 0;
+  this->InteractorStyle = nullptr;
   this->InteractorStyleCallBackCommand = vtkSmartPointer<vtkCallbackCommand>::New();
   this->InteractorStyleCallBackCommand->SetCallback(
       vtkMRMLAbstractDisplayableManager::vtkInternal::DoInteractorStyleCallback);
@@ -184,15 +190,17 @@ vtkMRMLAbstractDisplayableManager::vtkInternal::vtkInternal(
   this->InteractorStyleObservableEvents.push_back(std::make_pair(vtkCommand::MouseWheelForwardEvent,0.0));
   this->InteractorStyleObservableEvents.push_back(std::make_pair(vtkCommand::EnterEvent,0.0));
   this->InteractorStyleObservableEvents.push_back(std::make_pair(vtkCommand::LeaveEvent,0.0));
+  this->InteractorStyleObservableEvents.push_back(std::make_pair(vtkCommand::Button3DEvent,0.0));
+  this->InteractorStyleObservableEvents.push_back(std::make_pair(vtkCommand::Move3DEvent,0.0));
 }
 
 //-----------------------------------------------------------------------------
 vtkMRMLAbstractDisplayableManager::vtkInternal::~vtkInternal()
 {
-  this->SetAndObserveInteractor(0);
-  this->SetAndObserveInteractorStyle(0);
-  this->SetAndObserveMRMLInteractionNode(0);
-  this->LightBoxRendererManagerProxy = 0;
+  this->SetAndObserveInteractor(nullptr);
+  this->SetAndObserveInteractorStyle(nullptr);
+  this->SetAndObserveMRMLInteractionNode(nullptr);
+  this->LightBoxRendererManagerProxy = nullptr;
   this->WidgetsObserverManager->Delete();
 }
 
@@ -312,7 +320,7 @@ void vtkMRMLAbstractDisplayableManager::vtkInternal::SetAndObserveInteractorStyl
   // Remove existing interactor style observer
   if (this->InteractorStyle)
     {
-    this->InteractorStyle->RemoveObserver(this->InteractorStyleCallBackCommand);
+
     this->InteractorStyle->UnRegister(this->External);
     }
 
@@ -320,12 +328,6 @@ void vtkMRMLAbstractDisplayableManager::vtkInternal::SetAndObserveInteractorStyl
   if (newInteractorStyle)
     {
     newInteractorStyle->Register(this->External);
-    for(size_t i=0; i < this->InteractorStyleObservableEvents.size(); ++i)
-      {
-      int eid = this->InteractorStyleObservableEvents[i].first;
-      float priority = this->InteractorStyleObservableEvents[i].second;
-      newInteractorStyle->AddObserver(eid, this->InteractorStyleCallBackCommand, priority);
-      }
     }
 
   this->InteractorStyle = newInteractorStyle;
@@ -372,19 +374,10 @@ void vtkMRMLAbstractDisplayableManager::vtkInternal::UpdateInteractorStyle(int e
   bool updateObserver = false;
   if (this->MRMLInteractionNode)
     {
-    int currentInteractionMode =
-      this->MRMLInteractionNode->GetCurrentInteractionMode();
-    if ( currentInteractionMode & this->External->ActiveInteractionModes() )
-      {
-      this->SetAndObserveInteractor( this->Renderer->GetRenderWindow()->GetInteractor());
-      this->SetAndObserveInteractorStyle(
-          this->Renderer->GetRenderWindow()->GetInteractor()->GetInteractorStyle());
-      updateObserver = (this->InteractorStyle != 0);
-      }
-    else
-      {
-      this->SetAndObserveInteractorStyle(0);
-      }
+    this->SetAndObserveInteractor( this->Renderer->GetRenderWindow()->GetInteractor());
+    this->SetAndObserveInteractorStyle(
+        this->Renderer->GetRenderWindow()->GetInteractor()->GetInteractorStyle());
+    updateObserver = (this->InteractorStyle != nullptr);
     }
 
   // Update observe if it applies
@@ -454,11 +447,11 @@ void vtkMRMLAbstractDisplayableManager::vtkInternal::UpdateInteractor(int eventI
     if ( currentInteractionMode & this->External->ActiveInteractionModes() )
       {
       this->SetAndObserveInteractor(this->Renderer->GetRenderWindow()->GetInteractor());
-      updateObserver = (this->Interactor != 0);
+      updateObserver = (this->Interactor != nullptr);
       }
     else
       {
-      this->SetAndObserveInteractor(0);
+      this->SetAndObserveInteractor(nullptr);
       }
     }
 
@@ -527,6 +520,9 @@ vtkMRMLAbstractDisplayableManager::vtkMRMLAbstractDisplayableManager()
   this->AddObserver(vtkCommand::DeleteEvent, this->Internal->DeleteCallBackCommand);
   // Default observable event associated with DisplayableNode
   this->AddMRMLDisplayableManagerEvent(vtkCommand::ModifiedEvent);
+  this->AddMRMLDisplayableManagerEvent(vtkMRMLNode::ReferenceAddedEvent);
+  this->AddMRMLDisplayableManagerEvent(vtkMRMLNode::ReferenceRemovedEvent);
+  this->AddMRMLDisplayableManagerEvent(vtkMRMLNode::ReferenceModifiedEvent);
 
   // Setup widgets callback
   vtkObserverManager * widgetsObserver = this->Internal->WidgetsObserverManager;
@@ -572,19 +568,9 @@ void vtkMRMLAbstractDisplayableManager::CreateIfPossible()
     assert(this->GetMRMLDisplayableNode());
 
     // Look for InteractionNode
-    this->Internal->MRMLInteractionNode = vtkMRMLInteractionNode::SafeDownCast(
-        this->GetMRMLScene()->GetNthNodeByClass(0, "vtkMRMLInteractionNode"));
-    if (!this->Internal->MRMLInteractionNode)
+    if (!this->GetInteractionNode())
       {
       vtkWarningMacro( << "CreateIfPossible - MRMLScene does NOT contain any InteractionNode");
-      }
-
-    // Look for SelectionNode
-    this->Internal->MRMLSelectionNode = vtkMRMLSelectionNode::SafeDownCast(
-        this->GetMRMLScene()->GetNthNodeByClass(0, "vtkMRMLSelectionNode"));
-    if (!this->Internal->MRMLSelectionNode)
-      {
-      vtkWarningMacro( << "CreateIfPossible - MRMLScene does NOT contain any SelectionNode");
       }
 
     this->Create();
@@ -595,7 +581,7 @@ void vtkMRMLAbstractDisplayableManager::CreateIfPossible()
 //----------------------------------------------------------------------------
 void vtkMRMLAbstractDisplayableManager::Create()
 {
-  this->ProcessMRMLNodesEvents(this->GetMRMLDisplayableNode(), vtkCommand::ModifiedEvent, 0);
+  this->ProcessMRMLNodesEvents(this->GetMRMLDisplayableNode(), vtkCommand::ModifiedEvent, nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -664,11 +650,11 @@ vtkRenderer * vtkMRMLAbstractDisplayableManager::GetRenderer()
 //---------------------------------------------------------------------------
 vtkRenderWindowInteractor * vtkMRMLAbstractDisplayableManager::GetInteractor()
 {
-  
+
   if (!this->Internal->Interactor)
     {
     vtkDebugMacro(<< this->GetClassName() << " (" << this << "): returning Interactor address 0");
-    return 0;
+    return nullptr;
     }
   vtkDebugMacro("returning Internal->Interactor address "
                 << this->Internal->Interactor );
@@ -684,7 +670,7 @@ vtkMRMLInteractionNode* vtkMRMLAbstractDisplayableManager::GetInteractionNode()
 //---------------------------------------------------------------------------
 vtkMRMLSelectionNode* vtkMRMLAbstractDisplayableManager::GetSelectionNode()
 {
-  return this->Internal->MRMLSelectionNode;
+  return vtkMRMLSelectionNode::SafeDownCast(this->GetMRMLScene()->GetNodeByID("vtkMRMLSelectionNodeSingleton"));
 }
 
 //---------------------------------------------------------------------------
@@ -702,11 +688,29 @@ int vtkMRMLAbstractDisplayableManager::ActiveInteractionModes() {
 void vtkMRMLAbstractDisplayableManager::ProcessMRMLNodesEvents(
   vtkObject* caller, unsigned long event, void * callData)
 {
-  if (caller == this->GetMRMLDisplayableNode() &&
-      event == vtkCommand::ModifiedEvent)
+  if (caller == this->GetMRMLDisplayableNode())
     {
-    this->OnMRMLDisplayableNodeModifiedEvent(caller);
-    return;
+      if(event == vtkCommand::ModifiedEvent)
+        {
+        this->OnMRMLDisplayableNodeModifiedEvent(caller);
+        return;
+        }
+      else if(event == vtkMRMLNode::ReferenceAddedEvent ||
+              event == vtkMRMLNode::ReferenceRemovedEvent ||
+              event == vtkMRMLNode::ReferenceModifiedEvent)
+        {
+        // Update interaction node
+        vtkMRMLAbstractViewNode* viewNode = vtkMRMLAbstractViewNode::SafeDownCast(this->GetMRMLDisplayableNode());
+        if (viewNode)
+          {
+          this->Internal->SetAndObserveMRMLInteractionNode(viewNode->GetInteractionNode());
+          }
+        else
+          {
+          vtkErrorMacro(<< "ProcessMRMLNodesEvents failed: "
+                        << "No viewNode is associated with the displayable manager: " << this->GetClassName());
+          }
+        }
     }
   this->Superclass::ProcessMRMLNodesEvents(caller, event, callData);
 }
@@ -776,7 +780,7 @@ void vtkMRMLAbstractDisplayableManager::SetMRMLSceneInternal(vtkMRMLScene* newSc
 //---------------------------------------------------------------------------
 void vtkMRMLAbstractDisplayableManager::AddMRMLDisplayableManagerEvent(int eventId)
 {
-  for(int i = 0; i < this->Internal->MRMLDisplayableNodeObservableEvents->GetSize(); ++i)
+  for(int i = 0; i < this->Internal->MRMLDisplayableNodeObservableEvents->GetNumberOfValues(); ++i)
     {
     if (eventId == this->Internal->MRMLDisplayableNodeObservableEvents->GetValue(i))
       {
@@ -793,18 +797,17 @@ void vtkMRMLAbstractDisplayableManager::SetAndObserveMRMLDisplayableNode(
     vtkMRMLNode * newMRMLDisplayableNode)
 {
   // Observe scene associated with the MRML DisplayableNode
-  vtkMRMLScene * sceneToObserve = 0;
-  if (newMRMLDisplayableNode)
+  vtkMRMLScene * sceneToObserve = nullptr;
+  vtkMRMLAbstractViewNode* viewNode = vtkMRMLAbstractViewNode::SafeDownCast(newMRMLDisplayableNode);
+  if (viewNode)
     {
-    sceneToObserve = newMRMLDisplayableNode->GetScene();
+    sceneToObserve = viewNode->GetScene();
 
     // Observe InteractionNode
-    vtkMRMLInteractionNode *interactionNode = vtkMRMLInteractionNode::SafeDownCast (
-        sceneToObserve->GetNthNodeByClass(0, "vtkMRMLInteractionNode"));
+    vtkMRMLInteractionNode *interactionNode = viewNode->GetInteractionNode();
+    this->Internal->SetAndObserveMRMLInteractionNode(interactionNode);
     if (interactionNode)
       {
-      // Observe MRML InteractionNode only if a valid MRML DisplayableNode is set
-      this->Internal->SetAndObserveMRMLInteractionNode(newMRMLDisplayableNode ? interactionNode : 0);
       this->Internal->UpdateInteractorStyle();
       }
     else
@@ -814,12 +817,15 @@ void vtkMRMLAbstractDisplayableManager::SetAndObserveMRMLDisplayableNode(
       }
     }
   vtkSetAndObserveMRMLNodeEventsMacro(this->Internal->MRMLDisplayableNode,
-                                      newMRMLDisplayableNode,
+                                      viewNode,
                                       this->Internal->MRMLDisplayableNodeObservableEvents);
   this->SetMRMLScene(sceneToObserve);
   this->SetUpdateFromMRMLRequested(true);
   this->CreateIfPossible();
-  this->RequestRender();
+  if (viewNode != nullptr)
+    {
+    this->RequestRender();
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -855,7 +861,7 @@ void vtkMRMLAbstractDisplayableManager::RequestRender()
 //---------------------------------------------------------------------------
 void vtkMRMLAbstractDisplayableManager::RemoveMRMLObservers()
 {
-  this->SetAndObserveMRMLDisplayableNode(0);
+  this->SetAndObserveMRMLDisplayableNode(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -969,3 +975,48 @@ vtkRenderer* vtkMRMLAbstractDisplayableManager::GetRenderer(int idx)
     }
 }
 
+//---------------------------------------------------------------------------
+bool vtkMRMLAbstractDisplayableManager::CanProcessInteractionEvent(vtkMRMLInteractionEventData* vtkNotUsed(eventData), double &distance2)
+{
+  distance2 = VTK_DOUBLE_MAX;
+  return false;
+}
+
+//---------------------------------------------------------------------------
+bool vtkMRMLAbstractDisplayableManager::ProcessInteractionEvent(vtkMRMLInteractionEventData* vtkNotUsed(eventData))
+{
+  return false;
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLAbstractDisplayableManager::SetHasFocus(bool vtkNotUsed(hasFocus))
+{
+  return;
+}
+
+//---------------------------------------------------------------------------
+bool vtkMRMLAbstractDisplayableManager::GetGrabFocus()
+{
+  return false;
+}
+
+//---------------------------------------------------------------------------
+bool vtkMRMLAbstractDisplayableManager::GetInteractive()
+{
+  return false;
+}
+
+//---------------------------------------------------------------------------
+int vtkMRMLAbstractDisplayableManager::GetMouseCursor()
+{
+  return VTK_CURSOR_DEFAULT;
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLAbstractDisplayableManager::SetMouseCursor(int cursor)
+{
+  if (this->GetRenderer() && this->GetRenderer()->GetRenderWindow())
+  {
+    this->GetRenderer()->GetRenderWindow()->SetCurrentCursor(cursor);
+  }
+}

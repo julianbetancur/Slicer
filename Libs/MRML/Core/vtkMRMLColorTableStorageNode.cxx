@@ -31,18 +31,18 @@ vtkMRMLNodeNewMacro(vtkMRMLColorTableStorageNode);
 //----------------------------------------------------------------------------
 vtkMRMLColorTableStorageNode::vtkMRMLColorTableStorageNode()
 {
-  // use 32K as a maximum color id for now 
+  // use 32K as a maximum color id for now
   this->MaximumColorID = 32768;
+  this->DefaultWriteFileExtension = "ctbl";
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLColorTableStorageNode::~vtkMRMLColorTableStorageNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLColorTableStorageNode::PrintSelf(ostream& os, vtkIndent indent)
-{  
+{
   vtkMRMLStorageNode::PrintSelf(os,indent);
 }
 
@@ -61,7 +61,7 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
   vtkMRMLColorTableNode *colorNode =
     vtkMRMLColorTableNode::SafeDownCast(refNode);
 
-  if (colorNode == NULL)
+  if (colorNode == nullptr)
     {
     vtkErrorMacro("ReadData: unable to cast input node " << refNode->GetID() << " to a known color table node");
     return 0;
@@ -75,7 +75,18 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
     {
     // clear out the table
     int wasModifying = colorNode->StartModify();
-    colorNode->SetTypeToFile();
+
+    // Set type to "File" by default if it has not been set yet.
+    // It is important to only change type if it has not been set already
+    // because otherwise "User" color node types would be always reverted to
+    // read-only "File" type when the scene is saved and reloaded.
+    if (colorNode->GetType()<colorNode->GetFirstType()
+      || colorNode->GetType()>colorNode->GetLastType())
+      {
+      // no valid type has been set, set it to File
+      colorNode->SetTypeToFile();
+      }
+
     colorNode->NamesInitialisedOff();
 
     char line[1024];
@@ -85,11 +96,19 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
     while (fstr.good())
       {
       fstr.getline(line, 1024);
-      
+
       // does it start with a #?
       if (line[0] == '#')
         {
         vtkDebugMacro("Comment line, skipping:\n\"" << line << "\"");
+        // sanity check: does the procedural header match?
+        if (strncmp(line, "# Color procedural file", 23) == 0)
+          {
+          vtkErrorMacro("ReadDataInternal:\nfound a comment that this file "
+                        << " is a procedural color file, returning:\n"
+                        << line);
+          return 0;
+          }
         }
       else
         {
@@ -127,7 +146,10 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
       }
     // extra one for zero, also resizes the names array
     colorNode->SetNumberOfColors(maxID + 1);
-    colorNode->GetLookupTable()->SetTableRange(0, maxID);
+    if (colorNode->GetLookupTable())
+      {
+      colorNode->GetLookupTable()->SetTableRange(0, maxID);
+      }
     // init the table to black/opacity 0 with no name, just in case we're missing values
     const char *noName = colorNode->GetNoName();
     for (int i = 0; i < maxID+1; i++)
@@ -201,6 +223,7 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
         colorNode->EndModify(wasModifying);
         return 0;
         }
+      colorNode->SetColorNameWithSpaces(id, name.c_str(), "_");
       }
     if (lines.size() > 0 && !biggerThanOne)
       {
@@ -221,20 +244,20 @@ int vtkMRMLColorTableStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 int vtkMRMLColorTableStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
 {
   std::string fullName = this->GetFullNameFromFileName();
-  if (fullName == std::string("")) 
+  if (fullName.empty())
     {
     vtkErrorMacro("vtkMRMLColorTableStorageNode: File name not specified");
     return 0;
     }
 
   // cast the input node
-  vtkMRMLColorTableNode *colorNode = NULL;
+  vtkMRMLColorTableNode *colorNode = nullptr;
   if ( refNode->IsA("vtkMRMLColorTableNode") )
     {
     colorNode = dynamic_cast <vtkMRMLColorTableNode *> (refNode);
     }
 
-  if (colorNode == NULL)
+  if (colorNode == nullptr)
     {
     vtkErrorMacro("WriteData: unable to cast input node " << refNode->GetID() << " to a known color table node");
     return 0;
@@ -252,37 +275,40 @@ int vtkMRMLColorTableStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
     }
 
   // put down a header
-  of << "# Color table file " << (this->GetFileName() != NULL ? this->GetFileName() : "null") << endl;
-  of << "# " << colorNode->GetLookupTable()->GetNumberOfTableValues() << " values" << endl;
-  for (int i = 0; i < colorNode->GetLookupTable()->GetNumberOfTableValues(); i++)
+  of << "# Color table file " << (this->GetFileName() != nullptr ? this->GetFileName() : "null") << endl;
+  if (colorNode->GetLookupTable() != nullptr)
     {
-    // is it an unnamed color?
-    if (colorNode->GetNoName() &&
-        colorNode->GetColorName(i) &&
-        strcmp(colorNode->GetNoName(), colorNode->GetColorName(i)) == 0)
+    of << "# " << colorNode->GetLookupTable()->GetNumberOfTableValues() << " values" << endl;
+    for (int i = 0; i < colorNode->GetLookupTable()->GetNumberOfTableValues(); i++)
       {
-      continue;
+      // is it an unnamed color?
+      if (colorNode->GetNoName() &&
+          colorNode->GetColorName(i) &&
+          strcmp(colorNode->GetNoName(), colorNode->GetColorName(i)) == 0)
+        {
+        continue;
+        }
+
+      double *rgba;
+      rgba = colorNode->GetLookupTable()->GetTableValue(i);
+      // the colour look up table uses 0-1, file values are 0-255,
+      double r = rgba[0] * 255.0;
+      double g = rgba[1] * 255.0;
+      double b = rgba[2] * 255.0;
+      double a = rgba[3] * 255.0;
+      of << i;
+      of << " ";
+      of << colorNode->GetColorNameWithoutSpaces(i, "_");
+      of << " ";
+      of << r;
+      of << " ";
+      of << g;
+      of << " ";
+      of << b;
+      of << " ";
+      of << a;
+      of << endl;
       }
-    
-    double *rgba;
-    rgba = colorNode->GetLookupTable()->GetTableValue(i);
-    // the colour look up table uses 0-1, file values are 0-255,
-    double r = rgba[0] * 255.0;
-    double g = rgba[1] * 255.0;
-    double b = rgba[2] * 255.0;
-    double a = rgba[3] * 255.0;
-    of << i;
-    of << " ";
-    of << colorNode->GetColorNameWithoutSpaces(i, "_");
-    of << " ";
-    of << r;
-    of << " ";
-    of << g;
-    of << " ";
-    of << b;
-    of << " ";
-    of << a;
-    of << endl;   
     }
   of.close();
 
@@ -301,10 +327,4 @@ void vtkMRMLColorTableStorageNode::InitializeSupportedWriteFileTypes()
 {
   this->SupportedWriteFileTypes->InsertNextValue("Color Table (.ctbl)");
   this->SupportedWriteFileTypes->InsertNextValue("Text (.txt)");
-}
-
-//----------------------------------------------------------------------------
-const char* vtkMRMLColorTableStorageNode::GetDefaultWriteFileExtension()
-{
-  return "ctbl";
 }

@@ -1,74 +1,42 @@
+from __future__ import print_function
 import os
 import unittest
-from __main__ import vtk, qt, ctk, slicer
+import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
 
 #
 # ViewControllersSliceInterpolationBug1926
 #
 
-class ViewControllersSliceInterpolationBug1926:
+class ViewControllersSliceInterpolationBug1926(ScriptedLoadableModule):
+  """Uses ScriptedLoadableModule base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
   def __init__(self, parent):
+    ScriptedLoadableModule.__init__(self, parent)
     parent.title = "ViewControllers Slice Interpolation Bug 1926" # TODO make this more human readable by adding spaces
     parent.categories = ["Testing.TestCases"]
     parent.dependencies = []
     parent.contributors = ["Jim Miller (GE)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = """
-    Test case for the interaction between the ViewControllers module, linking, slice interpolation, and the selection of background, foreground, and label images. When entering the ViewControllers module, extra View Controllers are created and configured.  If linking is on, then foreground, backgroud, and label selection can be propagated to the other views incorrectly. If the node selectors are bocked from emitting signals, then the viewers maintain their proper volumes. However the slice interpolation widget is then not managed properly.
+    Test case for the interaction between the ViewControllers module, linking, slice interpolation, and the selection of background, foreground, and label images. When entering the ViewControllers module, extra View Controllers are created and configured.  If linking is on, then foreground, background, and label selection can be propagated to the other views incorrectly. If the node selectors are bocked from emitting signals, then the viewers maintain their proper volumes. However the slice interpolation widget is then not managed properly.
     """
     parent.acknowledgementText = """
     This file was originally developed by Jim Miller, GE.  and was partially funded by NIH grant U54EB005149.
 """ # replace with organization, grant and thanks.
-    self.parent = parent
-
-    # Add this test to the SelfTest module's list for discovery when the module
-    # is created.  Since this module may be discovered before SelfTests itself,
-    # create the list if it doesn't already exist.
-    try:
-      slicer.selfTests
-    except AttributeError:
-      slicer.selfTests = {}
-    slicer.selfTests['ViewControllersSliceInterpolationBug1926'] = self.runTest
-
-  def runTest(self):
-    tester = ViewControllersSliceInterpolationBug1926Test()
-    tester.runTest()
 
 #
 # qViewControllersSliceInterpolationBug1926Widget
 #
 
-class ViewControllersSliceInterpolationBug1926Widget:
-  def __init__(self, parent = None):
-    if not parent:
-      self.parent = slicer.qMRMLWidget()
-      self.parent.setLayout(qt.QVBoxLayout())
-      self.parent.setMRMLScene(slicer.mrmlScene)
-    else:
-      self.parent = parent
-    self.layout = self.parent.layout()
-    if not parent:
-      self.setup()
-      self.parent.show()
+class ViewControllersSliceInterpolationBug1926Widget(ScriptedLoadableModuleWidget):
+  """Uses ScriptedLoadableModuleWidget base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
 
   def setup(self):
+    ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
-
-    # reload button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadButton = qt.QPushButton("Reload")
-    self.reloadButton.toolTip = "Reload this module."
-    self.reloadButton.name = "ViewControllersSliceInterpolationBug1926 Reload"
-    self.layout.addWidget(self.reloadButton)
-    self.reloadButton.connect('clicked()', self.onReload)
-
-    # reload and test button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadAndTestButton = qt.QPushButton("Reload and Test")
-    self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
-    self.layout.addWidget(self.reloadAndTestButton)
-    self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
 
     # Collapsible button
     dummyCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -80,7 +48,7 @@ class ViewControllersSliceInterpolationBug1926Widget:
 
     # HelloWorld button
     helloWorldButton = qt.QPushButton("Hello world")
-    helloWorldButton.toolTip = "Print 'Hello world' in standard ouput."
+    helloWorldButton.toolTip = "Print 'Hello world' in standard output."
     dummyFormLayout.addWidget(helloWorldButton)
     helloWorldButton.connect('clicked(bool)', self.onHelloWorldButtonClicked)
 
@@ -91,102 +59,15 @@ class ViewControllersSliceInterpolationBug1926Widget:
     self.helloWorldButton = helloWorldButton
 
   def onHelloWorldButtonClicked(self):
-    print "Hello World !"
-
-  def onReload(self,moduleName="ViewControllersSliceInterpolationBug1926"):
-    """Generic reload method for any scripted module.
-    ModuleWizard will subsitute correct default moduleName.
-    """
-    import imp, sys, os, slicer
-
-    widgetName = moduleName + "Widget"
-
-    # reload the source code
-    # - set source file path
-    # - load the module to the global space
-    filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-    p = os.path.dirname(filePath)
-    if not sys.path.__contains__(p):
-      sys.path.insert(0,p)
-    fp = open(filePath, "r")
-    globals()[moduleName] = imp.load_module(
-        moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-    fp.close()
-
-    # rebuild the widget
-    # - find and hide the existing widget
-    # - create a new widget in the existing parent
-    parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent()
-    for child in parent.children():
-      try:
-        child.hide()
-      except AttributeError:
-        pass
-    # Remove spacer items
-    item = parent.layout().itemAt(0)
-    while item:
-      parent.layout().removeItem(item)
-      item = parent.layout().itemAt(0)
-    # create new widget inside existing parent
-    globals()[widgetName.lower()] = eval(
-        'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-    globals()[widgetName.lower()].setup()
-
-  def onReloadAndTest(self,moduleName="ViewControllersSliceInterpolationBug1926"):
-    self.onReload()
-    evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
-    tester = eval(evalString)
-    tester.runTest()
-
-#
-# ViewControllersSliceInterpolationBug1926Logic
-#
-
-class ViewControllersSliceInterpolationBug1926Logic:
-  """This class should implement all the actual 
-  computation done by your module.  The interface 
-  should be such that other python code can import
-  this class and make use of the functionality without
-  requiring an instance of the Widget
-  """
-  def __init__(self):
-    pass
-
-  def hasImageData(self,volumeNode):
-    """This is a dummy logic method that 
-    returns true if the passed in volume
-    node has valid image data
-    """
-    if not volumeNode:
-      print('no volume node')
-      return False
-    if volumeNode.GetImageData() == None:
-      print('no image data')
-      return False
-    return True
+    print("Hello World !")
 
 
-class ViewControllersSliceInterpolationBug1926Test(unittest.TestCase):
+class ViewControllersSliceInterpolationBug1926Test(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
+  Uses ScriptedLoadableModuleTest base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
 
   def setUp(self):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
@@ -201,7 +82,7 @@ class ViewControllersSliceInterpolationBug1926Test(unittest.TestCase):
 
   def test_ViewControllersSliceInterpolationBug19261(self):
     """ Ideally you should have several levels of tests.  At the lowest level
-    tests sould exercise the functionality of the logic with different inputs
+    tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
     way the user would interact with your code and confirm that it still works
     the way you intended.
@@ -215,12 +96,10 @@ class ViewControllersSliceInterpolationBug1926Test(unittest.TestCase):
     #
     # first, get some data
     #
-    import SampleData
-    sampleDataLogic = SampleData.SampleDataLogic()
     self.delayDisplay("Getting Data")
-    head = sampleDataLogic.downloadMRHead()
-
-    tumor = sampleDataLogic.downloadMRBrainTumor1()
+    import SampleData
+    head = SampleData.downloadSample("MRHead")
+    tumor = SampleData.downloadSample('MRBrainTumor1')
 
     # Change to a CompareView
     ln = slicer.util.getNode(pattern='vtkMRMLLayoutNode*')
@@ -243,7 +122,7 @@ class ViewControllersSliceInterpolationBug1926Test(unittest.TestCase):
     logic.StartSliceCompositeNodeInteraction(2)  #BackgroundVolumeFlag
     compareCNode.SetBackgroundVolumeID(tumor.GetID())
     logic.EndSliceCompositeNodeInteraction()
-    self.assertTrue( compareCNode.GetBackgroundVolumeID() == tumor.GetID())
+    self.assertEqual( compareCNode.GetBackgroundVolumeID(), tumor.GetID())
     self.delayDisplay('Compare views configured')
 
     # Get handles to the Red viewer
@@ -264,11 +143,11 @@ class ViewControllersSliceInterpolationBug1926Test(unittest.TestCase):
     compareCNode2 = slicer.util.getNode('vtkMRMLSliceCompositeNodeCompare2')
 
     # Check whether the viewers have the proper data initially
-    self.assertTrue( redCNode.GetBackgroundVolumeID() == head.GetID())
-    self.assertTrue( compareCNode.GetBackgroundVolumeID() == tumor.GetID())
-    self.assertTrue( compareCNode2.GetBackgroundVolumeID() == tumor.GetID())
+    self.assertEqual( redCNode.GetBackgroundVolumeID(), head.GetID())
+    self.assertEqual( compareCNode.GetBackgroundVolumeID(), tumor.GetID())
+    self.assertEqual( compareCNode2.GetBackgroundVolumeID(), tumor.GetID())
     self.delayDisplay('All viewers configured properly')
-    
+
     # Switch to the View Controllers module
     m = slicer.util.mainWindow()
     m.moduleSelector().selectModule('ViewControllers')

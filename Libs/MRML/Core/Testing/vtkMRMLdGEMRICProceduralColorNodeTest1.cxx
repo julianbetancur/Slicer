@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,19 +10,15 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLdGEMRICProceduralColorNode.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLdGEMRICProceduralColorNode.h"
+#include "vtkMRMLScene.h"
 
 int vtkMRMLdGEMRICProceduralColorNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLdGEMRICProceduralColorNode > node1 = vtkSmartPointer< vtkMRMLdGEMRICProceduralColorNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  // for now just test the transformable methods, to do: fix the storage nodes and revise
-  EXERCISE_BASIC_TRANSFORMABLE_MRML_METHODS(vtkMRMLdGEMRICProceduralColorNode, node1);
-
+  vtkNew<vtkMRMLdGEMRICProceduralColorNode> node1;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

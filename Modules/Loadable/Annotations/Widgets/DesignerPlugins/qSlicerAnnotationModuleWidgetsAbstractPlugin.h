@@ -21,22 +21,24 @@
 #ifndef __qSlicerAnnotationModuleWidgetsAbstractPlugin_h
 #define __qSlicerAnnotationModuleWidgetsAbstractPlugin_h
 
-#include <QDesignerCustomWidgetInterface>
+#include <QtGlobal>
+#include <QtUiPlugin/QDesignerCustomWidgetInterface>
 #include "qSlicerAnnotationsModuleWidgetsPluginsExport.h"
 
 class Q_SLICER_MODULE_ANNOTATIONS_WIDGETS_PLUGINS_EXPORT qSlicerAnnotationModuleWidgetsAbstractPlugin
     : public QDesignerCustomWidgetInterface
 {
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetInterface")
   Q_INTERFACES(QDesignerCustomWidgetInterface);
 public:
 
   qSlicerAnnotationModuleWidgetsAbstractPlugin();
   // Don't reimplement this method.
-  QString group() const;
+  QString group() const override;
   // You can reimplement these methods
-  virtual QIcon icon() const;
-  virtual QString toolTip() const;
-  virtual QString whatsThis() const;
+  QIcon icon() const override;
+  QString toolTip() const override;
+  QString whatsThis() const override;
 
 };
 

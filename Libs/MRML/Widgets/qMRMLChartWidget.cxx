@@ -16,6 +16,7 @@
 ==============================================================================*/
 
 // Qt includes
+#include <QCoreApplication>
 #include <QDebug>
 #include <QFileInfo>
 #include <QGridLayout>
@@ -46,8 +47,8 @@ protected:
   qMRMLChartWidget* const q_ptr;
 public:
   qMRMLChartWidgetPrivate(qMRMLChartWidget& object);
-  ~qMRMLChartWidgetPrivate();
-  
+  ~qMRMLChartWidgetPrivate() override;
+
   void init();
 
   qMRMLChartView*       ChartView;
@@ -59,20 +60,19 @@ public:
 qMRMLChartWidgetPrivate::qMRMLChartWidgetPrivate(qMRMLChartWidget& object)
   : q_ptr(&object)
 {
-  this->ChartView = 0;
-  this->ChartController = 0;
+  this->ChartView = nullptr;
+  this->ChartController = nullptr;
 }
 
 //---------------------------------------------------------------------------
 qMRMLChartWidgetPrivate::~qMRMLChartWidgetPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLChartWidgetPrivate::init()
 {
   Q_Q(qMRMLChartWidget);
-  
+
   QVBoxLayout* layout = new QVBoxLayout(q);
   layout->setSpacing(0);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -82,13 +82,20 @@ void qMRMLChartWidgetPrivate::init()
 
   this->ChartView = new qMRMLChartView;
   layout->addWidget(this->ChartView);
-  
+
   this->ChartController->setChartView(this->ChartView);
 
   QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    this->ChartView, SLOT(setMRMLScene(vtkMRMLScene*)));
   QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    this->ChartController, SLOT(setMRMLScene(vtkMRMLScene*)));
+
+  // XXX Since relying on automatic deletion of QWebEngineView when the application
+  // exit causes the application to crash. This is a workaround for explicitly
+  // deleting the object before the application exit.
+  // See https://bugreports.qt.io/browse/QTBUG-50160#comment-305211
+  QObject::connect(QCoreApplication::instance(), SIGNAL(aboutToQuit()),
+                   q, SLOT(onAppAboutToQuit()));
 }
 
 // --------------------------------------------------------------------------
@@ -107,10 +114,12 @@ qMRMLChartWidget::qMRMLChartWidget(QWidget* parentWidget)
 qMRMLChartWidget::~qMRMLChartWidget()
 {
   Q_D(qMRMLChartWidget);
-  d->ChartView->setMRMLScene(0);
-  d->ChartController->setMRMLScene(0);
+  if (d->ChartView)
+    {
+    d->ChartView->setMRMLScene(nullptr);
+    }
+  d->ChartController->setMRMLScene(nullptr);
 }
-
 
 // --------------------------------------------------------------------------
 void qMRMLChartWidget::setMRMLChartViewNode(vtkMRMLChartViewNode* newChartViewNode)
@@ -160,4 +169,13 @@ vtkMRMLColorLogic* qMRMLChartWidget::colorLogic()const
 {
   Q_D(const qMRMLChartWidget);
   return d->ChartView->colorLogic();
+}
+
+//---------------------------------------------------------------------------
+void qMRMLChartWidget::onAppAboutToQuit()
+{
+  Q_D(qMRMLChartWidget);
+  d->ChartView->setMRMLScene(nullptr);
+  delete d->ChartView;
+  d->ChartView = nullptr;
 }

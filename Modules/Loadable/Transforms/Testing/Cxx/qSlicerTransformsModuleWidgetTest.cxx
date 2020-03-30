@@ -28,7 +28,7 @@
 #include "qSlicerTransformsModule.h"
 #include "qSlicerTransformsModuleWidget.h"
 #include <vtkMRMLScene.h>
-#include <vtkMRMLLinearTransformNode.h>
+#include <vtkMRMLTransformNode.h>
 
 // VTK includes
 #include <vtkMatrix4x4.h>
@@ -49,7 +49,7 @@ private slots:
 void qSlicerTransformsModuleWidgetTester::testIdentity()
 {
   vtkNew<vtkMRMLScene> scene;
-  vtkNew<vtkMRMLLinearTransformNode> transformNode;
+  vtkNew<vtkMRMLTransformNode> transformNode;
   scene->AddNode(transformNode.GetPointer());
 
   qSlicerTransformsModule transformsModule;
@@ -58,10 +58,13 @@ void qSlicerTransformsModuleWidgetTester::testIdentity()
   qSlicerTransformsModuleWidget* transformsWidget =
     dynamic_cast<qSlicerTransformsModuleWidget*>(transformsModule.widgetRepresentation());
 
-  vtkMatrix4x4* matrix = transformNode->GetMatrixTransformToParent();
+  vtkNew<vtkMatrix4x4> matrix;
+  transformNode->GetMatrixTransformToParent(matrix.GetPointer());
   matrix->SetElement(0,0, 10.);
   matrix->SetElement(1,0, 2.);
+  transformNode->SetMatrixTransformToParent(matrix.GetPointer());
   transformsWidget->identity();
+  transformNode->GetMatrixTransformToParent(matrix.GetPointer());
   QCOMPARE(matrix->GetElement(0,0), 1.);
   QCOMPARE(matrix->GetElement(1,0), 0.);
   //transformsWidget->show();
@@ -72,7 +75,7 @@ void qSlicerTransformsModuleWidgetTester::testIdentity()
 void qSlicerTransformsModuleWidgetTester::testInvert()
 {
   vtkNew<vtkMRMLScene> scene;
-  vtkNew<vtkMRMLLinearTransformNode> transformNode;
+  vtkNew<vtkMRMLTransformNode> transformNode;
   scene->AddNode(transformNode.GetPointer());
 
   qSlicerTransformsModule transformsModule;
@@ -81,10 +84,13 @@ void qSlicerTransformsModuleWidgetTester::testInvert()
   qSlicerTransformsModuleWidget* transformsWidget =
     dynamic_cast<qSlicerTransformsModuleWidget*>(transformsModule.widgetRepresentation());
 
-  vtkMatrix4x4* matrix = transformNode->GetMatrixTransformToParent();
+  vtkNew<vtkMatrix4x4> matrix;
+  transformNode->GetMatrixTransformToParent(matrix.GetPointer());
   matrix->SetElement(0,0, 10.);
   matrix->SetElement(1,0, 2.);
+  transformNode->SetMatrixTransformToParent(matrix.GetPointer());
   transformsWidget->invert();
+  transformNode->GetMatrixTransformToParent(matrix.GetPointer());
   QCOMPARE(matrix->GetElement(0,0), 0.1);
   QCOMPARE(matrix->GetElement(1,0), -0.2);
   //transformsWidget->show();

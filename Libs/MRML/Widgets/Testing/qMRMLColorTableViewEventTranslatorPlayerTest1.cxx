@@ -27,6 +27,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -41,7 +44,8 @@
 #include <vtkMRMLPETProceduralColorNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -61,7 +65,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLColorTableViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -82,26 +88,23 @@ int qMRMLColorTableViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   hboxLayout->addWidget(&ColorTableView2);
   topLevel.setLayout(hboxLayout);
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorTableNode =
-    vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorTableNode;
   colorTableNode->SetType(vtkMRMLColorTableNode::Labels);
 
-  ColorTableView.setMRMLColorNode(colorTableNode);
+  ColorTableView.setMRMLColorNode(colorTableNode.GetPointer());
   // for some reasons it generate a warning if the type is changed.
   colorTableNode->NamesInitialisedOff();
   colorTableNode->SetTypeToCool1();
 
-  vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode =
-    vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode>::New();
+  vtkNew<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode;
   colorFreeSurferNode->SetTypeToRedBlue();
 
-  ColorTableView1.setMRMLColorNode(colorFreeSurferNode);
+  ColorTableView1.setMRMLColorNode(colorFreeSurferNode.GetPointer());
   colorFreeSurferNode->SetTypeToLabels();
 
-  vtkSmartPointer<vtkMRMLPETProceduralColorNode> colorPETNode =
-    vtkSmartPointer<vtkMRMLPETProceduralColorNode>::New();
+  vtkNew<vtkMRMLPETProceduralColorNode> colorPETNode;
   colorPETNode->SetTypeToRainbow();
-  ColorTableView2.setMRMLColorNode(colorPETNode);
+  ColorTableView2.setMRMLColorNode(colorPETNode.GetPointer());
   colorPETNode->SetTypeToMIP();
 
   etpWidget.addTestCase(&topLevel,

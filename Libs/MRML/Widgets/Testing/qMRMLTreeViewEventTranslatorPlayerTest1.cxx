@@ -27,6 +27,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -39,12 +42,14 @@
 #include <qMRMLTreeViewEventTranslator.h>
 
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLModelNode.h>
 #include <vtkMRMLModelDisplayNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -75,7 +80,9 @@ void checkFinalWidgetState2(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLTreeViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -89,8 +96,10 @@ int qMRMLTreeViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   // Test case 1
   qMRMLTreeView widget;
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  widget.setMRMLScene(scene);
+  vtkNew<vtkMRMLScene> scene;
+  vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+  applicationLogic->SetMRMLScene(scene.GetPointer());
+  widget.setMRMLScene(scene.GetPointer());
   scene->SetURL(argv[2]);
   scene->Import();
 
@@ -101,25 +110,25 @@ int qMRMLTreeViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   // Test case 2
   qMRMLTreeView widget2;
 
-  vtkSmartPointer<vtkMRMLModelNode> modelNode = vtkSmartPointer<vtkMRMLModelNode>::New();
-  vtkSmartPointer<vtkMRMLModelNode> modelNode2 = vtkSmartPointer<vtkMRMLModelNode>::New();
-  vtkSmartPointer<vtkMRMLModelDisplayNode> displayModelNode = vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
-  vtkSmartPointer<vtkMRMLModelDisplayNode> displayModelNode2 = vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
+  vtkNew<vtkMRMLModelNode> modelNode;
+  vtkNew<vtkMRMLModelNode> modelNode2;
+  vtkNew<vtkMRMLModelDisplayNode> displayModelNode;
+  vtkNew<vtkMRMLModelDisplayNode> displayModelNode2;
 
-  vtkSmartPointer<vtkMRMLScene> scene2 = vtkSmartPointer<vtkMRMLScene>::New();
-  scene2->AddNode(modelNode);
-  scene2->AddNode(modelNode2);
-  scene2->AddNode(displayModelNode);
-  scene2->AddNode(displayModelNode2);
+  vtkNew<vtkMRMLScene> scene2;
+  applicationLogic->SetMRMLScene(scene2.GetPointer());
+  scene2->AddNode(modelNode.GetPointer());
+  scene2->AddNode(modelNode2.GetPointer());
+  scene2->AddNode(displayModelNode.GetPointer());
+  scene2->AddNode(displayModelNode2.GetPointer());
 
   modelNode->SetAndObserveDisplayNodeID(displayModelNode->GetID());
   modelNode2->SetAndObserveDisplayNodeID(displayModelNode2->GetID());
 
   widget2.setSceneModelType("ModelHierarchy");
-  widget2.setListenNodeModifiedEvent(true);
-  widget2.setMRMLScene(scene2);
+  widget2.setMRMLScene(scene2.GetPointer());
 
-  QAction* insertTransformAction = new QAction("Insert transform", 0);
+  QAction* insertTransformAction = new QAction("Insert transform", nullptr);
   widget2.prependNodeMenuAction(insertTransformAction);
   widget2.prependSceneMenuAction(insertTransformAction);
 

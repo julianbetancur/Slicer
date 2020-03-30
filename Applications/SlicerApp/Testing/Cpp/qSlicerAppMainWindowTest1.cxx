@@ -29,7 +29,7 @@
 # include <ctkPythonConsole.h>
 #endif
 
-// SlicerApp includes
+#include "qMRMLWidget.h"// SlicerApp includes
 #include "qSlicerApplication.h"
 #include "qSlicerAppMainWindow.h"
 #ifdef Slicer_USE_PYTHONQT
@@ -40,7 +40,9 @@
 
 int qSlicerAppMainWindowTest1(int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   qSlicerApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qSlicerAppMainWindow mainWindow;
   mainWindow.show();

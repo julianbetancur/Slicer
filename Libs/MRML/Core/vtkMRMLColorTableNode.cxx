@@ -15,15 +15,16 @@ Version:   $Revision: 1.0 $
 // MRML includes
 #include "vtkMRMLColorTableNode.h"
 #include "vtkMRMLColorTableStorageNode.h"
+#include "vtkMRMLScene.h"
 
 // VTK includes
+#include <vtkCommand.h>
 #include <vtkLookupTable.h>
+#include <vtkNew.h>
 #include <vtkObjectFactory.h>
 
 // STD includes
 #include <sstream>
-
-vtkCxxSetObjectMacro(vtkMRMLColorTableNode, LookupTable, vtkLookupTable);
 
 //------------------------------------------------------------------------------
 vtkMRMLNodeNewMacro(vtkMRMLColorTableNode);
@@ -33,48 +34,29 @@ vtkMRMLColorTableNode::vtkMRMLColorTableNode()
 {
   this->SetName("");
   this->SetDescription("Color Table");
-  this->LookupTable = NULL;
+  this->LookupTable = nullptr;
   this->LastAddedColor = -1;
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLColorTableNode::~vtkMRMLColorTableNode()
 {
-  if (this->LookupTable)
-    {
-    this->LookupTable->Delete();
-    }
+  this->SetAndObserveLookupTable(nullptr);
 }
 
 //----------------------------------------------------------------------------
 void vtkMRMLColorTableNode::WriteXML(ostream& of, int nIndent)
 {
   // Write all attributes not equal to their FullRainbows
-  
+
   Superclass::WriteXML(of, nIndent);
-  
-  vtkIndent indent(nIndent);
-  
-  // only print out the look up table if ?
-  if (this->LookupTable != NULL) // && this->Type != this->File
+
+  // only print out the look up table size so that the table can be
+  // initialized properly
+  if (this->LookupTable != nullptr)
     {
     of << " numcolors=\"" << this->LookupTable->GetNumberOfTableValues() << "\"";
-    of << " colors=\"";
-    const char *noName = this->GetNoName();
-    for (int i = 0; i < this->LookupTable->GetNumberOfTableValues(); i++)
-      {
-      const char *colorName = this->GetColorName(i);
-      if (colorName &&
-          noName &&
-          strcmp(colorName,noName) != 0)
-        {
-        double *rgba;
-        rgba = this->LookupTable->GetTableValue(i);
-        of <<  i << " " << this->GetColorNameWithoutSpaces(i, "_") << " " << rgba[0] << " " << rgba[1] << " " << rgba[2] << " " << rgba[3] << " ";
-        }
-      }
-    of << "\"";
-    } 
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -87,7 +69,7 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
   const char* attName;
   const char* attValue;
   int numColours;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
   {
       attName = *(atts++);
       attValue = *(atts++);
@@ -109,7 +91,7 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
           this->SetColor(i, noName, 0.0, 0.0, 0.0, 0.0);
           }
         }
-      else  if (!strcmp(attName, "colors")) 
+      else  if (!strcmp(attName, "colors"))
       {
       std::stringstream ss;
       for (int i = 0; i < this->LookupTable->GetNumberOfTableValues(); i++)
@@ -121,7 +103,7 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
         std::string name;
         double r, g, b, a;
         ss >> index;
-        ss >> name;          
+        ss >> name;
         ss >> r;
         ss >> g;
         ss >> b;
@@ -136,7 +118,7 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
           name = name.substr(firstValidChar, 1 + lastValidChar - firstValidChar);
           }
         vtkDebugMacro("Adding colour at index " << index << ", r = " << r << ", g = " << g << ", b = " << b << ", a = " << a << " and then setting name to " << name.c_str() << endl);
-        
+
         if (this->SetColorNameWithSpaces(index, name.c_str(), "_") != 0)
           {
           this->LookupTable->SetTableValue(index, r, g, b, a);
@@ -145,18 +127,18 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
       // set the table range
       if ( this->LookupTable->GetNumberOfTableValues() > 0 )
         {
-        this->LookupTable->SetRange(0,  this->LookupTable->GetNumberOfTableValues() - 1);
+          this->LookupTable->SetRange(0, 255);
         }
       this->NamesInitialisedOn();
       }
-      else if (!strcmp(attName, "type")) 
+      else if (!strcmp(attName, "type"))
       {
       int type;
       std::stringstream ss;
       ss << attValue;
       ss >> type;
       this->SetType(type);
-      }      
+      }
       else
       {
           vtkDebugMacro ("Unknown attribute name " << attName << endl);
@@ -170,14 +152,46 @@ void vtkMRMLColorTableNode::ReadXMLAttributes(const char** atts)
 // Does NOT copy: ID, FilePrefix, Name, ID
 void vtkMRMLColorTableNode::Copy(vtkMRMLNode *anode)
 {
+  /// BUG 3992: when custom color tables appear in scene views,
+  /// the color information is saved in a file on disk and not
+  /// read into the scene view copy of the node. Continuing
+  /// with the copy will remove the color information from the
+  /// node in the main scene, so return to preserve it.
+  /// See also vtkMRMLMarkupsNode::Copy.
+  /// TBD: if scene view node reading xml triggers reading the data from
+  // storage nodes, this should no longer be necessary.
+  if (this->Scene &&
+      this->Scene->IsRestoring())
+    {
+#ifndef _NDEBUG
+    vtkWarningMacro("ColorTable Copy inside scene view restore: "
+                    << "colors to restore are missing, skipping.");
+#endif
+    return;
+    }
   int disabledModify = this->StartModify();
 
   Superclass::Copy(anode);
   vtkMRMLColorTableNode *node = (vtkMRMLColorTableNode *) anode;
-  if (node->LookupTable)
+
+  // Deep copy LookupTable
+  if (node->GetLookupTable() != nullptr)
     {
-    this->SetLookupTable(node->LookupTable);
+    if (this->LookupTable == nullptr)
+      {
+      vtkNew<vtkLookupTable> lut;
+      this->SetAndObserveLookupTable(lut.GetPointer());
+      }
+    if (this->LookupTable != node->GetLookupTable())
+      {
+      this->LookupTable->DeepCopy(node->GetLookupTable());
+      }
     }
+  else
+    {
+    this->SetAndObserveLookupTable(nullptr);
+    }
+
   this->EndModify(disabledModify);
 
 }
@@ -187,12 +201,12 @@ void vtkMRMLColorTableNode::PrintSelf(ostream& os, vtkIndent indent)
 {
   Superclass::PrintSelf(os,indent);
 
-  if (this->LookupTable != NULL)
+  if (this->LookupTable != nullptr)
     {
     os << indent << "Look up table:\n";
     this->LookupTable->PrintSelf(os, indent.GetNextIndent());
     }
-/*  if (this->FSLookupTable != NULL)
+/*  if (this->FSLookupTable != nullptr)
     {
     os << indent << "FreeSurfer look up table:\n";
     this->FSLookupTable->PrintSelf(os, indent.GetNextIndent());
@@ -269,27 +283,13 @@ void vtkMRMLColorTableNode::SetTypeToLabels()
 //----------------------------------------------------------------------------
 void vtkMRMLColorTableNode::SetTypeToRandom()
 {
-  
   this->SetType(this->Random);
 }
 
 //----------------------------------------------------------------------------
-void vtkMRMLColorTableNode::SetTypeToUser()
-{
-  this->SetType(this->User);
-}
-
-//----------------------------------------------------------------------------
-void vtkMRMLColorTableNode::SetTypeToFile()
-{
-    this->SetType(this->File);
-}
-
-
-//----------------------------------------------------------------------------
 void vtkMRMLColorTableNode::SetTypeToRed()
 {
-    this->SetType(this->Red);
+  this->SetType(this->Red);
 }
 
 //----------------------------------------------------------------------------
@@ -429,6 +429,11 @@ void vtkMRMLColorTableNode::SetTypeToCoolTint3()
 //----------------------------------------------------------------------------
 const char* vtkMRMLColorTableNode::GetTypeAsString()
 {
+  const char *type = Superclass::GetTypeAsString();
+  if (type && strcmp(type,"(unknown)") != 0)
+    {
+      return type;
+    }
   if (this->Type == this->FullRainbow)
     {
     return "FullRainbow";
@@ -476,14 +481,6 @@ const char* vtkMRMLColorTableNode::GetTypeAsString()
   if (this->Type == this->Random)
     {
     return "Random";
-    }
-  if (this->Type == this->User)
-    {
-      return "UserDefined";
-    }
-  if (this->Type == this->File)
-    {
-    return "File";
     }
   if (this->Type == this->Red)
     {
@@ -586,37 +583,36 @@ const char* vtkMRMLColorTableNode::GetTypeAsString()
 
 //---------------------------------------------------------------------------
 void vtkMRMLColorTableNode::ProcessMRMLEvents ( vtkObject *caller,
-                                           unsigned long event, 
+                                           unsigned long event,
                                            void *callData )
 {
   Superclass::ProcessMRMLEvents(caller, event, callData);
-/*
-  vtkMRMLColorTableDisplayNode *dnode = this->GetDisplayNode();
-  if (dnode != NULL && dnode == vtkMRMLColorTableDisplayNode::SafeDownCast(caller) &&
-      event ==  vtkCommand::ModifiedEvent)
+
+  // Emit a node modified event if the lookup table object is modified
+  if (caller != nullptr && caller == this->LookupTable && event == vtkCommand::ModifiedEvent)
     {
-        this->InvokeEvent(vtkMRMLColorTableNode::DisplayModifiedEvent, NULL);
+    Modified();
     }
-*/
+
   return;
 }
 
 //---------------------------------------------------------------------------
 void vtkMRMLColorTableNode::SetType(int type)
 {
-  if (this->GetLookupTable() != NULL &&
+  if (this->GetLookupTable() != nullptr &&
       this->Type == type)
     {
     vtkDebugMacro("SetType: type is already set to " << type <<  " = " << this->GetTypeAsString());
     return;
     }
-    
+
     this->Type = type;
 
     vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting Type to " << type << " = " << this->GetTypeAsString());
 
     //this->LookupTable->Delete();
-    if (this->GetLookupTable() == NULL)
+    if (this->GetLookupTable() == nullptr)
       {
       vtkDebugMacro("vtkMRMLColorTableNode::SetType Creating a new lookup table (was null) of type " << this->GetTypeAsString() << "\n");
       vtkLookupTable *table = vtkLookupTable::New();
@@ -716,7 +712,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       this->GetLookupTable()->SetAlphaRange(1, 1); // not used
       this->GetLookupTable()->Build();
       this->SetNamesFromColors();
-      this->SetDescription("A cyan ramp of 256 values, from black to cyan, complementary ramp to red, layering yeilds gray");
+      this->SetDescription("A cyan ramp of 256 values, from black to cyan, complementary ramp to red, layering yields gray");
       }
     else if (this->Type == this->Magenta)
       {
@@ -729,7 +725,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       this->GetLookupTable()->SetAlphaRange(1, 1); // not used
       this->GetLookupTable()->Build();
       this->SetNamesFromColors();
-      this->SetDescription("A magenta scale of 256 colors from black to magenta, complementary ramp to green, layering yeilds gray ");
+      this->SetDescription("A magenta scale of 256 colors from black to magenta, complementary ramp to green, layering yields gray ");
       }
     else if (this->Type == this->WarmShade1)
       {
@@ -968,7 +964,7 @@ void vtkMRMLColorTableNode::SetType(int type)
     else if (this->Type == this->Iron)
       {
       this->GetLookupTable()->SetNumberOfTableValues(156);
-      this->GetLookupTable()->SetTableRange(0, 156);
+      this->GetLookupTable()->SetTableRange(0, 255);
       this->GetLookupTable()->SetHueRange(0, 0.15);
       this->GetLookupTable()->SetSaturationRange(1,1);
       this->GetLookupTable()->SetValueRange(1,1);
@@ -1012,7 +1008,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       this->SetNamesFromColors();
       this->SetDescription("Red to yellow/orange scale, 256 colours, useful for ");
       }
-    
+
     else if (this->Type == this->InvGrey)
       {
       this->GetLookupTable()->SetNumberOfTableValues(256);
@@ -1036,7 +1032,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       this->SetNamesFromColors();
       this->SetDescription("A colourful display option, 256 colours going from purple to red");
       }
-    
+
     else if (this->Type == this->FMRI)
       {
       // Use different numbers of table values for neg and pos
@@ -1061,7 +1057,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       pos->Build();
 
       this->GetLookupTable()->SetNumberOfTableValues(43);
-      this->GetLookupTable()->SetTableRange(0,43);
+      this->GetLookupTable()->SetTableRange(0,255);
       this->GetLookupTable()->SetRampToLinear();
       this->GetLookupTable()->ForceBuild();
 
@@ -1073,18 +1069,18 @@ void vtkMRMLColorTableNode::SetType(int type)
         {
         this->GetLookupTable()->SetTableValue(i+23, pos->GetTableValue(i));
         }
-      
+
       pos->Delete();
       neg->Delete();
       this->SetNamesFromColors();
       this->SetDescription("A combination of Ocean (0-22) and Desert (23-42), useful for displaying functional MRI volumes (highlights activation)");
       }
-    
+
     else if (this->Type == this->FMRIPA)
       {
       int size = 20;
       this->GetLookupTable()->SetNumberOfTableValues(size);
-      this->GetLookupTable()->SetTableRange(0,size);
+      this->GetLookupTable()->SetTableRange(0,255);
       this->GetLookupTable()->SetHueRange(0, 0.16667);
       this->GetLookupTable()->SetSaturationRange(1, 1);
       this->GetLookupTable()->SetValueRange(1, 1);
@@ -1098,10 +1094,10 @@ void vtkMRMLColorTableNode::SetType(int type)
       {
       // from Slicer2's Colors.xml
       this->GetLookupTable()->SetNumberOfTableValues(257);
-      this->GetLookupTable()->SetTableRange(0,257);
+      this->GetLookupTable()->SetTableRange(0,255);
       this->Names.clear();
       this->Names.resize(this->GetLookupTable()->GetNumberOfTableValues());
-      
+
       if (this->SetColorName(0, "Black") != 0)
         {
         this->GetLookupTable()->SetTableValue(0, 0, 0, 0, 0.0);
@@ -1153,7 +1149,7 @@ void vtkMRMLColorTableNode::SetType(int type)
         if (this->SetColorName(offset + 11, "jake") != 0)
           {
           this->GetLookupTable()->SetTableValue(offset + 11, 0.2, 0.5, 0.8, 1.0);
-          }        
+          }
         if (this->SetColorName(offset + 12, "elwood") != 0)
           {
           this->GetLookupTable()->SetTableValue(offset + 12, 0.2, 0.8, 0.5, 1.0);
@@ -1208,9 +1204,9 @@ void vtkMRMLColorTableNode::SetType(int type)
     else if (this->Type == this->Random)
       {
       int size = 255;
-      
+
       this->GetLookupTable()->SetNumberOfTableValues(size + 1);
-      this->GetLookupTable()->SetTableRange(0, size);
+      this->GetLookupTable()->SetTableRange(0, 255);
       this->GetLookupTable()->SetTableValue(0, 0, 0, 0, 0);
       for (int i = 1; i <= size; i++)
         {
@@ -1218,10 +1214,10 @@ void vtkMRMLColorTableNode::SetType(int type)
         double r = (rand()%255)/255.0;
         double g = (rand()%255)/255.0;
         double b = (rand()%255)/255.0;
-       
+
         this->GetLookupTable()->SetTableValue(i, r, g, b, 1.0);
         }
-      this->SetNamesFromColors();      
+      this->SetNamesFromColors();
       this->SetDescription("A random selection of 256 rgb colours, useful to distinguish between a small number of labeled regions (especially outside of the brain)");
       }
 
@@ -1238,7 +1234,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       vtkDebugMacro("Set type to file, set up a storage node, set it's FileName and call ReadData on it...");
       this->SetDescription("A color table read in from a text file, each line of the format: IntegerLabel  Name  R  G  B  Alpha");
       }
-    
+
     else
       {
       vtkErrorMacro("vtkMRMLColorTableNode: SetType ERROR, unknown type " << type << endl);
@@ -1246,7 +1242,7 @@ void vtkMRMLColorTableNode::SetType(int type)
       }
     // invoke a modified event
     this->Modified();
-    
+
     // invoke a type  modified event
     this->InvokeEvent(vtkMRMLColorTableNode::TypeModifiedEvent);
 }
@@ -1254,7 +1250,7 @@ void vtkMRMLColorTableNode::SetType(int type)
 //---------------------------------------------------------------------------
 void vtkMRMLColorTableNode::SetNumberOfColors(int n)
 {
-  if (this->GetLookupTable() == NULL)
+  if (this->GetLookupTable() == nullptr)
     {
     vtkErrorMacro("SetNumberofColors: lookup table is null, set the type first.");
     return;
@@ -1266,9 +1262,14 @@ void vtkMRMLColorTableNode::SetNumberOfColors(int n)
       return;
     }
 
-  if (this->GetLookupTable()->GetNumberOfTableValues() != n)
+  int numberOfTableValues = this->GetLookupTable()->GetNumberOfTableValues();
+  if (numberOfTableValues != n)
     {
     this->GetLookupTable()->SetNumberOfTableValues(n);
+    for (int indx = numberOfTableValues; indx < n; indx++)
+      {
+      this->GetLookupTable()->SetTableValue(indx, 0.0, 0.0, 0.0);
+      }
     }
 
   if (this->Names.size() != (unsigned int)n)
@@ -1282,7 +1283,7 @@ void vtkMRMLColorTableNode::SetNumberOfColors(int n)
 //---------------------------------------------------------------------------
 int vtkMRMLColorTableNode::GetNumberOfColors()
 {
-  if (this->GetLookupTable() != NULL)
+  if (this->GetLookupTable() != nullptr)
     {
     return this->GetLookupTable()->GetNumberOfTableValues();
     }
@@ -1322,10 +1323,6 @@ int vtkMRMLColorTableNode::SetColor(int entry, const char *name, double r, doubl
     }
 
   this->GetLookupTable()->SetTableValue(entry, r, g, b, a);
-  if (!this->GetNamesInitialised())
-    {
-    this->SetNamesFromColors();
-    }
   if (this->SetColorName(entry, name) == 0)
     {
     vtkWarningMacro("SetColor: error setting color name " << name << " for entry " << entry);
@@ -1395,7 +1392,7 @@ int vtkMRMLColorTableNode::SetOpacity(int entry, double opacity)
 }
 
 //---------------------------------------------------------------------------
-bool vtkMRMLColorTableNode::GetColor(int entry, double* color)
+bool vtkMRMLColorTableNode::GetColor(int entry, double color[4])
 {
   if (entry < 0 || entry >= this->GetNumberOfColors())
     {
@@ -1414,7 +1411,7 @@ void vtkMRMLColorTableNode::ClearNames()
 }
 
 //---------------------------------------------------------------------------
-void vtkMRMLColorTableNode::Reset()
+void vtkMRMLColorTableNode::Reset(vtkMRMLNode* defaultNode)
 {
   int disabledModify = this->StartModify();
 
@@ -1422,7 +1419,7 @@ void vtkMRMLColorTableNode::Reset()
   if (this->GetType() == vtkMRMLColorTableNode::User)
     {
     int type = this->GetType();
-    Superclass::Reset();
+    Superclass::Reset(defaultNode);
     this->SetType(type);
     }
 
@@ -1430,24 +1427,30 @@ void vtkMRMLColorTableNode::Reset()
 }
 
 //---------------------------------------------------------------------------
-int vtkMRMLColorTableNode::GetColorIndexByName(const char *name)
-{
-  if (this->GetNamesInitialised() && name != NULL)
-    {
-    std::string strName = name;
-    for (unsigned int i = 0; i < this->Names.size(); i++)
-      {
-      if (strName.compare(this->GetColorName(i)) == 0)
-        {
-        return i;
-        }
-      }
-    }
-    return -1;
-}
-
-//---------------------------------------------------------------------------
 vtkMRMLStorageNode* vtkMRMLColorTableNode::CreateDefaultStorageNode()
 {
-  return vtkMRMLColorTableStorageNode::New();
-};
+  vtkMRMLScene* scene = this->GetScene();
+  if (scene == nullptr)
+    {
+    vtkErrorMacro("CreateDefaultStorageNode failed: scene is invalid");
+    return nullptr;
+    }
+  return vtkMRMLStorageNode::SafeDownCast(scene->CreateNodeByClass("vtkMRMLColorTableStorageNode"));
+}
+
+//----------------------------------------------------------------------------
+vtkLookupTable* vtkMRMLColorTableNode::GetLookupTable()
+{
+  return this->LookupTable;
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLColorTableNode::SetAndObserveLookupTable(vtkLookupTable *lut)
+{
+  if (lut == this->LookupTable)
+    {
+    return;
+    }
+  vtkSetAndObserveMRMLObjectMacro(this->LookupTable, lut);
+  this->Modified();
+}

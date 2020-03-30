@@ -20,9 +20,12 @@
 
 // Qt includes
 #include <QDebug>
+#include <QDesktopServices>
+#include <QFileInfo>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QSettings>
+#include <QUrl>
 
 // CTK includes
 #include <ctkBooleanMapper.h>
@@ -32,7 +35,11 @@
 #include "qSlicerSettingsGeneralPanel.h"
 #include "ui_qSlicerSettingsGeneralPanel.h"
 
-#include "vtkSlicerConfigure.h" // For Slicer_QM_OUTPUT_DIRS
+#include "vtkSlicerConfigure.h" // For Slicer_QM_OUTPUT_DIRS, Slicer_BUILD_I18N_SUPPORT, Slicer_USE_PYTHONQT
+
+#ifdef Slicer_USE_PYTHONQT
+#include "PythonQt.h"
+#endif
 
 // --------------------------------------------------------------------------
 // qSlicerSettingsGeneralPanelPrivate
@@ -65,47 +72,82 @@ void qSlicerSettingsGeneralPanelPrivate::init()
   Q_Q(qSlicerSettingsGeneralPanel);
 
   this->setupUi(q);
+
+#ifdef Slicer_BUILD_I18N_SUPPORT
   bool internationalizationEnabled =
       qSlicerApplication::application()->userSettings()->value("Internationalization/Enabled").toBool();
 
   this->LanguageLabel->setVisible(internationalizationEnabled);
   this->LanguageComboBox->setVisible(internationalizationEnabled);
-  /// Default values
-  this->LanguageComboBox->setDefaultLanguage("en");
-  /// set the directory where all the translations files are.
-  this->LanguageComboBox->setDirectory(
-      QString(Slicer_QM_OUTPUT_DIRS).split(";").at(0));
 
-  QObject::connect(this->FontButton, SIGNAL(currentFontChanged(QFont)),
-                   q, SLOT(onFontChanged(QFont)));
-  QObject::connect(this->ShowToolTipsCheckBox, SIGNAL(toggled(bool)),
-                   q, SLOT(onShowToolTipsToggled(bool)));
-  QObject::connect(this->ShowToolButtonTextCheckBox, SIGNAL(toggled(bool)),
-                   q, SLOT(onShowToolButtonTextToggled(bool)));
+  if (internationalizationEnabled)
+    {
+    /// Default values
+    this->LanguageComboBox->setDefaultLanguage("en");
+    /// set the directory where all the translations files are.
+    this->LanguageComboBox->setDirectory(
+        QString(Slicer_QM_OUTPUT_DIRS).split(";").at(0));
+    }
+#else
+  this->LanguageLabel->setVisible(false);
+  this->LanguageComboBox->setVisible(false);
+#endif
+
+#ifdef Slicer_USE_PYTHONQT
+  if (!qSlicerCoreApplication::testAttribute(qSlicerCoreApplication::AA_DisablePython))
+    {
+    PythonQt::init();
+    PythonQtObjectPtr context = PythonQt::self()->getMainModule();
+    context.evalScript(QString("slicerrcfilename = getSlicerRCFileName()\n"));
+    QVariant slicerrcFileNameVar = context.getVariable("slicerrcfilename");
+    this->SlicerRCFileValueLabel->setText(slicerrcFileNameVar.toString());
+    QIcon openFileIcon = QApplication::style()->standardIcon(QStyle::SP_DialogOpenButton);
+    this->SlicerRCFileOpenButton->setIcon(openFileIcon);
+    QObject::connect(this->SlicerRCFileOpenButton, SIGNAL(clicked()), q, SLOT(openSlicerRCFile()));
+    }
+  else
+    {
+    this->SlicerRCFileOpenButton->setVisible(false);
+    this->SlicerRCFileValueLabel->setVisible(false);
+    }
+#else
+  this->SlicerRCFileLabel->setVisible(false);
+  this->SlicerRCFileValueLabel->setVisible(false);
+#endif
 
   // Default values
+
+  this->DefaultScenePathButton->setDirectory(qSlicerCoreApplication::application()->defaultScenePath());
+  q->registerProperty("DefaultScenePath", this->DefaultScenePathButton,"directory",
+                      SIGNAL(directoryChanged(QString)),
+                      "Default scene path",
+                     ctkSettingsPanel::OptionRequireRestart);
+  QObject::connect(this->DefaultScenePathButton, SIGNAL(directoryChanged(QString)),
+                   q, SLOT(setDefaultScenePath(QString)));
+
   this->SlicerWikiURLLineEdit->setText("http://www.slicer.org/slicerWiki/index.php");
 
   q->registerProperty("no-splash", this->ShowSplashScreenCheckBox, "checked",
                       SIGNAL(toggled(bool)));
-  q->registerProperty("no-tooltip", this->ShowToolTipsCheckBox, "checked",
-                      SIGNAL(toggled(bool)));
-  q->registerProperty("font", this->FontButton, "currentFont",
-                      SIGNAL(currentFontChanged(QFont)));
-  q->registerProperty("MainWindow/ShowToolButtonText", this->ShowToolButtonTextCheckBox,
-                      "checked", SIGNAL(toggled(bool)));
-  q->registerProperty("MainWindow/RestoreGeometry", this->RestoreUICheckBox, "checked",
-                      SIGNAL(toggled(bool)));
+
   ctkBooleanMapper* restartMapper = new ctkBooleanMapper(this->ConfirmRestartCheckBox, "checked", SIGNAL(toggled(bool)));
   restartMapper->setTrueValue(static_cast<int>(QMessageBox::InvalidRole));
   restartMapper->setFalseValue(static_cast<int>(QMessageBox::Ok));
   q->registerProperty("MainWindow/DontConfirmRestart",
                       restartMapper,"valueAsInt", SIGNAL(valueAsIntChanged(int)));
+
   ctkBooleanMapper* exitMapper = new ctkBooleanMapper(this->ConfirmExitCheckBox, "checked", SIGNAL(toggled(bool)));
   exitMapper->setTrueValue(static_cast<int>(QMessageBox::InvalidRole));
   exitMapper->setFalseValue(static_cast<int>(QMessageBox::Ok));
   q->registerProperty("MainWindow/DontConfirmExit",
                       exitMapper, "valueAsInt", SIGNAL(valueAsIntChanged(int)));
+
+  ctkBooleanMapper* sceneCloseMapper = new ctkBooleanMapper(this->ConfirmSceneCloseCheckBox, "checked", SIGNAL(toggled(bool)));
+  sceneCloseMapper->setTrueValue(static_cast<int>(QMessageBox::InvalidRole));
+  sceneCloseMapper->setFalseValue(static_cast<int>(QMessageBox::AcceptRole));
+  q->registerProperty("MainWindow/DontConfirmSceneClose",
+                      sceneCloseMapper, "valueAsInt", SIGNAL(valueAsIntChanged(int)));
+
   q->registerProperty("SlicerWikiURL", this->SlicerWikiURLLineEdit, "text",
                       SIGNAL(textChanged(QString)));
   q->registerProperty("language", this->LanguageComboBox, "currentLanguage",
@@ -132,30 +174,40 @@ qSlicerSettingsGeneralPanel::qSlicerSettingsGeneralPanel(QWidget* _parent)
 
 // --------------------------------------------------------------------------
 qSlicerSettingsGeneralPanel::~qSlicerSettingsGeneralPanel()
+= default;
+
+// --------------------------------------------------------------------------
+void qSlicerSettingsGeneralPanel::setDefaultScenePath(const QString& path)
 {
+  qSlicerCoreApplication::application()->setDefaultScenePath(path);
 }
 
 // --------------------------------------------------------------------------
-void qSlicerSettingsGeneralPanel::onFontChanged(const QFont& font)
+void qSlicerSettingsGeneralPanel::openSlicerRCFile()
 {
-  qApp->setFont(font);
-}
-
-// --------------------------------------------------------------------------
-void qSlicerSettingsGeneralPanel::onShowToolTipsToggled(bool disable)
-{
-  qSlicerApplication::application()->setToolTipsEnabled(!disable);
-}
-
-// --------------------------------------------------------------------------
-void qSlicerSettingsGeneralPanel::onShowToolButtonTextToggled(bool enable)
-{
-  foreach(QWidget* widget, qSlicerApplication::application()->topLevelWidgets())
+  Q_D(qSlicerSettingsGeneralPanel);
+  QString slicerRcFileName = d->SlicerRCFileValueLabel->text();
+  QFileInfo fileInfo(slicerRcFileName);
+  if (!fileInfo.exists())
     {
-    QMainWindow* mainWindow = qobject_cast<QMainWindow*>(widget);
-    if (mainWindow)
+    QFile outputFile(slicerRcFileName);
+    if (outputFile.open(QFile::WriteOnly | QFile::Truncate))
       {
-      mainWindow->setToolButtonStyle(enable ? Qt::ToolButtonTextUnderIcon : Qt::ToolButtonIconOnly);
+      // slicerrc file does not exist, create one with some default content
+      QTextStream outputStream(&outputFile);
+      outputStream <<
+        "# Python commands in this file are executed on Slicer startup\n"
+        "\n"
+        "# Examples:\n"
+        "#\n"
+        "# Load a scene file\n"
+        "# slicer.util.loadScene('c:/Users/SomeUser/Documents/SlicerScenes/SomeScene.mrb')\n"
+        "#\n"
+        "# Open a module (overrides default startup module in application settings / modules)\n"
+        "# slicer.util.mainWindow().moduleSelector().selectModule('SegmentEditor')\n"
+        "#\n";
+      outputFile.close();
       }
     }
+  QDesktopServices::openUrl(QUrl("file:///" + slicerRcFileName, QUrl::TolerantMode));
 }

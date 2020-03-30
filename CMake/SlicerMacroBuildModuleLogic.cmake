@@ -23,11 +23,30 @@
 #
 
 macro(SlicerMacroBuildModuleLogic)
-  SLICER_PARSE_ARGUMENTS(MODULELOGIC
-    "NAME;EXPORT_DIRECTIVE;SRCS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES"
-    "DISABLE_WRAP_PYTHON;NO_INSTALL"
+  set(options
+    DISABLE_WRAP_PYTHON
+    NO_INSTALL
+    )
+  set(oneValueArgs
+    NAME
+    EXPORT_DIRECTIVE
+    FOLDER
+    )
+  set(multiValueArgs
+    SRCS
+    INCLUDE_DIRECTORIES
+    TARGET_LIBRARIES
+    )
+  cmake_parse_arguments(MODULELOGIC
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
     )
+
+  if(MODULELOGIC_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown keywords given to SlicerMacroBuildModuleLogic(): \"${MODULELOGIC_UNPARSED_ARGUMENTS}\"")
+  endif()
 
   list(APPEND MODULELOGIC_INCLUDE_DIRECTORIES
     ${Slicer_Libs_INCLUDE_DIRS}
@@ -58,6 +77,10 @@ macro(SlicerMacroBuildModuleLogic)
       )
   endif()
 
+  if(NOT DEFINED MODULELOGIC_FOLDER AND DEFINED MODULE_NAME)
+    set(MODULELOGIC_FOLDER "Module-${MODULE_NAME}")
+  endif()
+
   set(MODULELOGIC_NO_INSTALL_OPTION)
   if(MODULELOGIC_NO_INSTALL)
     set(MODULELOGIC_NO_INSTALL_OPTION "NO_INSTALL")
@@ -66,11 +89,14 @@ macro(SlicerMacroBuildModuleLogic)
   SlicerMacroBuildModuleVTKLibrary(
     NAME ${MODULELOGIC_NAME}
     EXPORT_DIRECTIVE ${MODULELOGIC_EXPORT_DIRECTIVE}
+    FOLDER ${MODULELOGIC_FOLDER}
     SRCS ${MODULELOGIC_SRCS}
     INCLUDE_DIRECTORIES ${MODULELOGIC_INCLUDE_DIRECTORIES}
     TARGET_LIBRARIES ${MODULELOGIC_TARGET_LIBRARIES}
     ${MODULELOGIC_NO_INSTALL_OPTION}
     )
+
+  set_property(GLOBAL APPEND PROPERTY SLICER_MODULE_LOGIC_TARGETS ${MODULELOGIC_NAME})
 
   #-----------------------------------------------------------------------------
   # Update Slicer_ModuleLogic_INCLUDE_DIRS
@@ -109,6 +135,14 @@ macro(SlicerMacroBuildModuleLogic)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_LIB_DIR}"
       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_LIB_DIR}"
       )
+
+    if(NOT "${MODULELOGIC_FOLDER}" STREQUAL "")
+      set_target_properties(${MODULELOGIC_NAME}Python PROPERTIES FOLDER ${MODULELOGIC_FOLDER})
+      set_target_properties(${MODULELOGIC_NAME}PythonD PROPERTIES FOLDER ${MODULELOGIC_FOLDER})
+      if(TARGET ${MODULELOGIC_NAME}Hierarchy)
+        set_target_properties(${MODULELOGIC_NAME}Hierarchy PROPERTIES FOLDER ${MODULELOGIC_FOLDER})
+      endif()
+    endif()
 
     # Export target
     set_property(GLOBAL APPEND PROPERTY Slicer_TARGETS ${MODULELOGIC_NAME}Python ${MODULELOGIC_NAME}PythonD)

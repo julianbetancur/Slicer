@@ -26,6 +26,7 @@
 #include "qSlicerCoreCommandOptions.h"
 #ifdef Slicer_USE_PYTHONQT
 # include "qSlicerCorePythonManager.h"
+# include "ctkPythonConsole.h"
 #endif
 
 // Slicer includes
@@ -57,7 +58,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  if (app.coreIOManager() == 0)
+  if (app.coreIOManager() == nullptr)
     {
     std::cerr << "Problem with coreIOManager()" << std::endl;
     return EXIT_FAILURE;
@@ -74,13 +75,13 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
     }
 
   QSettings * settings = app.userSettings();
-  if( settings == 0 )
+  if( settings == nullptr )
     {
     std::cerr << "Problem with settings()" << std::endl;
     return EXIT_FAILURE;
     }
 
-  if (app.coreCommandOptions() == 0)
+  if (app.coreCommandOptions() == nullptr)
     {
     std::cerr << "Problem with coreCommandOptions()" << std::endl;
     return EXIT_FAILURE;
@@ -113,7 +114,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
 
   // Since initialize has been called, the module manager should be available
   qSlicerModuleManager * moduleManager1 = app.moduleManager();
-  
+
   if( !moduleManager1 )
     {
     std::cerr << "Problem with moduleManager()" << std::endl;
@@ -132,7 +133,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
 
   vtkSlicerApplicationLogic * logic1 = app.applicationLogic();
 
-  if( logic1 == NULL )
+  if( logic1 == nullptr )
     {
     std::cerr << "Error in appLogic() " << std::endl;
     return EXIT_FAILURE;
@@ -140,7 +141,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
 
   vtkMRMLScene * scene1 = app.mrmlScene();
 
-  if( scene1 == NULL )
+  if( scene1 == nullptr )
     {
     std::cerr << "Error in mrmlScene() " << std::endl;
     return EXIT_FAILURE;
@@ -152,7 +153,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
   if (pythonManager)
     {
     std::cerr << "Line " << __LINE__ << " - Problem with  corePythonManager()"
-              << " - NULL pointer is expected." << std::endl;
+              << " - nullptr pointer is expected." << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -164,7 +165,7 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
   if (!pythonManager)
     {
     std::cerr << "Line " << __LINE__ << " - Problem with corePythonManager()"
-              << " - Return a NULL pointer." << std::endl;
+              << " - Return a nullptr pointer." << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -175,6 +176,26 @@ int qSlicerCoreApplicationTest1(int argc, char * argv [] )
   if (pythonManager->getVariable("value").toInt() != 7)
     {
     std::cerr << "Line " << __LINE__ << " - Problem with getVariable()" << std::endl;
+    return EXIT_FAILURE;
+    }
+
+  ctkPythonConsole * pythonConsole = app.pythonConsole();
+  if (pythonConsole)
+    {
+    std::cerr << "Line " << __LINE__ << " - Problem with  pythonConsole()"
+              << " - nullptr pointer is expected." << std::endl;
+    return EXIT_FAILURE;
+    }
+
+  // Note: qSlicerCoreApplication class takes ownership of the pythonConsole and
+  // will be responsible to delete it
+  app.setPythonConsole(new ctkPythonConsole());
+
+  pythonConsole = app.pythonConsole();
+  if (!pythonConsole)
+    {
+    std::cerr << "Line " << __LINE__ << " - Problem with pythonConsole()"
+              << " - Return a nullptr pointer." << std::endl;
     return EXIT_FAILURE;
     }
 

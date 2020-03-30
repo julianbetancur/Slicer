@@ -20,6 +20,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // MRMLWidgets includes
 #include <qMRMLTreeView.h>
 
@@ -29,26 +32,29 @@
 #include <vtkMRMLModelDisplayNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLModelTreeViewTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
-  vtkSmartPointer<vtkMRMLModelNode> modelNode = vtkSmartPointer<vtkMRMLModelNode>::New();
-  vtkSmartPointer<vtkMRMLModelDisplayNode> displayModelNode = vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
+  qMRMLWidget::postInitializeApplication();
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  scene->AddNode(modelNode);
-  scene->AddNode(displayModelNode);
-  
+  vtkNew<vtkMRMLModelNode> modelNode;
+  vtkNew<vtkMRMLModelDisplayNode> displayModelNode;
+
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(modelNode.GetPointer());
+  scene->AddNode(displayModelNode.GetPointer());
+
   modelNode->SetAndObserveDisplayNodeID(displayModelNode->GetID());
 
   qMRMLTreeView modelView;
   modelView.setSceneModelType("ModelHierarchy");
-  modelView.setMRMLScene(scene);
+  modelView.setMRMLScene(scene.GetPointer());
 
   modelView.show();
   if (argc < 2 || QString(argv[1]) != "-I")

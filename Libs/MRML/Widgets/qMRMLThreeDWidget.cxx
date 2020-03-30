@@ -34,6 +34,12 @@
 #include "qMRMLThreeDView.h"
 #include "qMRMLThreeDWidget.h"
 
+// MRML includes
+#include <vtkMRMLScene.h>
+
+// VTK includes
+#include <vtkCollection.h>
+
 //--------------------------------------------------------------------------
 // qMRMLSliceViewPrivate
 class qMRMLThreeDWidgetPrivate
@@ -44,11 +50,11 @@ protected:
   qMRMLThreeDWidget* const q_ptr;
 public:
   qMRMLThreeDWidgetPrivate(qMRMLThreeDWidget& object);
-  ~qMRMLThreeDWidgetPrivate();
-  
+  ~qMRMLThreeDWidgetPrivate() override;
+
   void init();
 
-  qMRMLThreeDView*       ThreeDView;
+  qMRMLThreeDView* ThreeDView;
   qMRMLThreeDViewControllerWidget* ThreeDController;
 };
 
@@ -57,20 +63,19 @@ public:
 qMRMLThreeDWidgetPrivate::qMRMLThreeDWidgetPrivate(qMRMLThreeDWidget& object)
   : q_ptr(&object)
 {
-  this->ThreeDView = 0;
-  this->ThreeDController = 0;
+  this->ThreeDView = nullptr;
+  this->ThreeDController = nullptr;
 }
 
 //---------------------------------------------------------------------------
 qMRMLThreeDWidgetPrivate::~qMRMLThreeDWidgetPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLThreeDWidgetPrivate::init()
 {
   Q_Q(qMRMLThreeDWidget);
-  
+
   QVBoxLayout* layout = new QVBoxLayout(q);
   layout->setSpacing(0);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -79,12 +84,16 @@ void qMRMLThreeDWidgetPrivate::init()
   layout->addWidget(this->ThreeDController);
 
   this->ThreeDView = new qMRMLThreeDView;
+  this->ThreeDView->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   layout->addWidget(this->ThreeDView);
-  
+
   this->ThreeDController->setThreeDView(this->ThreeDView);
 
   QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    this->ThreeDView, SLOT(setMRMLScene(vtkMRMLScene*)));
+
+  QObject::connect(q, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
+                   this->ThreeDController, SLOT(setMRMLScene(vtkMRMLScene*)));
 }
 
 // --------------------------------------------------------------------------
@@ -101,8 +110,7 @@ qMRMLThreeDWidget::qMRMLThreeDWidget(QWidget* parentWidget)
 
 // --------------------------------------------------------------------------
 qMRMLThreeDWidget::~qMRMLThreeDWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLThreeDWidget::addDisplayableManager(const QString& dManager)
@@ -123,7 +131,15 @@ void qMRMLThreeDWidget::setMRMLViewNode(vtkMRMLViewNode* newViewNode)
 vtkMRMLViewNode* qMRMLThreeDWidget::mrmlViewNode()const
 {
   Q_D(const qMRMLThreeDWidget);
-  return d->ThreeDView->mrmlViewNode();
+    return d->ThreeDView->mrmlViewNode();
+}
+
+// --------------------------------------------------------------------------
+vtkMRMLViewLogic* qMRMLThreeDWidget::viewLogic() const
+{
+  Q_D(const qMRMLThreeDWidget);
+
+  return d->ThreeDController->viewLogic();
 }
 
 // --------------------------------------------------------------------------
@@ -131,6 +147,13 @@ qMRMLThreeDView* qMRMLThreeDWidget::threeDView()const
 {
   Q_D(const qMRMLThreeDWidget);
   return d->ThreeDView;
+}
+
+// --------------------------------------------------------------------------
+qMRMLThreeDViewControllerWidget* qMRMLThreeDWidget::threeDController() const
+{
+  Q_D(const qMRMLThreeDWidget);
+  return d->ThreeDController;
 }
 
 //---------------------------------------------------------------------------
@@ -141,8 +164,51 @@ void qMRMLThreeDWidget::setViewLabel(const QString& newViewLabel)
 }
 
 //---------------------------------------------------------------------------
+void qMRMLThreeDWidget::setQuadBufferStereoSupportEnabled(bool value)
+{
+  Q_D(qMRMLThreeDWidget);
+  d->ThreeDController->setQuadBufferStereoSupportEnabled(value);
+}
+
+//---------------------------------------------------------------------------
 QString qMRMLThreeDWidget::viewLabel()const
 {
   Q_D(const qMRMLThreeDWidget);
   return d->ThreeDController->viewLabel();
+}
+
+//---------------------------------------------------------------------------
+void qMRMLThreeDWidget::setViewColor(const QColor& newViewColor)
+{
+  Q_D(qMRMLThreeDWidget);
+  d->ThreeDController->setViewColor(newViewColor);
+}
+
+//---------------------------------------------------------------------------
+void qMRMLThreeDWidget::setViewLogics(vtkCollection* logics)
+{
+  Q_D(qMRMLThreeDWidget);
+  d->ThreeDController->setViewLogics(logics);
+}
+
+//---------------------------------------------------------------------------
+void qMRMLThreeDWidget::setMRMLScene(vtkMRMLScene* newScene)
+{
+  Q_D(qMRMLThreeDWidget);
+
+  this->Superclass::setMRMLScene(newScene);
+}
+
+//---------------------------------------------------------------------------
+QColor qMRMLThreeDWidget::viewColor()const
+{
+  Q_D(const qMRMLThreeDWidget);
+  return d->ThreeDController->viewColor();
+}
+
+//------------------------------------------------------------------------------
+void qMRMLThreeDWidget::getDisplayableManagers(vtkCollection* displayableManagers)
+{
+  Q_D(qMRMLThreeDWidget);
+  d->ThreeDView->getDisplayableManagers(displayableManagers);
 }

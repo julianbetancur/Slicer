@@ -20,11 +20,17 @@
 
 /// Qt includes
 #include <QFileDialog>
+#include <QStyle>
 
 /// SlicerQt includes
 #include "qSlicerApplication.h"
 #include "qSlicerIOManager.h"
 #include "qSlicerModelsDialog_p.h"
+
+// VTK includes
+#include "vtkCollection.h"
+#include "vtkMRMLNode.h"
+#include "vtkNew.h"
 
 //-----------------------------------------------------------------------------
 qSlicerModelsDialogPrivate::qSlicerModelsDialogPrivate(qSlicerModelsDialog& object, QWidget* _parentWidget)
@@ -35,8 +41,7 @@ qSlicerModelsDialogPrivate::qSlicerModelsDialogPrivate(qSlicerModelsDialog& obje
 
 //-----------------------------------------------------------------------------
 qSlicerModelsDialogPrivate::~qSlicerModelsDialogPrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerModelsDialogPrivate::init()
@@ -48,12 +53,6 @@ void qSlicerModelsDialogPrivate::init()
           this, SLOT(openAddModelFileDialog()));
   connect(this->AddModelDirectoryToolButton, SIGNAL(clicked()),
           this, SLOT(openAddModelDirectoryDialog()));
-}
-
-//-----------------------------------------------------------------------------
-QStringList qSlicerModelsDialogPrivate::selectedFiles()const
-{
-  return this->SelectedFiles;
 }
 
 //-----------------------------------------------------------------------------
@@ -91,7 +90,7 @@ void qSlicerModelsDialogPrivate::openAddModelDirectoryDialog()
 //-----------------------------------------------------------------------------
 qSlicerModelsDialog::qSlicerModelsDialog(QObject* _parent)
   : qSlicerFileDialog(_parent)
-  , d_ptr(new qSlicerModelsDialogPrivate(*this, 0))
+  , d_ptr(new qSlicerModelsDialogPrivate(*this, nullptr))
 {
   // FIXME give qSlicerModelsDialog as a parent of qSlicerModelsDialogPrivate;
   Q_D(qSlicerModelsDialog);
@@ -100,13 +99,18 @@ qSlicerModelsDialog::qSlicerModelsDialog(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerModelsDialog::~qSlicerModelsDialog()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 qSlicerIO::IOFileType qSlicerModelsDialog::fileType()const
 {
   return QString("ModelFile");
+}
+
+//-----------------------------------------------------------------------------
+QString qSlicerModelsDialog::description()const
+{
+  return tr("Models");
 }
 
 //-----------------------------------------------------------------------------
@@ -121,20 +125,33 @@ bool qSlicerModelsDialog::exec(const qSlicerIO::IOProperties& readerProperties)
   Q_D(qSlicerModelsDialog);
   Q_ASSERT(!readerProperties.contains("fileName"));
 
+  d->LoadedNodeIDs.clear();
   bool res = false;
   if (d->exec() != QDialog::Accepted)
     {
     return res;
     }
-  QStringList files = d->selectedFiles();
+  QStringList files = d->SelectedFiles;
   foreach(QString file, files)
     {
     qSlicerIO::IOProperties properties = readerProperties;
     properties["fileName"] = file;
+    vtkNew<vtkCollection> loadedNodes;
     res = qSlicerCoreApplication::application()->coreIOManager()
       ->loadNodes(this->fileType(),
-                  properties) || res;
+                  properties, loadedNodes.GetPointer()) || res;
+    for (int i = 0; i < loadedNodes->GetNumberOfItems(); ++i)
+      {
+      d->LoadedNodeIDs << vtkMRMLNode::SafeDownCast(loadedNodes->GetItemAsObject(i))
+        ->GetID();
+      }
     }
   return res;
 }
 
+//-----------------------------------------------------------------------------
+QStringList qSlicerModelsDialog::loadedNodes()const
+{
+  Q_D(const qSlicerModelsDialog);
+  return d->LoadedNodeIDs;
+}

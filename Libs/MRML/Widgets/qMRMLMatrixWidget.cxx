@@ -26,9 +26,10 @@
 #include "qMRMLMatrixWidget.h"
 
 // MRML includes
-#include <vtkMRMLLinearTransformNode.h>
+#include <vtkMRMLTransformNode.h>
 
 // VTK includes
+#include <vtkNew.h>
 #include <vtkSmartPointer.h>
 #include <vtkTransform.h>
 #include <vtkWeakPointer.h>
@@ -40,16 +41,16 @@ public:
   qMRMLMatrixWidgetPrivate()
     {
     this->CoordinateReference = qMRMLMatrixWidget::GLOBAL;
-    this->MRMLTransformNode = 0;
+    this->MRMLTransformNode = nullptr;
     this->UserUpdates = true;
     }
-  
+
   qMRMLMatrixWidget::CoordinateReferenceType   CoordinateReference;
-  vtkWeakPointer<vtkMRMLLinearTransformNode>   MRMLTransformNode;
+  vtkWeakPointer<vtkMRMLTransformNode>         MRMLTransformNode;
   // Warning, this is not the real "transform, the real can be retrieved
   // by qVTKAbstractMatrixWidget->transform();
   vtkSmartPointer<vtkTransform>                Transform;
-  // Indicates whether the changes come from the user or are programatic
+  // Indicates whether the changes come from the user or are programmatic
   bool                                         UserUpdates;
 };
 
@@ -64,8 +65,7 @@ qMRMLMatrixWidget::qMRMLMatrixWidget(QWidget* _parent)
 
 // --------------------------------------------------------------------------
 qMRMLMatrixWidget::~qMRMLMatrixWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLMatrixWidget::setCoordinateReference(CoordinateReferenceType _coordinateReference)
@@ -91,30 +91,32 @@ qMRMLMatrixWidget::CoordinateReferenceType qMRMLMatrixWidget::coordinateReferenc
 // --------------------------------------------------------------------------
 void qMRMLMatrixWidget::setMRMLTransformNode(vtkMRMLNode* node)
 {
-  this->setMRMLTransformNode(vtkMRMLLinearTransformNode::SafeDownCast(node));
+  this->setMRMLTransformNode(vtkMRMLTransformNode::SafeDownCast(node));
 }
 
 // --------------------------------------------------------------------------
-void qMRMLMatrixWidget::setMRMLTransformNode(vtkMRMLLinearTransformNode* transformNode)
+void qMRMLMatrixWidget::setMRMLTransformNode(vtkMRMLTransformNode* transformNode)
 {
   Q_D(qMRMLMatrixWidget);
-  
-  if (d->MRMLTransformNode == transformNode) 
-    { 
-    return; 
+
+  if (d->MRMLTransformNode == transformNode)
+    {
+    return;
     }
 
   this->qvtkReconnect(d->MRMLTransformNode, transformNode,
-                      vtkMRMLTransformableNode::TransformModifiedEvent, 
-                      this, SLOT(updateMatrix())); 
+                      vtkMRMLTransformableNode::TransformModifiedEvent,
+                      this, SLOT(updateMatrix()));
 
   d->MRMLTransformNode = transformNode;
-  
+
+  this->setEnabled(transformNode ? transformNode->IsLinear() : false);
+
   this->updateMatrix();
 }
 
 // --------------------------------------------------------------------------
-vtkMRMLLinearTransformNode* qMRMLMatrixWidget::mrmlTransformNode()const
+vtkMRMLTransformNode* qMRMLMatrixWidget::mrmlTransformNode()const
 {
   Q_D(const qMRMLMatrixWidget);
   return d->MRMLTransformNode;
@@ -125,18 +127,25 @@ void qMRMLMatrixWidget::updateMatrix()
 {
   Q_D(qMRMLMatrixWidget);
 
-  if (d->MRMLTransformNode == 0)
+  if (d->MRMLTransformNode == nullptr)
     {
-    this->setMatrixInternal(0);
-    d->Transform = 0;
+    this->setMatrixInternal(nullptr);
+    d->Transform = nullptr;
     return;
     }
-  
-  vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
+
+  bool isLinear = d->MRMLTransformNode->IsLinear();
+  this->setEnabled(isLinear);
+  if (!isLinear)
+    {
+    return;
+    }
+
+  vtkNew<vtkTransform> transform;
   qMRMLUtils::getTransformInCoordinateSystem(
     d->MRMLTransformNode,
-    d->CoordinateReference == qMRMLMatrixWidget::GLOBAL, 
-    transform);
+    d->CoordinateReference == qMRMLMatrixWidget::GLOBAL,
+    transform.GetPointer());
   int oldUserUpdates = d->UserUpdates;
   d->UserUpdates = false;
 
@@ -145,18 +154,17 @@ void qMRMLMatrixWidget::updateMatrix()
   d->UserUpdates = oldUserUpdates;
   // keep a ref on the transform otherwise, the matrix will be reset when transform
   // goes out of scope (because ctkVTKAbstractMatrixWidget has a weak ref on the matrix).
-  d->Transform = transform;
+  d->Transform = transform.GetPointer();
 }
 
 // --------------------------------------------------------------------------
 void qMRMLMatrixWidget::updateTransformNode()
 {
   Q_D(qMRMLMatrixWidget);
-  if (d->MRMLTransformNode == 0 ||
+  if (d->MRMLTransformNode == nullptr ||
       !d->UserUpdates)
     {
     return;
     }
-  vtkMatrix4x4* matrix = this->matrix();
-  d->MRMLTransformNode->GetMatrixTransformToParent()->DeepCopy(matrix);
+  d->MRMLTransformNode->SetMatrixTransformToParent(this->matrix());
 }

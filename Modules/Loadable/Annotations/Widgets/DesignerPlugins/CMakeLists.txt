@@ -9,8 +9,12 @@ set(${KIT}_SRCS
   qSlicerAnnotationModuleWidgetsPlugin.cxx
   qSlicerAnnotationModuleWidgetsPlugin.h
 
+  qMRMLAnnotationFiducialProjectionPropertyWidgetPlugin.cxx
+  qMRMLAnnotationFiducialProjectionPropertyWidgetPlugin.h
   qMRMLAnnotationROIWidgetPlugin.cxx
   qMRMLAnnotationROIWidgetPlugin.h
+  qMRMLAnnotationRulerProjectionPropertyWidgetPlugin.cxx
+  qMRMLAnnotationRulerProjectionPropertyWidgetPlugin.h
   qMRMLAnnotationTreeViewPlugin.cxx
   qMRMLAnnotationTreeViewPlugin.h
   )
@@ -18,7 +22,9 @@ set(${KIT}_SRCS
 set(${KIT}_MOC_SRCS
   qSlicerAnnotationModuleWidgetsPlugin.h
 
+  qMRMLAnnotationFiducialProjectionPropertyWidgetPlugin.h
   qMRMLAnnotationROIWidgetPlugin.h
+  qMRMLAnnotationRulerProjectionPropertyWidgetPlugin.h
   qMRMLAnnotationTreeViewPlugin.h
   )
 
@@ -30,6 +36,7 @@ set(${KIT}_TARGET_LIBRARIES
 ctkMacroBuildQtDesignerPlugin(
   NAME ${KIT}
   EXPORT_DIRECTIVE ${${KIT}_EXPORT}
+  FOLDER "Module-${MODULE_NAME}"
   SRCS ${${KIT}_SRCS}
   MOC_SRCS ${${KIT}_MOC_SRCS}
   TARGET_LIBRARIES ${${KIT}_TARGET_LIBRARIES}

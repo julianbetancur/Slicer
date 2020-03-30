@@ -26,6 +26,7 @@
 // VTK includes
 #include <vtkColor.h>
 #include "vtkMRMLColors.h"
+#include <vtkVersion.h>
 
 //------------------------------------------------------------------------------
 QColor qMRMLColors::sliceRed()
@@ -66,5 +67,5 @@ QColor qMRMLColors::sliceGray()
 //------------------------------------------------------------------------------
 QColor qMRMLColors::fromVTKColor(const vtkColor3d& vtkColor)
 {
-  return QColor::fromRgb(vtkColor.Red(), vtkColor.Green(), vtkColor.Blue());
+  return QColor::fromRgb(vtkColor.GetRed(), vtkColor.GetGreen(), vtkColor.GetBlue());
 }

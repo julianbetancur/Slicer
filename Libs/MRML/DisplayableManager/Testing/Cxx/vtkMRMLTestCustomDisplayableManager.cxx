@@ -27,13 +27,13 @@
 #include <vtkMRMLSliceNode.h>
 
 // VTK includes
+#include <vtkObjectFactory.h>
 
 // STD includes
 #include <cassert>
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLTestCustomDisplayableManager );
-vtkCxxRevisionMacro(vtkMRMLTestCustomDisplayableManager, "$Revision: 13525 $");
 
 //---------------------------------------------------------------------------
 int vtkMRMLTestCustomDisplayableManager::NodeAddedCountThreeDView = 0;
@@ -60,8 +60,7 @@ vtkMRMLTestCustomDisplayableManager::vtkInternal::vtkInternal(vtkMRMLTestCustomD
 
 //---------------------------------------------------------------------------
 vtkMRMLTestCustomDisplayableManager::vtkInternal::~vtkInternal()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 // vtkMRMLTestCustomDisplayableManager methods

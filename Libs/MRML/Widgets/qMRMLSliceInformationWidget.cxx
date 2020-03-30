@@ -19,9 +19,11 @@
 ==============================================================================*/
 
 // Qt includes
+#include <QButtonGroup>
 #include <QDebug>
 
 // qMRML includes
+#include "qMRMLSliceControllerWidget_p.h" // For updateSliceOrientationSelector
 #include "qMRMLSliceInformationWidget_p.h"
 
 // MRML includes
@@ -33,14 +35,13 @@
 //---------------------------------------------------------------------------
 qMRMLSliceInformationWidgetPrivate::qMRMLSliceInformationWidgetPrivate(qMRMLSliceInformationWidget& object)
   : q_ptr(&object)
+  , SliceSpacingModeGroup(nullptr)
 {
-  this->MRMLSliceNode = 0;
 }
 
 //---------------------------------------------------------------------------
 qMRMLSliceInformationWidgetPrivate::~qMRMLSliceInformationWidgetPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLSliceInformationWidgetPrivate::setupUi(qMRMLWidget* widget)
@@ -65,6 +66,9 @@ void qMRMLSliceInformationWidgetPrivate::setupUi(qMRMLWidget* widget)
 
   // Dimension and Field of View are readonly
 
+  this->connect(this->ViewGroupSpinBox, SIGNAL(valueChanged(int)),
+    q, SLOT(setViewGroup(int)));
+
   // Connect LightBox layout
   this->connect(this->LightboxLayoutRowsSpinBox, SIGNAL(valueChanged(int)),
                 q, SLOT(setLightboxLayoutRows(int)));
@@ -88,18 +92,21 @@ void qMRMLSliceInformationWidgetPrivate::setupUi(qMRMLWidget* widget)
 // --------------------------------------------------------------------------
 void qMRMLSliceInformationWidgetPrivate::updateWidgetFromMRMLSliceNode()
 {
-  Q_ASSERT(this->MRMLSliceNode);
+  Q_Q(qMRMLSliceInformationWidget);
+
+  q->setEnabled(this->MRMLSliceNode != nullptr);
+  if (this->MRMLSliceNode == nullptr)
+    {
+    return;
+    }
 
   //qDebug() << "qMRMLSliceInformationWidgetPrivate::updateWidgetFromMRMLSliceNode";
 
   // Update layout name
-  this->LayoutNameLineEdit->setText(QLatin1String(this->MRMLSliceNode->GetLayoutName()));
+  this->LayoutNameLineEdit->setText(QString::fromUtf8(this->MRMLSliceNode->GetLayoutName()));
 
-  // Update orientation selector state
-  int index = this->SliceOrientationSelector->findText(
-      QString::fromStdString(this->MRMLSliceNode->GetOrientationString()));
-  Q_ASSERT(index>=0 && index <=4);
-  this->SliceOrientationSelector->setCurrentIndex(index);
+  qMRMLSliceControllerWidgetPrivate::updateSliceOrientationSelector(
+        this->MRMLSliceNode, this->SliceOrientationSelector);
 
   // Update slice visibility toggle
   this->SliceVisibilityToggle->setChecked(this->MRMLSliceNode->GetSliceVisible());
@@ -123,6 +130,8 @@ void qMRMLSliceInformationWidgetPrivate::updateWidgetFromMRMLSliceNode()
   coordinatesInDouble[1] = fieldOfView[1];
   coordinatesInDouble[2] = fieldOfView[2];
   this->FieldOfViewWidget->setCoordinates(coordinatesInDouble);
+
+  this->ViewGroupSpinBox->setValue(this->MRMLSliceNode->GetViewGroup());
 
   // Update lightbox rows/columns entries
   this->LightboxLayoutRowsSpinBox->setValue(this->MRMLSliceNode->GetLayoutGridRows());
@@ -152,12 +161,12 @@ qMRMLSliceInformationWidget::qMRMLSliceInformationWidget(QWidget* _parent) : Sup
 {
   Q_D(qMRMLSliceInformationWidget);
   d->setupUi(this);
+  this->setEnabled(false);
 }
 
 // --------------------------------------------------------------------------
 qMRMLSliceInformationWidget::~qMRMLSliceInformationWidget()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 vtkMRMLSliceNode* qMRMLSliceInformationWidget::mrmlSliceNode()const
@@ -187,19 +196,13 @@ void qMRMLSliceInformationWidget::setMRMLSliceNode(vtkMRMLSliceNode* newSliceNod
     return;
     }
 
-  // Enable/disable widget
-  this->setDisabled(newSliceNode == 0);
-
   d->qvtkReconnect(d->MRMLSliceNode, newSliceNode, vtkCommand::ModifiedEvent,
                    d, SLOT(updateWidgetFromMRMLSliceNode()));
 
   d->MRMLSliceNode = newSliceNode;
 
-  if (d->MRMLSliceNode)
-    {
-    // Update widget state given the new node
-    d->updateWidgetFromMRMLSliceNode();
-    }
+  // Update widget state given the new node
+  d->updateWidgetFromMRMLSliceNode();
 }
 
 //---------------------------------------------------------------------------
@@ -207,18 +210,12 @@ void qMRMLSliceInformationWidget::setSliceOrientation(const QString& orientation
 {
   Q_D(qMRMLSliceInformationWidget);
 
-#ifndef QT_NO_DEBUG
-  QStringList expectedOrientation;
-  expectedOrientation << "Axial" << "Sagittal" << "Coronal" << "Reformat";
-  Q_ASSERT(expectedOrientation.contains(orientation));
-#endif
-
   if (!d->MRMLSliceNode)
     {
     return;
     }
 
-  d->MRMLSliceNode->SetOrientationString(orientation.toLatin1());
+  d->MRMLSliceNode->SetOrientation(orientation.toUtf8());
 }
 
 //---------------------------------------------------------------------------
@@ -232,6 +229,19 @@ void qMRMLSliceInformationWidget::setSliceVisible(bool visible)
     }
 
   d->MRMLSliceNode->SetSliceVisible(visible);
+}
+
+//---------------------------------------------------------------------------
+void qMRMLSliceInformationWidget::setViewGroup(int viewGroup)
+{
+  Q_D(qMRMLSliceInformationWidget);
+
+  if (!d->MRMLSliceNode)
+    {
+    return;
+    }
+
+  d->MRMLSliceNode->SetViewGroup(viewGroup);
 }
 
 //---------------------------------------------------------------------------

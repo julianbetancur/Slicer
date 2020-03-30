@@ -43,8 +43,7 @@ qSlicerFileReader::qSlicerFileReader(QObject* _parent)
 
 //----------------------------------------------------------------------------
 qSlicerFileReader::~qSlicerFileReader()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 QStringList qSlicerFileReader::extensions()const
@@ -60,24 +59,34 @@ bool qSlicerFileReader::canLoadFile(const QString& fileName)const
 }
 
 //----------------------------------------------------------------------------
-QStringList qSlicerFileReader::supportedNameFilters(const QString& fileName)const
+QStringList qSlicerFileReader::supportedNameFilters(const QString& fileName, int* longestExtensionMatchPtr /* =nullptr */)const
 {
+  if (longestExtensionMatchPtr)
+    {
+    (*longestExtensionMatchPtr) = 0;
+    }
   QStringList matchingNameFilters;
   QFileInfo file(fileName);
-  if (!file.isFile() || 
-      !file.isReadable() || 
+  if (!file.isFile() ||
+      !file.isReadable() ||
       file.suffix().contains('~')) //temporary file
     {
     return matchingNameFilters;
     }
   foreach(const QString& nameFilter, this->extensions())
     {
-    foreach(const QString& extension, ctk::nameFilterToExtensions(nameFilter))
+    foreach(QString extension, ctk::nameFilterToExtensions(nameFilter))
       {
       QRegExp regExp(extension, Qt::CaseInsensitive, QRegExp::Wildcard);
       Q_ASSERT(regExp.isValid());
       if (regExp.exactMatch(file.absoluteFilePath()))
         {
+        extension.remove('*'); // wildcard does not count, that's not a specific match
+        int matchedExtensionLength = extension.size();
+        if (longestExtensionMatchPtr && (*longestExtensionMatchPtr) < matchedExtensionLength)
+          {
+          (*longestExtensionMatchPtr) = matchedExtensionLength;
+          }
         matchingNameFilters << nameFilter;
         }
       }
@@ -108,4 +117,13 @@ QStringList qSlicerFileReader::loadedNodes()const
 {
   Q_D(const qSlicerFileReader);
   return d->LoadedNodes;
+}
+
+//----------------------------------------------------------------------------
+bool qSlicerFileReader::examineFileInfoList(QFileInfoList &fileInfoList, QFileInfo &archetypeFileInfo, qSlicerIO::IOProperties &ioProperties)const
+{
+  Q_UNUSED(fileInfoList);
+  Q_UNUSED(archetypeFileInfo);
+  Q_UNUSED(ioProperties);
+  return(false);
 }

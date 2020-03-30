@@ -16,7 +16,7 @@
 #define __vtkMRMLDisplayableNode_h
 
 // MRML includes
-#include "vtkMRMLStorableNode.h"
+#include "vtkMRMLTransformableNode.h"
 class vtkMRMLDisplayNode;
 
 // STD includes
@@ -37,73 +37,65 @@ class vtkMRMLDisplayNode;
 /// \tbd Check support for a display node to be simultaneously referenced by
 /// different displayable nodes.
 /// \sa vtkMRMLDisplayNode
-class VTK_MRML_EXPORT vtkMRMLDisplayableNode : public vtkMRMLStorableNode
+
+class vtkMRMLDisplayNode;
+
+class VTK_MRML_EXPORT vtkMRMLDisplayableNode : public vtkMRMLTransformableNode
 {
 public:
-  vtkTypeMacro(vtkMRMLDisplayableNode,vtkMRMLStorableNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  vtkTypeMacro(vtkMRMLDisplayableNode,vtkMRMLTransformableNode);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance() = 0;
+  vtkMRMLNode* CreateNodeInstance() override = 0;
 
-  virtual const char* GetNodeTagName() = 0;
+  const char* GetNodeTagName() override = 0;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
-  /// 
+  void ReadXMLAttributes( const char** atts) override;
+
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// Write this node's information to a string for passing to a CLI, precede
-  /// each datum with the prefix if not an empty string
-  virtual void WriteCLI(std::ostringstream& vtkNotUsed(ss), std::string vtkNotUsed(prefix)) {};
+  /// Write this node's information to a vector of strings for passing to a CLI.
+  /// If the prefix is not an empty string, it gets pushed onto the vector
+  /// of strings before the information.
+  /// coordinateSystemFlag = 0 for RAS, 1 for LPS, 2 for IJK
+  /// multipleFlag = 1 for the whole list, 0 for the first in the list
+  virtual void WriteCLI(std::vector<std::string>& vtkNotUsed(commandLine),
+                        std::string vtkNotUsed(prefix),
+                        int vtkNotUsed(coordinateSystemFlag) = 0,
+                        int vtkNotUsed(multipleFlag) = 1) {};
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// Set the display node IDs as references to the scene.
-  virtual void SetSceneReferences();
-
-  /// 
-  /// Updates this node if it depends on other nodes 
-  /// when the node is deleted in the scene
-  virtual void UpdateReferences();
-
-  /// 
-  /// Clears out the list of display nodes, and repopulate it from
-  /// the list of display node ids.
-  virtual void UpdateScene(vtkMRMLScene *scene);
-
-  /// 
-  /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
-
-  /// 
+  ///
   /// Convenience method that sets the first display node ID.
   /// \sa SetAndObserverNthDisplayNodeID(int, const char*)
-  inline void SetAndObserveDisplayNodeID(const char *displayNodeID);
+  void SetAndObserveDisplayNodeID(const char *displayNodeID);
 
-  /// 
+  ///
   /// Convenience method that adds a display node ID at the end of the list.
   /// \sa SetAndObserverNthDisplayNodeID(int, const char*)
-  inline void AddAndObserveDisplayNodeID(const char *displayNodeID);
+  void AddAndObserveDisplayNodeID(const char *displayNodeID);
 
   ///
   /// Convenience method that removes the Nth display node ID from the list
   /// \sa SetAndObserverNthDisplayNodeID(int, const char*)
-  inline void RemoveNthDisplayNodeID(int n);
+  void RemoveNthDisplayNodeID(int n);
 
   ///
   /// Remove all display node IDs and associated display nodes.
   void RemoveAllDisplayNodeIDs();
 
-  /// 
+  ///
   /// Set and observe the Nth display node ID in the list.
   /// If n is larger than the number of display nodes, the display node ID
   /// is added at the end of the list. If DisplayNodeID is 0, the node ID is
@@ -126,7 +118,7 @@ public:
   ///
   /// Return the number of display node IDs (and display nodes as they always
   /// have the same size).
-  inline int GetNumberOfDisplayNodes()const;
+  int GetNumberOfDisplayNodes();
 
   ///
   /// Return the string of the Nth display node ID. Or 0 if no such
@@ -138,38 +130,38 @@ public:
   ///
   /// Utility function that returns the first display node id.
   /// \sa GetNthDisplayNodeID(int), GetDisplayNode()
-  inline const char *GetDisplayNodeID();
+  const char *GetDisplayNodeID();
 
-  /// 
+  ///
   /// Get associated display MRML node. Can be 0 in temporary states; e.g. if
   /// the displayable node has no scene, or if the associated display is not
   /// yet into the scene.
   /// If not cached, it tnternally scans (slow) the scene to search for the
   /// associated display node ID.
   /// If the displayable node is no longer in the scene (GetScene() == 0), it
-  /// happens after the node is removed from hte scene (scene->RemoveNode(dn),
+  /// happens after the node is removed from the scene (scene->RemoveNode(dn),
   /// the returned display node is 0.
+  /// \sa GetNthDisplayNodeByClass()
   vtkMRMLDisplayNode* GetNthDisplayNode(int n);
 
   ///
   /// Utility function that returns the first display node.
   /// \sa GetNthDisplayNode(int), GetDisplayNodeID()
-  inline vtkMRMLDisplayNode* GetDisplayNode();
+  vtkMRMLDisplayNode* GetDisplayNode();
+
+  /// \deprecated GetDisplayNodes
+  /// Obsolete utility function that provides an unsafe API.
+  /// Please use GetNumberOfDisplayNodes() and
+  /// GetNthDisplayNode() instead
+  /// const std::vector<vtkMRMLDisplayNode*>& GetDisplayNodes();
+  /// \sa GetNumberOfDisplayNodes, GetNthDisplayNode
 
   ///
-  /// Return a copy of the list of the display nodes. Some nodes can be 0
-  /// when the scene is in a temporary state.
-  /// The list of nodes is browsed (slow) to make sure the pointers are
-  /// up-to-date.
-  /// \sa GetNthDisplayNode
-  const std::vector<vtkMRMLDisplayNode*>& GetDisplayNodes();
-
-  /// 
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
-  
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
+
   /// DisplayModifiedEvent is fired when:
   ///  - a new display node is observed
   ///  - a display node is not longer observed
@@ -188,84 +180,63 @@ public:
   /// display nodes.
   virtual void CreateDefaultDisplayNodes();
 
-  /// TODO: Change it to Get/SetVisibility() for consistency with
-  /// vtkMRMLDisplayNode.
+  /// TODO: Remove these functions when removing the Annotations module
   /// Utility to return the visibility of all the display nodes.
   /// Return 0 if they are all hidden, 1 if all are visible and 2 if some are
   /// visible and some are hidden.
   virtual int GetDisplayVisibility();
   virtual void SetDisplayVisibility(int visible);
 
-  /// Get bounding box in global RAS the form (xmin,xmax, ymin,ymax, zmin,zmax).
+  /// Get/Set visibility of display nodes of certain class
+  /// if nodeClass is 0, get/set visibility of all display nodes
+  virtual int GetDisplayClassVisibility(const char* nodeClass);
+  virtual void SetDisplayClassVisibility(const char* nodeClass, int visible);
+
+  /// Get bounding box in global RAS form (xmin,xmax, ymin,ymax, zmin,zmax).
+  /// This method returns the bounds of the object with any transforms that may
+  /// be applied to it.
+  /// \sa GetBounds()
   virtual void GetRASBounds(double bounds[6]);
 
- protected:
+  /// Get bounding box in global RAS form (xmin,xmax, ymin,ymax, zmin,zmax).
+  /// This method always returns the bounds of the untransformed object.
+  /// \sa GetRASBounds()
+  virtual void GetBounds(double bounds[6]);
+
+  virtual const char* GetDisplayNodeReferenceRole();
+
+  ///
+  /// Override default selectable setting to notify display node
+  /// about the change.
+  void SetSelectable(int) override;
+
+protected:
   vtkMRMLDisplayableNode();
-  ~vtkMRMLDisplayableNode();
+  ~vtkMRMLDisplayableNode() override;
   vtkMRMLDisplayableNode(const vtkMRMLDisplayableNode&);
   void operator=(const vtkMRMLDisplayableNode&);
 
-  ///
-  /// Call UpdateNthDisplayNode(i) on all nodes.
-  void UpdateDisplayNodes();
+  static const char* DisplayNodeReferenceRole;
+  static const char* DisplayNodeReferenceMRMLAttributeName;
+
+  virtual const char* GetDisplayNodeReferenceMRMLAttributeName();
 
   ///
-  /// Search the display node in the scene that match the associated node ID.
-  /// Prerequisites: scene is valid, n >= 0 and n < display node IDs list size
-  void UpdateNthDisplayNode(int n);
-
-  void SetAndObserveNthDisplayNode(int n, vtkMRMLDisplayNode *dnode);
+  /// Called when a node reference ID is added (list size increased).
+  void OnNodeReferenceAdded(vtkMRMLNodeReference *reference) override;
 
   ///
-  /// Called when a node is added (list size increased). By default it emits
-  /// the DisplayModified event.
-  virtual void OnDisplayNodeAdded(vtkMRMLDisplayNode *dnode);
+  /// Called when a node reference ID is modified.
+  void OnNodeReferenceModified(vtkMRMLNodeReference *reference) override;
 
   ///
-  /// List of display node IDs.
-  std::vector<std::string> DisplayNodeIDs;
+  /// Called after a node reference ID is removed (list size decreased).
+  void OnNodeReferenceRemoved(vtkMRMLNodeReference *reference) override;
 
-  ///
-  /// Cached list of display nodes. The index of each element match the
-  /// DisplayNodeIDs element indexes.
-  /// Note: some nodes can be null.
+private:
+  /// Internally cached list of display nodes used ONLY to return the vector of node in GetDisplayNodes()
+  /// DON'T USE this variable anywhere else
   std::vector<vtkMRMLDisplayNode *> DisplayNodes;
 };
-
-//----------------------------------------------------------------------------
-const char * vtkMRMLDisplayableNode::GetDisplayNodeID()
-{
-  return this->GetNthDisplayNodeID(0);
-}
-
-//----------------------------------------------------------------------------
-vtkMRMLDisplayNode* vtkMRMLDisplayableNode::GetDisplayNode()
-{
-  return this->GetNthDisplayNode(0);
-}
-
-//----------------------------------------------------------------------------
-void vtkMRMLDisplayableNode::SetAndObserveDisplayNodeID(const char *displayNodeID)
-{
-  this->SetAndObserveNthDisplayNodeID(0, displayNodeID);
-}
-
-//----------------------------------------------------------------------------
-void vtkMRMLDisplayableNode::AddAndObserveDisplayNodeID(const char *displayNodeID)
-{
-  this->SetAndObserveNthDisplayNodeID(this->GetNumberOfDisplayNodes(), displayNodeID);
-}
-
-//----------------------------------------------------------------------------
-void vtkMRMLDisplayableNode::RemoveNthDisplayNodeID(int n)
-{
-  this->SetAndObserveNthDisplayNodeID(n, 0);
-}
-
-//----------------------------------------------------------------------------
-int vtkMRMLDisplayableNode::GetNumberOfDisplayNodes()const
-{
-  return static_cast<int>(this->DisplayNodeIDs.size());
-}
 
 #endif

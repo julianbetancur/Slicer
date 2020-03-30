@@ -18,14 +18,11 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // Models includes
 #include "qSlicerModelsModule.h"
 #include "qSlicerModelsModuleWidget.h"
-#include "qSlicerModelsIO.h"
-#include "qSlicerScalarOverlayIO.h"
+#include "qSlicerModelsReader.h"
+#include "qSlicerScalarOverlayReader.h"
 
 // Slicer includes
 #include "qSlicerApplication.h"
@@ -41,8 +38,9 @@
 // MRML includes
 #include "vtkMRMLColorLogic.h"
 
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerModelsModule, qSlicerModelsModule);
+// SubjectHierarchy Plugins includes
+#include "qSlicerSubjectHierarchyPluginHandler.h"
+#include "qSlicerSubjectHierarchyModelsPlugin.h"
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_Models
@@ -57,8 +55,7 @@ public:
 
 //-----------------------------------------------------------------------------
 qSlicerModelsModulePrivate::qSlicerModelsModulePrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 // qSlicerModelsModule methods
@@ -72,14 +69,13 @@ qSlicerModelsModule::qSlicerModelsModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerModelsModule::~qSlicerModelsModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerModelsModule::helpText()const
 {
   QString help =
-    "The Models Module loads and adjusts display parameters of models.<br>"
+    "The Models Module loads and adjusts display parameters of models such as Color, Transparency, and Clipping.<br>"
     "For more information see <a href=\"%1/Documentation/%2.%3/Modules/Models\">%1/Documentation/%2.%3/Modules/Models</a><br>"
     "Save models via the File menu, Save button.<br>"
     "The Add 3D model or a model directory button will allow you to load any "
@@ -101,7 +97,7 @@ QString qSlicerModelsModule::helpText()const
 //-----------------------------------------------------------------------------
 QString qSlicerModelsModule::acknowledgementText()const
 {
-  return "This work was was partially funded by NIH grant 3P41RR013218-12S1";
+  return "This work was partially funded by NIH grants 3P41RR013218-12S1 and R01CA184354.";
 }
 
 //-----------------------------------------------------------------------------
@@ -111,6 +107,7 @@ QStringList qSlicerModelsModule::contributors()const
   moduleContributors << QString("Julien Finet (Kitware)");
   moduleContributors << QString("Alex Yarmakovich (Isomics)");
   moduleContributors << QString("Nicole Aucoin (SPL, BWH)");
+  moduleContributors << QString("Alexis Girault (Kitware)");
   return moduleContributors;
 }
 
@@ -141,22 +138,28 @@ void qSlicerModelsModule::setup()
   // Configure models logic
   vtkSlicerModelsLogic* modelsLogic =
     vtkSlicerModelsLogic::SafeDownCast(this->logic());
-  qSlicerAbstractCoreModule* colorsModule =
-    qSlicerCoreApplication::application()->moduleManager()->module("Colors");
-  if (colorsModule)
+  if (qSlicerApplication::application())
     {
-    vtkMRMLColorLogic* colorLogic =
-      vtkMRMLColorLogic::SafeDownCast(colorsModule->logic());
-    modelsLogic->SetColorLogic(colorLogic);
+    qSlicerAbstractCoreModule* colorsModule =
+      qSlicerCoreApplication::application()->moduleManager()->module("Colors");
+    if (colorsModule)
+      {
+      vtkMRMLColorLogic* colorLogic =
+        vtkMRMLColorLogic::SafeDownCast(colorsModule->logic());
+      modelsLogic->SetColorLogic(colorLogic);
+      }
+    // Register IOs
+    qSlicerIOManager* ioManager = qSlicerApplication::application()->ioManager();
+    ioManager->registerIO(new qSlicerModelsReader(modelsLogic, this));
+    ioManager->registerIO(new qSlicerScalarOverlayReader(modelsLogic, this));
+    ioManager->registerDialog(new qSlicerModelsDialog(this));
+    ioManager->registerIO(new qSlicerNodeWriter(
+      "Models", QString("ModelFile"),
+      QStringList() << "vtkMRMLModelNode", true, this));
     }
-  // Register IOs
-  qSlicerIOManager* ioManager = qSlicerApplication::application()->ioManager();
-  ioManager->registerIO(new qSlicerModelsIO(modelsLogic, this));
-  ioManager->registerIO(new qSlicerScalarOverlayIO(modelsLogic, this));
-  ioManager->registerDialog(new qSlicerModelsDialog(this));
-  ioManager->registerIO(new qSlicerNodeWriter(
-    "Models", QString("ModelFile"),
-    QStringList() << "vtkMRMLModelNode", this));
+
+  // Register Subject Hierarchy core plugins
+  qSlicerSubjectHierarchyPluginHandler::instance()->registerPlugin(new qSlicerSubjectHierarchyModelsPlugin());
 }
 
 //-----------------------------------------------------------------------------
@@ -170,4 +173,12 @@ qSlicerAbstractModuleRepresentation * qSlicerModelsModule::createWidgetRepresent
 vtkMRMLAbstractLogic* qSlicerModelsModule::createLogic()
 {
   return vtkSlicerModelsLogic::New();
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerModelsModule::associatedNodeTypes() const
+{
+  return QStringList()
+    << "vtkMRMLModelNode"
+    << "vtkMRMLModelDisplayNode";
 }

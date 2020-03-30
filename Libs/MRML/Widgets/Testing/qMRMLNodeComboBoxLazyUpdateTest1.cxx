@@ -23,6 +23,9 @@
 #include <QDebug>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLColorTableComboBox.h"
 #include "qMRMLNodeComboBox.h"
@@ -35,12 +38,15 @@
 
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLNodeComboBoxLazyUpdateTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLNodeComboBox nodeSelector;
   qMRMLColorTableComboBox treeNodeSelector;

@@ -1,8 +1,8 @@
 // .NAME vtkMRMLAnnotationTextNode - MRML node to represent a text.
 // .SECTION Description
 // Annotation nodes contains control points, internally represented as vtkPolyData.
-// A Annotation node contains many control points  and forms the smallest logical unit of tractography 
-// that MRML will manage/read/write. Each control point has accompanying data.  
+// A Annotation node contains many control points  and forms the smallest logical unit of tractography
+// that MRML will manage/read/write. Each control point has accompanying data.
 // Visualization parameters for these nodes are controlled by the vtkMRMLAnnotationPointDisplayNode class.
 //
 
@@ -10,7 +10,7 @@
 #define __vtkMRMLAnnotationTextNode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationControlPointsNode.h" 
+#include "vtkMRMLAnnotationControlPointsNode.h"
 
 #include <vtkStdString.h>
 class vtkStringArray;
@@ -26,12 +26,12 @@ public:
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationText";};
-  
-  virtual const char* GetIcon() {return ":/Icons/AnnotationText.png";};
+  const char* GetNodeTagName() override {return "AnnotationText";}
+
+  const char* GetIcon() override {return ":/Icons/AnnotationText.png";}
 
   int SetTextCoordinates(double newCoord[3]) {return this->SetControlPoint(0,newCoord,1,1);}
   double* GetTextCoordinates() {return this->GetControlPointCoordinates(0);}
@@ -52,7 +52,7 @@ public:
 
 protected:
   vtkMRMLAnnotationTextNode();
-  ~vtkMRMLAnnotationTextNode() { }
+  ~vtkMRMLAnnotationTextNode() override  = default;
   vtkMRMLAnnotationTextNode(const vtkMRMLAnnotationTextNode&);
   void operator=(const vtkMRMLAnnotationTextNode&);
 

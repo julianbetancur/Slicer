@@ -302,7 +302,7 @@ def SEMToMediaWikiProg():
 #    print program_description
     (options, args) = parser.parse_args()
 
-#    It may be desirable in the future to automatically push informaiton to the
+#    It may be desirable in the future to automatically push information to the
 #    WIKI page without having to copy and paste.
 #    http://python-wikitools.googlecode.com/svn/trunk/README
 
@@ -321,7 +321,7 @@ def SEMToMediaWikiProg():
                 "The only valid options are [h|b|f]: Given {0}".format(
                     stage))
 
-    if options.xmlfilename != None:
+    if options.xmlfilename is not None:
         outfile = open(options.outfilename, 'w')
         outfile.write(docString)
         outfile.close()

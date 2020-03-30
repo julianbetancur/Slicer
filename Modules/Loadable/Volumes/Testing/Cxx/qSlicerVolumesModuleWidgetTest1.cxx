@@ -22,6 +22,9 @@
 #include <QTimer>
 #include <QWidget>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQt includes
 #include <qSlicerAbstractModuleRepresentation.h>
 #include <qSlicerApplication.h>
@@ -30,15 +33,22 @@
 #include "qSlicerVolumesModule.h"
 #include "vtkSlicerVolumesLogic.h"
 
-// MRML includes
-
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
+
+// ITK includes
+#include <itkConfigure.h>
+#include <itkFactoryRegistration.h>
 
 //-----------------------------------------------------------------------------
 int qSlicerVolumesModuleWidgetTest1( int argc, char * argv[] )
 {
+  itk::itkFactoryRegistration();
+
+  qMRMLWidget::preInitializeApplication();
   qSlicerApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   if (argc < 2)
     {
@@ -47,7 +57,7 @@ int qSlicerVolumesModuleWidgetTest1( int argc, char * argv[] )
     }
 
   qSlicerVolumesModule module;
-  module.initialize(0);
+  module.initialize(nullptr);
 
   vtkNew<vtkMRMLScene> scene;
   vtkNew<vtkSlicerVolumesLogic> volumesLogic;
@@ -60,7 +70,7 @@ int qSlicerVolumesModuleWidgetTest1( int argc, char * argv[] )
     return EXIT_FAILURE;
     }
   module.setMRMLScene(scene.GetPointer());
-  
+
   dynamic_cast<QWidget*>(module.widgetRepresentation())->show();
 
   if (argc < 3 || QString(argv[2]) != "-I")

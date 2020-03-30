@@ -28,6 +28,7 @@
 #include <ctkPimpl.h>
 #include "qSlicerBaseQTGUIExport.h"
 
+class ctkMenuComboBox;
 class qSlicerModuleSelectorToolBarPrivate;
 class qSlicerModuleManager;
 class qSlicerModulesMenu;
@@ -35,7 +36,7 @@ class qSlicerAbstractCoreModule;
 
 ///
 /// qSlicerModuleSelectorToolBar is a toolbar that can be added in your
-/// application and will fired events when the QAction of modules are triggered
+/// application and will fire events when the QAction of modules are triggered
 /// qSlicerModuleSelectorToolBar supports a tree hierarchy of modules (based on
 /// module->categories() ), previous/next buttons to browse the history of
 /// selected modules. (and a plain history button)
@@ -44,16 +45,24 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerModuleSelectorToolBar: public QToolBar
   Q_OBJECT
 public:
   typedef QToolBar Superclass;
+  Q_PROPERTY(QString selectedModule READ selectedModule WRITE selectModule NOTIFY moduleSelected)
 
   /// Constructor
   /// title is the name of the toolbar (can appear using right click on the
   /// toolbar area)
-  qSlicerModuleSelectorToolBar(const QString& title, QWidget* parent = 0);
-  qSlicerModuleSelectorToolBar(QWidget* parent = 0);
-  virtual ~qSlicerModuleSelectorToolBar();
+  qSlicerModuleSelectorToolBar(const QString& title, QWidget* parent = nullptr);
+  qSlicerModuleSelectorToolBar(QWidget* parent = nullptr);
+  ~qSlicerModuleSelectorToolBar() override;
 
   /// Returns a pointer to the modules menu used to populate the list of modules
-  qSlicerModulesMenu* modulesMenu()const;
+  Q_INVOKABLE qSlicerModulesMenu* modulesMenu()const;
+
+  /// Returns a pointer to the menu combobox used to display the modules menu.
+  /// \sa modulesMenu()
+  Q_INVOKABLE ctkMenuComboBox* modulesMenuComboBox() const;
+
+  /// Returns the selected module name
+  QString selectedModule() const;
 
 public slots:
   /// Module manager contains all the loaded modules

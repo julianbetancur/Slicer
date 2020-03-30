@@ -22,6 +22,7 @@ Version:   $Revision: 1.2 $
 #include <vtkImageMapToWindowLevelColors.h>
 #include <vtkImageThreshold.h>
 #include <vtkObjectFactory.h>
+#include <vtkVersion.h>
 
 // STD includes
 #include <sstream>
@@ -50,11 +51,9 @@ void vtkMRMLDiffusionWeightedVolumeDisplayNode::WriteXML(ostream& of, int nInden
 {
   Superclass::WriteXML(of, nIndent);
 
-  vtkIndent indent(nIndent);
-
   std::stringstream ss;
   ss << this->DiffusionComponent;
-  of << indent << " diffusionComponent=\"" << ss.str() << "\"";
+  of << " diffusionComponent=\"" << ss.str() << "\"";
 }
 
 //----------------------------------------------------------------------------
@@ -66,17 +65,17 @@ void vtkMRMLDiffusionWeightedVolumeDisplayNode::ReadXMLAttributes(const char** a
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
-    if (!strcmp(attName, "diffusionComponent")) 
+    if (!strcmp(attName, "diffusionComponent"))
       {
       std::stringstream ss;
       ss << attValue;
       ss >> this->DiffusionComponent;
       }
-    }  
+    }
   this->EndModify(disabledModify);
 }
 
@@ -87,10 +86,10 @@ void vtkMRMLDiffusionWeightedVolumeDisplayNode::Copy(vtkMRMLNode *anode)
 {
   int disabledModify = this->StartModify();
 
-  Superclass::Copy(anode);
   vtkMRMLDiffusionWeightedVolumeDisplayNode *node = (vtkMRMLDiffusionWeightedVolumeDisplayNode *) anode;
-
   this->SetDiffusionComponent(node->DiffusionComponent);
+  this->Superclass::Copy(anode);
+
 
   this->EndModify(disabledModify);
 }
@@ -98,7 +97,7 @@ void vtkMRMLDiffusionWeightedVolumeDisplayNode::Copy(vtkMRMLNode *anode)
 //----------------------------------------------------------------------------
 void vtkMRMLDiffusionWeightedVolumeDisplayNode::PrintSelf(ostream& os, vtkIndent indent)
 {
-  
+
   Superclass::PrintSelf(os,indent);
 
   os << indent << "Diffusion Component:   " << this->DiffusionComponent << "\n";
@@ -107,27 +106,24 @@ void vtkMRMLDiffusionWeightedVolumeDisplayNode::PrintSelf(ostream& os, vtkIndent
 
 //----------------------------------------------------------------------------
 void vtkMRMLDiffusionWeightedVolumeDisplayNode
-::SetInputToImageDataPipeline(vtkImageData *imageData)
+::SetInputToImageDataPipeline(vtkAlgorithmOutput *imageDataConnection)
 {
-  this->ExtractComponent->SetInput(imageData);
+  this->ExtractComponent->SetInputConnection(imageDataConnection);
 }
 
 //----------------------------------------------------------------------------
-vtkImageData* vtkMRMLDiffusionWeightedVolumeDisplayNode::GetInputImageData()
+vtkAlgorithmOutput* vtkMRMLDiffusionWeightedVolumeDisplayNode::GetInputImageDataConnection()
 {
-  return vtkImageData::SafeDownCast(this->ExtractComponent->GetInput());
+  return this->ExtractComponent->GetNumberOfInputConnections(0) ?
+    this->ExtractComponent->GetInputConnection(0,0) : nullptr;;
 }
 
-//----------------------------------------------------------------------------
-vtkImageData* vtkMRMLDiffusionWeightedVolumeDisplayNode::GetOutputImageData()
-{
-  return this->AppendComponents->GetOutput();
-}
+
 
 //---------------------------------------------------------------------------
-vtkImageData* vtkMRMLDiffusionWeightedVolumeDisplayNode::GetScalarImageData()
+vtkAlgorithmOutput* vtkMRMLDiffusionWeightedVolumeDisplayNode::GetScalarImageDataConnection()
 {
-  return vtkImageData::SafeDownCast(this->ExtractComponent->GetOutput());
+  return this->ExtractComponent->GetOutputPort();
 }
 
 //----------------------------------------------------------------------------

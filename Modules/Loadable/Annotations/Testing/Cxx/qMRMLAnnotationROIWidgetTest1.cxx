@@ -4,6 +4,9 @@
 #include <QDebug>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // Annotations includes
 #include "qMRMLAnnotationROIWidget.h"
 #include "vtkMRMLAnnotationROINode.h"
@@ -11,13 +14,14 @@
 // MRML includes
 #include <vtkMRMLScene.h>
 
-// VTK includes
-#include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 //-----------------------------------------------------------------------------
 int qMRMLAnnotationROIWidgetTest1(int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   vtkSmartPointer<vtkMRMLScene> scene =
     vtkSmartPointer<vtkMRMLScene>::New();
@@ -29,9 +33,9 @@ int qMRMLAnnotationROIWidgetTest1(int argc, char * argv[] )
   widget.setMRMLAnnotationROINode(roi);
 
   qDebug() << "start edit";
-  
+
   roi->SetXYZ(1, 1, 1);
-  
+
   qDebug() << "end edit";
 
   widget.show();

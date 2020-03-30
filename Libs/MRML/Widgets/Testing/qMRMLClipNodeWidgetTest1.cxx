@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLClipNodeWidget.h"
 
@@ -30,12 +33,15 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLClipNodeWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   vtkSmartPointer< vtkMRMLClipModelsNode > clipNode =
     vtkSmartPointer< vtkMRMLClipModelsNode >::New();

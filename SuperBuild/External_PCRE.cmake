@@ -1,40 +1,70 @@
 
-# Make sure this file is included only once
-get_filename_component(CMAKE_CURRENT_LIST_FILENAME ${CMAKE_CURRENT_LIST_FILE} NAME_WE)
-if(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED)
-  return()
+set(proj PCRE)
+
+# Set dependency list
+set(${proj}_DEPENDENCIES "")
+
+# Include dependent projects if any
+ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
+
+if(Slicer_USE_SYSTEM_${proj})
+  message(FATAL_ERROR "Enabling Slicer_USE_SYSTEM_${proj} is not supported !")
 endif()
-set(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED 1)
 
 # Sanity checks
 if(DEFINED PCRE_DIR AND NOT EXISTS ${PCRE_DIR})
-  message(FATAL_ERROR "PCRE_DIR variable is defined but corresponds to non-existing directory")
+  message(FATAL_ERROR "PCRE_DIR variable is defined but corresponds to nonexistent directory")
 endif()
 
-# Set dependency list
-set(PCRE_DEPENDENCIES "")
+if(NOT Slicer_USE_SYSTEM_${proj})
+  #
+  #  PCRE (Perl Compatible Regular Expressions)
+  #
 
-# Include dependent projects if any
-SlicerMacroCheckExternalProjectDependency(PCRE)
+  set(EP_SOURCE_DIR ${CMAKE_BINARY_DIR}/PCRE)
+  set(EP_BINARY_DIR ${CMAKE_BINARY_DIR}/PCRE-build)
+  set(EP_INSTALL_DIR ${CMAKE_BINARY_DIR}/PCRE-install)
 
-#
-#  PCRE (Perl Compatible Regular Expressions)
-#
+  include(ExternalProjectForNonCMakeProject)
 
-# follow the standard EP_PREFIX locations
-set(pcre_binary_dir ${CMAKE_CURRENT_BINARY_DIR}/PCRE-prefix/src/PCRE-build)
-set(pcre_source_dir ${CMAKE_CURRENT_BINARY_DIR}/PCRE-prefix/src/PCRE)
-set(pcre_install_dir ${CMAKE_CURRENT_BINARY_DIR}/PCRE)
+  # environment
+  set(_env_script ${CMAKE_BINARY_DIR}/${proj}_Env.cmake)
+  ExternalProject_Write_SetBuildEnv_Commands(${_env_script})
+  file(APPEND ${_env_script}
+"#------------------------------------------------------------------------------
+# Added by '${CMAKE_CURRENT_LIST_FILE}'
 
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/SuperBuild/pcre_configure_step.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/pcre_configure_step.cmake
-  @ONLY)
-set(pcre_CONFIGURE_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/pcre_configure_step.cmake)
+set(ENV{YACC} \"${BISON_EXECUTABLE}\")
+set(ENV{YFLAGS} \"${BISON_FLAGS}\")
+")
 
-ExternalProject_add(PCRE
-  URL http://downloads.sourceforge.net/project/pcre/pcre/8.12/pcre-8.12.tar.gz
-  URL_MD5 fa69e4c5d8971544acd71d1f10d59193
-  "${slicer_external_disable_update}"
-  CONFIGURE_COMMAND ${pcre_CONFIGURE_COMMAND}
-  )
+  # configure step
+  set(_configure_script ${CMAKE_BINARY_DIR}/${proj}_configure_step.cmake)
+  file(WRITE ${_configure_script}
+"include(\"${_env_script}\")
+set(${proj}_WORKING_DIR \"${EP_BINARY_DIR}\")
+ExternalProject_Execute(${proj} \"configure\" sh ${EP_SOURCE_DIR}/configure
+    --prefix=${EP_INSTALL_DIR} --disable-shared)
+")
+
+  set(_version "8.38")
+
+  ExternalProject_add(PCRE
+    ${${proj}_EP_ARGS}
+    URL https://github.com/Slicer/SlicerBinaryDependencies/releases/download/PCRE/pcre-${_version}.tar.gz
+    URL_MD5 8a353fe1450216b6655dfcf3561716d9
+    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}
+    SOURCE_DIR ${EP_SOURCE_DIR}
+    BINARY_DIR ${EP_BINARY_DIR}
+    UPDATE_COMMAND "" # Disable update
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} -P ${_configure_script}
+    DEPENDS
+      ${${proj}_DEPENDENCIES}
+    )
+
+  ExternalProject_GenerateProjectDescription_Step(${proj}
+    VERSION ${_version}
+    )
+
+  set(PCRE_DIR ${EP_INSTALL_DIR})
+endif()

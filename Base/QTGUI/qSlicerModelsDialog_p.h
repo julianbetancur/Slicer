@@ -21,6 +21,17 @@
 #ifndef __qSlicerModelsDialog_p_h
 #define __qSlicerModelsDialog_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 #include <QDialog>
 #include <QStringList>
@@ -42,18 +53,17 @@ class qSlicerModelsDialogPrivate
 protected:
   qSlicerModelsDialog* const q_ptr;
 public:
-  explicit qSlicerModelsDialogPrivate(qSlicerModelsDialog& object, QWidget* parentWidget = 0);
-  virtual ~qSlicerModelsDialogPrivate();
+  explicit qSlicerModelsDialogPrivate(qSlicerModelsDialog& object, QWidget* parentWidget = nullptr);
+  ~qSlicerModelsDialogPrivate() override;
 
   void init();
-  QStringList selectedFiles()const;
 
 public slots:
   void openAddModelFileDialog();
   void openAddModelDirectoryDialog();
-
 protected:
   QStringList SelectedFiles;
+  QStringList LoadedNodeIDs;
 };
 
 #endif

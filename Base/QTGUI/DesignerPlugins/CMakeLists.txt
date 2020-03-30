@@ -1,4 +1,4 @@
-set(KIT ${PROJECT_NAME}Plugins)
+set(KIT ${PROJECT_NAME}DesignerPlugins)
 project(${KIT})
 
 #
@@ -6,7 +6,7 @@ project(${KIT})
 #
 
 # The header '${KIT}Export.h' will be automatically configured.
-set(${KIT}_EXPORT "Q_SLICER_BASE_QTGUI_PLUGINS_EXPORT")
+set(${KIT}_EXPORT "Q_SLICER_DESIGNER_PLUGINS_EXPORT")
 
 # Source files
 set(${KIT}_SRCS
@@ -15,6 +15,8 @@ set(${KIT}_SRCS
   qSlicerQTGUIPlugins.cxx
   qSlicerQTGUIPlugins.h
 
+  qSlicerDirectoryListViewPlugin.cxx
+  qSlicerDirectoryListViewPlugin.h
   qSlicerModulePanelPlugin.cxx
   qSlicerModulePanelPlugin.h
   qSlicerModulesListViewPlugin.cxx
@@ -29,7 +31,7 @@ set(${KIT}_SRCS
 set(${KIT}_MOC_SRCS
   qSlicerQTGUIPlugins.h
 
-  qSlicerQTGUIAbstractPlugin.h
+  qSlicerDirectoryListViewPlugin.h
   qSlicerModulePanelPlugin.h
   qSlicerModulesListViewPlugin.h
   qSlicerMouseModeToolBarPlugin.h
@@ -48,6 +50,7 @@ endif()
 ctkMacroBuildQtDesignerPlugin(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${${KIT}_EXPORT}
+  FOLDER "Core-Base"
   SRCS ${${KIT}_SRCS}
   MOC_SRCS ${${KIT}_MOC_SRCS}
   TARGET_LIBRARIES ${${KIT}_TARGET_LIBRARIES}

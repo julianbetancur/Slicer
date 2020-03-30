@@ -28,8 +28,8 @@
 
 // qMRMLWidget includes
 #include "qMRMLWidgetsExport.h"
+#include "qMRMLLayoutManager.h"
 
-class qMRMLLayoutManager;
 class vtkImageData;
 
 class qMRMLScreenShotDialogPrivate;
@@ -39,6 +39,9 @@ class QMRML_WIDGETS_EXPORT qMRMLScreenShotDialog : public QDialog
   Q_OBJECT
   Q_ENUMS(WidgetType)
   Q_PROPERTY(WidgetType widgetType READ widgetType WRITE setWidgetType)
+  Q_PROPERTY(QString nameEdit READ nameEdit WRITE setNameEdit)
+  Q_PROPERTY(double scaleFactor READ scaleFactor WRITE setScaleFactor)
+  Q_PROPERTY(bool showScaleFactorSpinBox READ showScaleFactorSpinBox WRITE setShowScaleFactorSpinBox)
 public:
   typedef QDialog Superclass;
 
@@ -50,11 +53,12 @@ public:
     FullLayout = 4
     };
 
-  qMRMLScreenShotDialog(QWidget *parent = 0);
-  ~qMRMLScreenShotDialog();
+  qMRMLScreenShotDialog(QWidget *parent = nullptr);
+  ~qMRMLScreenShotDialog() override;
 
-  void setLayoutManager(qMRMLLayoutManager* newlayoutManager);
-  qMRMLLayoutManager* layoutManager()const;
+  /// Set/Get layout manager
+  Q_INVOKABLE void setLayoutManager(qMRMLLayoutManager* newlayoutManager);
+  Q_INVOKABLE qMRMLLayoutManager* layoutManager()const;
 
   void setNameEdit(const QString& newName);
   QString nameEdit()const;
@@ -63,7 +67,7 @@ public:
   QString description()const;
 
   /// Setting the data prevent the dialog from automatically taking a screenshot
-  /// each time the widgettype or scalefactor is changed.
+  /// each time the widgettype or scaleFactor is changed.
   void setData(const QVariant& newData);
   QVariant data()const;
 
@@ -80,17 +84,20 @@ public:
   void setImageData(vtkImageData* screenshot);
   vtkImageData* imageData()const;
 
-  /// Reset the dialog
-  void resetDialog();
+protected slots:
 
   /// Grab a screenshot of the 3DView or any sliceView.
   /// The screenshotWindow is Red, Green, Yellow for a sliceView or empty for
   /// a ThreeDView
   void grabScreenShot(int screenshotWindow);
-
-protected slots:
-
   void grabScreenShot();
+  void setLastWidgetType(int id);
+  /// Reset the dialog
+  void resetDialog();
+
+  /// Present save as dialog to directly save image
+  void saveAs();
+
 
 private:
   QString enumToString(int type);

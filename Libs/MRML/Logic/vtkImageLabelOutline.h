@@ -17,7 +17,7 @@
 
 #include "vtkImageNeighborhoodFilter.h"
 
-#include "vtkMRMLLogicWin32Header.h"
+#include "vtkMRMLLogicExport.h"
 
 class vtkImageData;
 
@@ -29,28 +29,28 @@ class VTK_MRML_LOGIC_EXPORT vtkImageLabelOutline : public vtkImageNeighborhoodFi
 {
 public:
   static vtkImageLabelOutline *New();
-  vtkTypeRevisionMacro(vtkImageLabelOutline,vtkImageNeighborhoodFilter);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkImageLabelOutline,vtkImageNeighborhoodFilter);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  /// 
+  ///
   /// background pixel value in the image (usually 0)
   vtkSetMacro(Background, float);
   vtkGetMacro(Background, float);
 
-  /// 
-  /// not used (don't know what it was intended for)
-  vtkSetMacro(Outline, int);
+  ///
+  /// Thickness of the outline, used to set the kernel size
+  void SetOutline(int outline);
   vtkGetMacro(Outline, int);
 
 protected:
   vtkImageLabelOutline();
-  ~vtkImageLabelOutline();
+  ~vtkImageLabelOutline() override;
 
   float Background;
   int Outline;
 
   void ThreadedExecute(vtkImageData *inData, vtkImageData *outData,
-  int extent[6], int id);
+                       int extent[6], int id) override;
 };
 
 #endif

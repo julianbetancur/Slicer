@@ -1,6 +1,27 @@
 
 #-----------------------------------------------------------------------------
-set(MODULE_NAME CreateDICOMSeries) # Do not use 'project()'
+set(MODULE_NAME CreateDICOMSeries)
+
+#-----------------------------------------------------------------------------
+
+#
+# SlicerExecutionModel
+#
+find_package(SlicerExecutionModel REQUIRED)
+include(${SlicerExecutionModel_USE_FILE})
+
+#
+# ITK
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ITKCommon
+  ITKIOGDCM
+  ITKIOImageBase
+  ITKImageIntensity
+  )
+find_package(ITK 4.6 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+include(${ITK_USE_FILE})
 
 #-----------------------------------------------------------------------------
 SEMMacroBuildCLI(

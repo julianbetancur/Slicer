@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <executable>
   <category>Surface Models</category>
   <title>Model Maker</title>
-  <description><![CDATA[Create 3D surface models from segmented data.<p>Models are imported into Slicer under a model hierarchy node in a MRML scene. The model colors are set by the color table associated with the input volume (these colours will only be visible if you load the model scene file).</p><p><b>Create Multiple:</b></p><p>If you specify a list of Labels, it will over ride any start/end label settings.</p><p>If you click<i>Generate All</i>it will over ride the list of lables and any start/end label settings.</p><p><b>Model Maker Settings:</b></p><p>You can set the number of smoothing iterations, target reduction in number of polygons (decimal percentage). Use 0 and 1 if you wish no smoothing nor decimation.<br>You can set the flags to split normals or generate point normals in this pane as well.<br>You can save a copy of the models after intermediate steps (marching cubes, smoothing, and decimation if not joint smoothing, otherwise just after decimation); these models are not saved in the mrml file, turn off deleting temporary files first in the python window:<br><i>slicer.modules.modelmaker.cliModuleLogic().DeleteTemporaryFilesOff()</i></p>]]></description>
-  <version>4.2</version>
-  <documentation-url>http://wiki.slicer.org/slicerWiki/index.php/Documentation/4.2/Modules/ModelMaker</documentation-url>
+  <description><![CDATA[Create 3D surface models from segmented data.<p>Models are imported into Slicer under a model hierarchy node in a MRML scene. The model colors are set by the color table associated with the input volume (these colours will only be visible if you load the model scene file).</p><p><b>IO:</b></p><p>Specify an <i>Input Volume</i> that is a segmented label map volume. Create a new <i>Models</i> hierarchy to provide a structure to contain the return models created from the input volume.</p><p><b>Create Multiple:</b></p><p>If you specify a list of <i>Labels</i>, it will over ride any start/end label settings.</p><p>If you click <i>Generate All</i> it will over ride the list of labels and any start/end label settings.</p><p><b>Model Maker Parameters:</b></p><p>You can set the number of smoothing iterations, target reduction in number of polygons (decimal percentage). Use 0 and 1 if you wish no smoothing nor decimation.<br>You can set the flags to split normals or generate point normals in this pane as well.<br>You can save a copy of the models after intermediate steps (marching cubes, smoothing, and decimation if not joint smoothing, otherwise just after decimation); these models are not saved in the mrml file, turn off deleting temporary files first in the python window:<br><i>slicer.modules.modelmaker.cliModuleLogic().DeleteTemporaryFilesOff()</i></p>]]></description>
+  <version>4.4</version>
+  <documentation-url>http://wiki.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/ModelMaker</documentation-url>
   <license>slicer4</license>
   <contributor>Nicole Aucoin (SPL, BWH), Ron Kikinis (SPL, BWH), Bill Lorensen (GE)</contributor>
   <acknowledgements><![CDATA[This work is part of the National Alliance for Medical Image Computing (NAMIC), funded by the National Institutes of Health through the NIH Roadmap for Medical Research, Grant U54 EB005149.]]></acknowledgements>
@@ -146,6 +146,16 @@
       <description><![CDATA[Pad the input volume with zero value voxels on all 6 faces in order to ensure the production of closed surfaces. Sets the origin translation and extent translation so that the models still line up with the unpadded input volume.]]></description>
       <default>true</default>
     </boolean>
+  </parameters>
+  <parameters advanced="true">
+    <label>Debug</label>
+    <file fileExtensions=".mrml">
+      <name>ModelHierarchyFile</name>
+      <channel>input</channel>
+      <label>Color Hierarchy</label>
+      <longflag>--modelHierarchyFile</longflag>
+      <description><![CDATA[A mrml file that contains a template model hierarchy tree with a hierarchy node per color used in the input volume's color table. Color names used for the models are matched to template hierarchy names to create a multi level output tree. Create a hierarchy in the Models GUI and save a scene, then clean it up to remove everything but the model hierarchy and display nodes.]]></description>
+    </file>
     <boolean>
       <name>SaveIntermediateModels</name>
       <label>Save Intermediate Models</label>
@@ -153,9 +163,6 @@
       <description><![CDATA[You can save a copy of the models after each of the intermediate steps (marching cubes, smoothing, and decimation if not joint smoothing, otherwise just after decimation). These intermediate models are not saved in the mrml file, you have to load them manually after turning off deleting temporary files in they python console (View ->Python Interactor) using the following command slicer.modules.modelmaker.cliModuleLogic().DeleteTemporaryFilesOff().]]></description>
       <default>false</default>
     </boolean>
-  </parameters>
-  <parameters advanced="true">
-    <label>Debug</label>
     <boolean>
       <name>debug</name>
       <label>Debug</label>

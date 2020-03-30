@@ -1,34 +1,49 @@
 project(vtkTeem)
 
 #-----------------------------------------------------------------------------
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.13.4)
 #-----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
-# See http://cmake.org/cmake/help/cmake-2-8-docs.html#section_Policies for details
-#-----------------------------------------------------------------------------
-if(POLICY CMP0017)
-  cmake_policy(SET CMP0017 OLD)
-endif()
-
-find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})
-
-find_package(Teem REQUIRED)
-include(${Teem_USE_FILE})
-
+# --------------------------------------------------------------------------
+# Options
+# --------------------------------------------------------------------------
 if(NOT DEFINED BUILD_SHARED_LIBS)
   option(BUILD_SHARED_LIBS "Build with shared libraries." ON)
 endif()
 
 # --------------------------------------------------------------------------
-# Include dirs
+# Dependencies
 # --------------------------------------------------------------------------
-set(include_dirs
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
+
+#
+# VTK
+#
+#find_package(VTK REQUIRED)
+#include(${VTK_USE_FILE})
+
+#
+# ITK
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ITKCommon
+  ITKVNL
   )
-include_directories(${include_dirs})
+find_package(ITK 5.0 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+
+#
+# Teem
+#
+find_package(Teem REQUIRED NO_MODULE)
+# XXX Since no TeemConfigVersion.cmake is configured, let's check the version explicitly
+if(${Teem_VERSION_MAJOR}.${Teem_VERSION_MINOR}.${Teem_VERSION_PATCH} VERSION_LESS 1.10)
+  message(FATAL_ERROR
+    "Could not find a configuration file for package \"Teem\" that is compatible with requested version \"1.10\".")
+endif()
+include(${Teem_USE_FILE})
+
+# XXX Teem 1.11.0 or Teem >= 4168 - This variable won't be needed anymore.
+#     See http://sourceforge.net/p/teem/code/4168/
+set(Teem_LIBRARIES teem)
 
 # --------------------------------------------------------------------------
 # Configure headers
@@ -56,40 +71,21 @@ endif()
 # Sources
 # --------------------------------------------------------------------------
 set(vtkTeem_SRCS
-  vtkNRRDReader.cxx
-  vtkNRRDWriter.cxx
   vtkDiffusionTensorMathematics.cxx
-  vtkTeemEstimateDiffusionTensor.cxx
   vtkDiffusionTensorGlyph.cxx
-  vtkPolyDataTensorToColor.cxx
-  vtkPolyDataColorLinesByOrientation.cxx
-  vtkBSplineInterpolateImageFunction.cxx
-  vtkHyperPointandArray.cxx
-  vtkHyperStreamlineDTMRI.cxx
-  vtkHyperStreamlineTeem.cxx
-  vtkPreciseHyperStreamline.cxx
-  vtkPreciseHyperStreamlinePoints.cxx
-  vtkSeedTracts.cxx
-  vtkTensorImplicitFunctionToFunctionSet.cxx
-  vtkTractographyPointAndArray.cxx
-  vtkTensorMask.cxx
-  vtkTensorRotate.cxx
+  vtkTeemNRRDReader.cxx
+  vtkTeemNRRDWriter.cxx
   vtkImageLabelCombine.cxx
   )
 
-# Abstract/pure virtual classes
-
-#set_source_files_properties(
-#  ABSTRACT
-#  )
-
-# Helper classes
-
-set_source_files_properties(
-  vtkHyperPointandArray.cxx
-  vtkTractographyPointAndArray.cxx
-  WRAP_EXCLUDE
+# --------------------------------------------------------------------------
+# Include dirs
+# --------------------------------------------------------------------------
+set(include_dirs
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
   )
+include_directories(BEFORE ${include_dirs})
 
 # --------------------------------------------------------------------------
 # Build library
@@ -99,26 +95,9 @@ set(lib_name ${PROJECT_NAME})
 set(srcs ${vtkTeem_SRCS})
 add_library(${lib_name} ${srcs})
 
-# after teem 1.9, all the teem libraries are groups in one big libteem.so
-if ( ${Teem_VERSION_MAJOR} GREATER 1 )
-  set(Teem_LIBRARIES teem)
-else ( ${Teem_VERSION_MAJOR} GREATER 1 )
-  if ( ${Teem_VERSION_MINOR} LESS 10 )
-    set(Teem_LIBRARIES air biff nrrd ten ell)
-  else ( ${Teem_VERSION_MINOR} LESS 10 )
-    set(Teem_LIBRARIES teem)
-  endif ( ${Teem_VERSION_MINOR} LESS 10 )
-endif ( ${Teem_VERSION_MAJOR} GREATER 1 )
-
-set(VTK_LIBRARIES
-  vtkCommon
-  vtkFiltering
-  vtkGraphics
-  vtkIO
-  vtkImaging
-  )
-
 set(libs
+  itkvnl
+  ITKCommon
   ${Teem_LIBRARIES}
   ${VTK_LIBRARIES}
   )
@@ -127,6 +106,16 @@ target_link_libraries(${lib_name} ${libs})
 # Apply user-defined properties to the library target.
 if(Slicer_LIBRARY_PROPERTIES)
   set_target_properties(${lib_name} PROPERTIES ${Slicer_LIBRARY_PROPERTIES})
+endif()
+
+# --------------------------------------------------------------------------
+# Folder
+# --------------------------------------------------------------------------
+if(NOT DEFINED ${PROJECT_NAME}_FOLDER)
+  set(${PROJECT_NAME}_FOLDER ${PROJECT_NAME})
+endif()
+if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+  set_target_properties(${lib_name} PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
 endif()
 
 # --------------------------------------------------------------------------
@@ -167,6 +156,14 @@ if(VTK_WRAP_PYTHON)
     )
   # Export target
   export(TARGETS ${lib_name}Python ${lib_name}PythonD APPEND FILE ${${PROJECT_NAME}_EXPORT_FILE})
+  # Folder
+  if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name}Python PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    set_target_properties(${lib_name}PythonD PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    if(TARGET ${lib_name}Hierarchy)
+      set_target_properties(${lib_name}Hierarchy PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    endif()
+  endif()
 endif()
 
 # --------------------------------------------------------------------------

@@ -21,6 +21,17 @@
 #ifndef __qSlicerMouseModeToolBar_p_h
 #define __qSlicerMouseModeToolBar_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 #include <QToolBar>
 #include <QMenu>
@@ -28,6 +39,7 @@
 
 // CTK includes
 #include <ctkPimpl.h>
+#include <ctkSignalMapper.h>
 #include <ctkVTKObject.h>
 #include "qSlicerBaseQTGUIExport.h"
 
@@ -42,6 +54,7 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include <vtkWeakPointer.h>
 
 class qSlicerMouseModeToolBarPrivate;
 class QAction;
@@ -62,38 +75,50 @@ public:
 
   void init();
   void setMRMLScene(vtkMRMLScene* newScene);
-  void updateWidgetFromMRML();
-  void updateWidgetFromSelectionNode();
-  /// given an annotation id, find the action associated with it and set it
-  /// checked, update the cursor, update the icon on the button
-  void updateWidgetToAnnotation(const char *annotationID);
+
+  /// update mouse cursor shape according to current interaction mode and selection
+  void updateCursor();
+
+  void updatePlaceWidgetMenuActionList();
+
+  QCursor cursorFromIcon(QIcon& icon);
 
 public slots:
 
-  void OnMRMLSceneStartClose();
-  void OnMRMLSceneEndImport();
-  void OnMRMLSceneEndClose();
+  void onMRMLSceneStartBatchProcess();
+  void onMRMLSceneEndBatchProcess();
+  void updateWidgetFromMRML();
 
-  void onInteractionNodeModeChangedEvent();
-  void onInteractionNodeModePersistenceChanged();
-  void onActiveAnnotationIDChangedEvent();
-  void onAnnotationIDListModifiedEvent();
-  
+  void onActivePlaceNodeClassNameChangedEvent();
+  void onPlaceNodeClassNameListModifiedEvent();
+
 public:
-
   vtkSmartPointer<vtkMRMLScene>            MRMLScene;
   vtkSmartPointer<vtkMRMLApplicationLogic> MRMLAppLogic;
+  vtkWeakPointer<vtkMRMLInteractionNode>   InteractionNode;
 
-  /// PlaceMode button and menu
-  QToolButton *CreateAndPlaceToolButton;
-  QMenu*        CreateAndPlaceMenu;
+  QAction* AdjustViewAction;
+  QAction* AdjustWindowLevelAction;
+  QAction* PlaceWidgetAction;
+  QMenu* PlaceWidgetMenu;
+
+  QAction* AdjustWindowLevelAdjustModeAction;
+  QAction* AdjustWindowLevelRegionModeAction;
+  QAction* AdjustWindowLevelCenteredRegionModeAction;
+  QMenu* AdjustWindowLevelMenu;
+
+  ctkSignalMapper* AdjustWindowLevelModeMapper;
 
   /// Place Persistence
   QAction *PersistenceAction;
 
-  /// Group the place actions together so that they're exclusive
-  QActionGroup* ActionGroup;
+  /// Group interaction modes together so that they're exclusive
+  QActionGroup* InteractionModesActionGroup;
 
+  /// Group the place actions together so that they're exclusive
+  QActionGroup* PlaceModesActionGroup;
+
+  QString DefaultPlaceClassName;
 };
 
 #endif

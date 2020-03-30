@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLScalarInvariantComboBox.h"
 
@@ -29,19 +32,21 @@
 #include <vtkMRMLDiffusionTensorDisplayPropertiesNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLScalarInvariantComboBoxTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
-  vtkSmartPointer<vtkMRMLDiffusionTensorDisplayPropertiesNode> displayPropertiesNode
-    = vtkSmartPointer<vtkMRMLDiffusionTensorDisplayPropertiesNode>::New();
+  vtkNew<vtkMRMLDiffusionTensorDisplayPropertiesNode> displayPropertiesNode;
 
   qMRMLScalarInvariantComboBox scalarComboBox;
-  scalarComboBox.setDisplayPropertiesNode(displayPropertiesNode);
+  scalarComboBox.setDisplayPropertiesNode(displayPropertiesNode.GetPointer());
 
   displayPropertiesNode->SetColorGlyphBy(
     vtkMRMLDiffusionTensorDisplayPropertiesNode::ParallelDiffusivity);

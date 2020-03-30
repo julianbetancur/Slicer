@@ -21,7 +21,6 @@
 
 #include "itkSignedMaurerDistanceMapImageFilter.h"
 
-vtkCxxRevisionMacro(vtkITKDistanceTransform, "$Revision: 1900 $");
 vtkStandardNewMacro(vtkITKDistanceTransform);
 
 vtkITKDistanceTransform::vtkITKDistanceTransform()
@@ -33,8 +32,7 @@ vtkITKDistanceTransform::vtkITKDistanceTransform()
 }
 
 vtkITKDistanceTransform::~vtkITKDistanceTransform()
-{
-}
+= default;
 
 
 template <class T>
@@ -68,7 +66,7 @@ void vtkITKDistanceTransformExecute(vtkITKDistanceTransform *self, vtkImageData*
 
 
   // Calculate the distance transform
-  typedef itk::Image<T,3> DistanceImageType;  
+  typedef itk::Image<T,3> DistanceImageType;
   typedef itk::SignedMaurerDistanceMapImageFilter<ImageType, DistanceImageType> DistanceType;
   typename DistanceType::Pointer dist = DistanceType::New();
 
@@ -90,7 +88,7 @@ void vtkITKDistanceTransformExecute(vtkITKDistanceTransform *self, vtkImageData*
 
 
 //
-// 
+//
 //
 void vtkITKDistanceTransform::SimpleExecute(vtkImageData *input, vtkImageData *output)
 {
@@ -101,15 +99,15 @@ void vtkITKDistanceTransform::SimpleExecute(vtkImageData *input, vtkImageData *o
   //
   vtkPointData *pd = input->GetPointData();
   pd=input->GetPointData();
-  if (pd ==NULL)
+  if (pd ==nullptr)
     {
     vtkErrorMacro(<<"PointData is NULL");
     return;
     }
   vtkDataArray *inScalars=pd->GetScalars();
-  if ( inScalars == NULL )
+  if ( inScalars == nullptr )
     {
-    vtkErrorMacro(<<"Scalars must be defined for distance tranform");
+    vtkErrorMacro(<<"Scalars must be defined for distance transform");
     return;
     }
 
@@ -140,7 +138,7 @@ void vtkITKDistanceTransform::SimpleExecute(vtkImageData *input, vtkImageData *o
       vtkTemplateMacroCase(VTK_UNSIGNED_CHAR, unsigned char, CALL);
       } //switch
     }
-  else 
+  else
     {
     vtkErrorMacro(<< "Can only calculate on scalar.");
     }

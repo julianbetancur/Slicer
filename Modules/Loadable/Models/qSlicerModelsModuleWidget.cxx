@@ -20,33 +20,43 @@
 
 // Qt includes
 #include <QDebug>
-#include <QInputDialog>
-#include <QMessageBox>
-#include <QModelIndex>
+#include <QScrollArea>
 
-// qMRMLWidgets
-#include "qMRMLSceneModelHierarchyModel.h"
+// Subject hierarchy widgets
+#include "qMRMLSubjectHierarchyTreeView.h"
+#include "qMRMLSubjectHierarchyModel.h"
+#include "qMRMLSortFilterSubjectHierarchyProxyModel.h"
 
 // SlicerQt includes
 #include "qSlicerModelsModuleWidget.h"
-#include "ui_qSlicerModelsModule.h"
+#include "ui_qSlicerModelsModuleWidget.h"
+
+// Logic includes
+#include "vtkMRMLDisplayableHierarchyLogic.h"
+#include "vtkSlicerModelsLogic.h"
 
 // MRML includes
-#include "vtkMRMLModelHierarchyNode.h"
+#include "vtkMRMLFolderDisplayNode.h"
+#include "vtkMRMLModelNode.h"
 #include "vtkMRMLModelDisplayNode.h"
+#include "vtkMRMLSelectionNode.h"
+#include "vtkMRMLSubjectHierarchyNode.h"
 #include "vtkMRMLScene.h"
 
-#include <vtkMRMLDisplayableHierarchyLogic.h>
+// VTK includes
+#include <vtkCallbackCommand.h>
+#include <vtkNew.h>
+
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_Models
-class qSlicerModelsModuleWidgetPrivate: public Ui_qSlicerModelsModule
+class qSlicerModelsModuleWidgetPrivate: public Ui_qSlicerModelsModuleWidget
 {
 public:
   qSlicerModelsModuleWidgetPrivate();
-  QAction *InsertHierarchyAction;
-  QAction *DeleteMultipleNodesAction;
-  QAction *RenameMultipleNodesAction;
+  QStringList HideChildNodeTypes;
+  QString FiberDisplayClass;
+  vtkSmartPointer<vtkCallbackCommand> CallBack;
 };
 
 //-----------------------------------------------------------------------------
@@ -55,9 +65,9 @@ public:
 //-----------------------------------------------------------------------------
 qSlicerModelsModuleWidgetPrivate::qSlicerModelsModuleWidgetPrivate()
 {
-  this->InsertHierarchyAction = 0;
-  this->DeleteMultipleNodesAction = 0;
-  this->RenameMultipleNodesAction = 0;
+  this->HideChildNodeTypes = (QStringList() << "vtkMRMLFiberBundleNode" << "vtkMRMLAnnotationNode");
+  this->FiberDisplayClass = "vtkMRMLFiberBundleLineDisplayNode";
+  this->CallBack = vtkSmartPointer<vtkCallbackCommand>::New();
 }
 
 //-----------------------------------------------------------------------------
@@ -73,259 +83,315 @@ qSlicerModelsModuleWidget::qSlicerModelsModuleWidget(QWidget* _parent)
 //-----------------------------------------------------------------------------
 qSlicerModelsModuleWidget::~qSlicerModelsModuleWidget()
 {
+  Q_D(qSlicerModelsModuleWidget);
+
   // set the mrml scene to null so that stop observing it for events
-  this->setMRMLScene(0);
+  if (this->mrmlScene())
+    {
+    this->mrmlScene()->RemoveObserver(d->CallBack);
+    }
+
+  this->setMRMLScene(nullptr);
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerModelsModuleWidget::setup()
 {
   Q_D(qSlicerModelsModuleWidget);
-  
+
   d->setupUi(this);
+
+  d->ModelDisplayWidget->setEnabled(false);
+
   d->ClipModelsNodeComboBox->setVisible(false);
 
-  this->updateTreeViewModel();
+  // Set up tree view
+  qMRMLSortFilterSubjectHierarchyProxyModel* sortFilterProxyModel = d->SubjectHierarchyTreeView->sortFilterProxyModel();
+  sortFilterProxyModel->setNodeTypes(QStringList() << "vtkMRMLModelNode" << "vtkMRMLFolderDisplayNode");
+  d->SubjectHierarchyTreeView->setColumnHidden(d->SubjectHierarchyTreeView->model()->idColumn(), true);
+  d->SubjectHierarchyTreeView->setColumnHidden(d->SubjectHierarchyTreeView->model()->transformColumn(), true);
+  d->SubjectHierarchyTreeView->setPluginWhitelist(QStringList() << "Models" << "Folder" << "Opacity" << "Visibility");
+  d->SubjectHierarchyTreeView->setSelectRoleSubMenuVisible(false);
+  d->SubjectHierarchyTreeView->expandToDepth(4);
+  d->SubjectHierarchyTreeView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
 
-  // turn of setting of size to visible indexes to allow drag scrolling
-  d->ModelHierarchyTreeView->setFitSizeToVisibleIndexes(false);
-  
+  connect( d->SubjectHierarchyTreeView, SIGNAL(currentItemsChanged(QList<vtkIdType>)),
+    this, SLOT(setDisplaySelectionFromSubjectHierarchyItems(QList<vtkIdType>)) );
+
+  connect( d->FilterModelSearchBox, SIGNAL(textChanged(QString)),
+    sortFilterProxyModel, SLOT(setNameFilter(QString)) );
+
+  connect( d->InformationButton, SIGNAL(contentsCollapsed(bool)),
+    this, SLOT(onInformationSectionCollapsed(bool)) );
+
+  connect(d->ModelDisplayWidget, SIGNAL(clippingToggled(bool)),
+    this, SLOT(onClipSelectedModelToggled(bool)) );
+
+  connect(d->ModelDisplayWidget, SIGNAL(clippingConfigurationButtonClicked()),
+    this, SLOT(onClippingConfigurationButtonClicked()) );
+
   // add an add hierarchy right click action on the scene and hierarchy nodes
-  connect(d->ModelHierarchyTreeView,  SIGNAL(currentNodeChanged(vtkMRMLNode*)),
-          this, SLOT(onCurrentNodeChanged(vtkMRMLNode*)) );
+  connect(d->ModelDisplayWidget, SIGNAL(displayNodeChanged()),
+    this, SLOT(onDisplayNodeChanged()) );
 
-  d->InsertHierarchyAction = new QAction(tr("Insert hierarchy"), this);
-  d->ModelHierarchyTreeView->prependSceneMenuAction(d->InsertHierarchyAction);
-  connect(d->InsertHierarchyAction, SIGNAL(triggered()),
-          this, SLOT(insertHierarchyNode()));
+  connect(d->ClipSelectedModelCheckBox, SIGNAL(toggled(bool)),
+    this, SLOT(onClipSelectedModelToggled(bool)) );
 
-  // customize the right click menu to offer a delete multiple nodes option,
-  // and deal with the hierarchies associated with model nodes
-  d->DeleteMultipleNodesAction = new QAction(tr("Delete Model(s)"), this);
-  d->DeleteMultipleNodesAction->setToolTip(tr("Delete one or more models and/or hierarchies, along with the 1:1 hierarchy nodes that may be associated with them"));
-  d->ModelHierarchyTreeView->appendNodeMenuAction(d->DeleteMultipleNodesAction);
-  connect(d->DeleteMultipleNodesAction, SIGNAL(triggered()),
-          this, SLOT(deleteMultipleModels()));
-
-  // customise the right click menu to offer a rename multiple nodes option
-  d->RenameMultipleNodesAction = new QAction(tr("Rename Model(s)"), this);
-  d->RenameMultipleNodesAction->setToolTip(tr("Rename one or more models and/or hierarchies"));
-  d->ModelHierarchyTreeView->appendNodeMenuAction(d->RenameMultipleNodesAction);
-  connect(d->RenameMultipleNodesAction, SIGNAL(triggered()),
-          this, SLOT(renameMultipleModels()));
-  
   this->Superclass::setup();
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerModelsModuleWidget::updateTreeViewModel()
+void qSlicerModelsModuleWidget::enter()
 {
   Q_D(qSlicerModelsModuleWidget);
 
-  d->ModelHierarchyTreeView->setSceneModelType(QString("ModelHierarchy"));
-  qMRMLSceneModelHierarchyModel* sceneModel =
-    qobject_cast<qMRMLSceneModelHierarchyModel*>(
-      d->ModelHierarchyTreeView->sceneModel());
-  sceneModel->setIDColumn(-1);
-  sceneModel->setExpandColumn(1);
-  sceneModel->setColorColumn(2);
-  sceneModel->setOpacityColumn(3);
-
-  d->ModelHierarchyTreeView->header()->setStretchLastSection(false);
-  d->ModelHierarchyTreeView->header()->setResizeMode(sceneModel->nameColumn(), QHeaderView::Stretch);
-  d->ModelHierarchyTreeView->header()->setResizeMode(sceneModel->expandColumn(), QHeaderView::ResizeToContents);
-  d->ModelHierarchyTreeView->header()->setResizeMode(sceneModel->colorColumn(), QHeaderView::ResizeToContents);
-  d->ModelHierarchyTreeView->header()->setResizeMode(sceneModel->opacityColumn(), QHeaderView::ResizeToContents);
-
-  d->ModelHierarchyTreeView->sortFilterProxyModel()->setHideChildNodeTypes(
-    QStringList() << "vtkMRMLFiberBundleNode" << "vtkMRMLAnnotationNode");
-  d->ModelHierarchyTreeView->sortFilterProxyModel()->setShowHiddenForTypes(
-    QStringList() << "vtkMRMLModelHierarchyNode");
-
-  // use lazy update instead of responding to scene import end event
-  sceneModel->setLazyUpdate(true);
-  
-  // qDebug() << "qSlicerModelsModuleWidget::updateTreeViewModel done";
-}
-
-//-----------------------------------------------------------------------------
-void qSlicerModelsModuleWidget::insertHierarchyNode()
-{
-  Q_D(qSlicerModelsModuleWidget);
-  
-  vtkMRMLModelHierarchyNode *modelHierarchyNode = vtkMRMLModelHierarchyNode::New();
-  modelHierarchyNode->SetName(this->mrmlScene()->GetUniqueNameByString("Model Hierarchy"));
-
-  // also add a display node to the hierarchy node for use when the hierarchy is collapsed
-  vtkMRMLModelDisplayNode *modelDisplayNode = vtkMRMLModelDisplayNode::New();
-  if (modelDisplayNode)
+  // Set minimum models tree height so that it has a reasonable starting size
+  int displayedItemCount = d->SubjectHierarchyTreeView->displayedItemCount();
+  int headerHeight = d->SubjectHierarchyTreeView->header()->sizeHint().height();
+  int treeViewHeight = headerHeight * 3; // Approximately three rows when empty (cannot get row height)
+  if (displayedItemCount > 0)
     {
-    this->mrmlScene()->AddNode(modelDisplayNode);
-    // qDebug() << "insertHierarchyNode: added a display node for hierarchy node, with id = " << modelDisplayNode->GetID();
+    // Calculate full tree view height based on number of displayed items and item height (and add 2 for the borders).
+    treeViewHeight = headerHeight + displayedItemCount * d->SubjectHierarchyTreeView->sizeHintForRow(0) + 2;
     }
 
-  this->mrmlScene()->AddNode(modelHierarchyNode);
+  // Get height of the whole Models module widget panel
+  int panelHeight = this->sizeHint().height();
+  // Set tree view minimum height to be the minimum of the calculated full height and half
+  // of the panel height
+  d->SubjectHierarchyTreeView->setMinimumHeight(qMin<int>(treeViewHeight, panelHeight / 2.0));
 
-  vtkMRMLNode* parent = vtkMRMLNode::SafeDownCast(d->ModelHierarchyTreeView->currentNode());
-  if (parent)
+  // Connect SH item modified event so that widget state is updated when a display node is created
+  // on the currently selected item (when color is set to a folder)
+  vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (!shNode)
     {
-    modelHierarchyNode->SetParentNodeID(parent->GetID());
-    }
-
-  if (modelDisplayNode)
-    {
-    modelHierarchyNode->SetAndObserveDisplayNodeID(modelDisplayNode->GetID());
-    modelDisplayNode->Delete();
-    }
-  
-  modelHierarchyNode->Delete();
-}
-
-//-----------------------------------------------------------------------------
-void qSlicerModelsModuleWidget::deleteMultipleModels()
-{
-  Q_D(qSlicerModelsModuleWidget);
-
-  if (!this->mrmlScene())
-    {
-    qWarning("No mrml scene set, cannot delete models");
+    qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
     return;
     }
-  
-  // get all rows where column 2, the model name, is selected
-  int nameColumn = d->ModelHierarchyTreeView->sceneModel()->nameColumn();
-  QModelIndexList indexList = d->ModelHierarchyTreeView->selectionModel()->selectedRows(nameColumn);
-  // have to build up a list of nodes to delete, as the node from index call will
-  // fail as the tree is updated while the nodes are being deleted.
-  QStringList modelIDsToDelete;
-  for (int i = 0; i < indexList.size(); ++i)
-    {
-    QModelIndex index = indexList.at(i);
-    vtkMRMLNode *nodeToDelete =  d->ModelHierarchyTreeView->sortFilterProxyModel()->mrmlNodeFromIndex(index);
-    if (nodeToDelete && nodeToDelete->GetID())
-      {
-      modelIDsToDelete << nodeToDelete->GetID();
-      }
-    else
-      {
-      qWarning() << "selection index " << i << " has no model";
-      }
-    }
-  for (int i = 0; i < modelIDsToDelete.size(); i++)
-    {
-    QString modelID = modelIDsToDelete.at(i);
-    vtkMRMLNode *mrmlNode = this->mrmlScene()->GetNodeByID(modelID.toLatin1());
-    if (mrmlNode && mrmlNode->IsA("vtkMRMLModelNode"))
-      {
-      // get the model hierarchy node and delete it
-      vtkMRMLHierarchyNode *hnode = vtkMRMLHierarchyNode::GetAssociatedHierarchyNode(mrmlNode->GetScene(), mrmlNode->GetID());
-      if (hnode)
-        {
-        //qDebug() << i << ": removing hierarchy " << (hnode ? hnode->GetID() : "null");
-        this->mrmlScene()->RemoveNode(hnode);
-        }
-      // remove the model node
-      //qDebug() << i << ": removing model node " << mrmlNode->GetName() << ", id = " << mrmlNode->GetID();
-      this->mrmlScene()->RemoveNode(mrmlNode);
-      }
-    else if (mrmlNode && mrmlNode->IsA("vtkMRMLModelHierarchyNode"))
-      {
-      // Deleting a model hierarchy node and everything under it
-      // confirm first
-      QMessageBox confirmBox;
-      QString msg = QString("Delete ") + QString(mrmlNode->GetName()) + QString(" and all children?");
-      confirmBox.setText(msg);
-      confirmBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
-      confirmBox.setDefaultButton(QMessageBox::Cancel);
-      int ret = confirmBox.exec();
-      switch (ret) {
-        case QMessageBox::Ok :
-          {
-          // delete
-          vtkMRMLDisplayableHierarchyLogic *hierarchyLogic = vtkMRMLDisplayableHierarchyLogic::New();
-          hierarchyLogic->SetMRMLScene(this->mrmlScene());
-          bool retval = hierarchyLogic->DeleteHierarchyNodeAndChildren(vtkMRMLDisplayableHierarchyNode::SafeDownCast(mrmlNode));
-          if (!retval)
-            {
-            qWarning() << "Failed to delete hierarchy and children!";
-            }
-          hierarchyLogic->Delete();
-          break;
-          }
-        default:
-          {
-          qWarning() << "Not deleting hierarchy";
-          }
-        }
-      }
-    else
-      {
-      qWarning() << "Unable to delete model using node id" << qPrintable(modelID);
-      }
-    }
+  qvtkConnect( shNode, vtkMRMLSubjectHierarchyNode::SubjectHierarchyItemModifiedEvent,
+    this, SLOT( onSubjectHierarchyItemModified(vtkObject*,void*) ) );
+
+  this->Superclass::enter();
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerModelsModuleWidget::renameMultipleModels()
+void qSlicerModelsModuleWidget::exit()
 {
   Q_D(qSlicerModelsModuleWidget);
 
-  if (!this->mrmlScene())
+  // Disconnect SH node modified when module is not active
+  vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (!shNode)
     {
-    qWarning("No mrml scene set, cannot rename models");
+    qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
     return;
     }
-  
-  // get all rows where column 2, the model name, is selected
-  int nameColumn = d->ModelHierarchyTreeView->sceneModel()->nameColumn();
-  QModelIndexList indexList = d->ModelHierarchyTreeView->selectionModel()->selectedRows(nameColumn);
-  for (int i = 0; i < indexList.size(); ++i)
-    {
-    QModelIndex index = indexList.at(i);
-    vtkMRMLNode *mrmlNode =  d->ModelHierarchyTreeView->sortFilterProxyModel()->mrmlNodeFromIndex(index);
-    if (mrmlNode &&
-        (mrmlNode->IsA("vtkMRMLModelNode") || mrmlNode->IsA("vtkMRMLModelHierarchyNode")))
-      {
-      // pop up an entry box for the new name, with the old name as default
-      QString oldName = mrmlNode->GetName();
-      bool ok = false;
-      QString newName = QInputDialog::getText(
-                        this, "Rename " + oldName, "Old name: " + oldName + "\nNew name:",
-                        QLineEdit::Normal, oldName, &ok);
-      if (ok)
-        {
-        mrmlNode->SetName(newName.toLatin1());
-        }
-      }
-    }
-}
+  qvtkDisconnect( shNode, vtkMRMLSubjectHierarchyNode::SubjectHierarchyItemModifiedEvent,
+    this, SLOT( onSubjectHierarchyItemModified(vtkObject*,void*) ) );
 
-//-----------------------------------------------------------------------------
-void qSlicerModelsModuleWidget::onCurrentNodeChanged(vtkMRMLNode* newCurrentNode)
-{
-  Q_D(qSlicerModelsModuleWidget);
-
-  // only allow adding hierarchies when right click on hierarchies
-  vtkMRMLModelHierarchyNode* hierarchyNode =
-    vtkMRMLModelHierarchyNode::SafeDownCast(newCurrentNode);
-  if (hierarchyNode)
-    {
-    d->ModelHierarchyTreeView->prependNodeMenuAction(d->InsertHierarchyAction);
-    }
-  else
-    {
-    d->ModelHierarchyTreeView->removeNodeMenuAction(d->InsertHierarchyAction);
-    }
+  this->Superclass::exit();
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerModelsModuleWidget::setMRMLScene(vtkMRMLScene* scene)
 {
-  //Q_D(qSlicerModelsModuleWidget);
+  Q_D(qSlicerModelsModuleWidget);
 
   if (scene == this->mrmlScene())
     {
     return;
     }
   this->Superclass::setMRMLScene(scene);
+
+  if (scene)
+    {
+    scene->RemoveObserver(d->CallBack);
+    }
+  if (scene)
+    {
+    d->CallBack->SetClientData(this);
+
+    d->CallBack->SetCallback(qSlicerModelsModuleWidget::onMRMLSceneEvent);
+
+    scene->AddObserver(vtkMRMLScene::EndImportEvent, d->CallBack);
+    this->onMRMLSceneEvent(scene, vtkMRMLScene::EndImportEvent, this, nullptr);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::onMRMLSceneEvent(vtkObject* vtk_obj, unsigned long event,
+                                                void* client_data, void* call_data)
+{
+  vtkMRMLScene* scene = reinterpret_cast<vtkMRMLScene*>(vtk_obj);
+  qSlicerModelsModuleWidget* widget = reinterpret_cast<qSlicerModelsModuleWidget*>(client_data);
+  vtkMRMLNode* node = reinterpret_cast<vtkMRMLNode*>(call_data);
+  Q_UNUSED(node);
+  Q_ASSERT(scene);
+  Q_UNUSED(scene);
+  Q_ASSERT(widget);
+  if (event == vtkMRMLScene::EndImportEvent)
+    {
+    //widget->updateWidgetFromSelectionNode();
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::showAllModels()
+{
+  if (this->logic() == nullptr)
+    {
+    return;
+    }
+  vtkSlicerModelsLogic *modelsLogic = vtkSlicerModelsLogic::SafeDownCast(this->logic());
+  if (modelsLogic)
+    {
+    modelsLogic->SetAllModelsVisibility(1);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::hideAllModels()
+{
+  if (this->logic() == nullptr)
+    {
+    return;
+    }
+  vtkSlicerModelsLogic *modelsLogic = vtkSlicerModelsLogic::SafeDownCast(this->logic());
+  if (modelsLogic)
+    {
+    modelsLogic->SetAllModelsVisibility(0);
+    }
+}
+
+//-----------------------------------------------------------
+bool qSlicerModelsModuleWidget::setEditedNode(vtkMRMLNode* node,
+                                              QString role /* = QString()*/,
+                                              QString context /* = QString()*/)
+{
+  Q_D(qSlicerModelsModuleWidget);
+  Q_UNUSED(role);
+  Q_UNUSED(context);
+  if (vtkMRMLModelNode::SafeDownCast(node) || vtkMRMLFolderDisplayNode::SafeDownCast(node))
+    {
+    d->SubjectHierarchyTreeView->setCurrentNode(node);
+    return true;
+    }
+
+  if (vtkMRMLModelDisplayNode::SafeDownCast(node))
+    {
+    vtkMRMLModelDisplayNode* displayNode = vtkMRMLModelDisplayNode::SafeDownCast(node);
+    vtkMRMLModelNode* displayableNode = vtkMRMLModelNode::SafeDownCast(displayNode->GetDisplayableNode());
+    if (!displayableNode)
+      {
+      return false;
+      }
+    d->SubjectHierarchyTreeView->setCurrentNode(displayableNode);
+    return true;
+    }
+
+  return false;
+}
+
+//-----------------------------------------------------------
+void qSlicerModelsModuleWidget::onClippingConfigurationButtonClicked()
+{
+  Q_D(qSlicerModelsModuleWidget);
+  d->ClippingButton->setCollapsed(false);
+  // Make sure import/export is visible
+  if (this->parent() && this->parent()->parent() && this->parent()->parent()->parent())
+    {
+    QScrollArea* scrollArea = qobject_cast<QScrollArea*>(this->parent()->parent()->parent());
+    if (scrollArea)
+      {
+      scrollArea->ensureWidgetVisible(d->ClippingButton);
+      }
+    }
+}
+
+//-----------------------------------------------------------
+void qSlicerModelsModuleWidget::onDisplayNodeChanged()
+{
+  Q_D(qSlicerModelsModuleWidget);
+  vtkMRMLModelDisplayNode* displayNode = d->ModelDisplayWidget->mrmlModelDisplayNode();
+  bool wasBlocked = d->ClipSelectedModelCheckBox->blockSignals(true);
+  d->ClipSelectedModelLabel->setEnabled(displayNode != nullptr);
+  d->ClipSelectedModelCheckBox->setEnabled(displayNode != nullptr);
+  d->ClipSelectedModelCheckBox->setChecked(displayNode != nullptr && displayNode->GetClipping());
+  d->ClipSelectedModelCheckBox->blockSignals(wasBlocked);
+}
+
+//-----------------------------------------------------------
+void qSlicerModelsModuleWidget::onClipSelectedModelToggled(bool toggled)
+{
+  Q_D(qSlicerModelsModuleWidget);
+  vtkMRMLModelDisplayNode* displayNode = d->ModelDisplayWidget->mrmlModelDisplayNode();
+  if (displayNode)
+    {
+    int wasModified = displayNode->StartModify();
+    displayNode->SetClipping(toggled);
+    // By enabling clipping, backfaces may become visible.
+    // Therefore, it is better to render them (not cull them).
+    if (toggled)
+      {
+      displayNode->BackfaceCullingOff();
+      displayNode->FrontfaceCullingOff();
+      if (d->MRMLClipNodeWidget->mrmlClipNode() != nullptr
+        && d->MRMLClipNodeWidget->redSliceClipState() == vtkMRMLClipModelsNode::ClipOff
+        && d->MRMLClipNodeWidget->greenSliceClipState() == vtkMRMLClipModelsNode::ClipOff
+        && d->MRMLClipNodeWidget->yellowSliceClipState() == vtkMRMLClipModelsNode::ClipOff)
+        {
+        // All clipping planes are disabled.
+        // Enable the first clipping plane to show a clipped model to the user.
+        d->MRMLClipNodeWidget->setRedSliceClipState(vtkMRMLClipModelsNode::ClipPositiveSpace);
+        }
+      }
+    displayNode->EndModify(wasModified);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::setDisplaySelectionFromSubjectHierarchyItems(QList<vtkIdType> itemIDs)
+{
+  Q_D(qSlicerModelsModuleWidget);
+
+  vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (!shNode)
+    {
+    qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
+    return;
+    }
+
+  vtkMRMLNode* firstDataNode = nullptr;
+  if ( itemIDs.size() > 0
+    // In case of empty selection the only item in the list is the scene
+    && !(itemIDs.size() == 1 && itemIDs[0] == shNode->GetSceneItemID()) )
+    {
+    firstDataNode = shNode->GetItemDataNode(itemIDs[0]);
+    }
+  // Only set model node to info widget if it's visible
+  d->MRMLModelInfoWidget->setMRMLModelNode(d->InformationButton->collapsed() ? nullptr : firstDataNode);
+
+  d->ModelDisplayWidget->setCurrentSubjectHierarchyItemIDs(itemIDs);
+}
+
+//---------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::onSubjectHierarchyItemModified(vtkObject* vtkNotUsed(caller), void* vtkNotUsed(callData))
+{
+  Q_D(qSlicerModelsModuleWidget);
+
+  QList<vtkIdType> currentItemIDs = d->SubjectHierarchyTreeView->currentItems();
+  this->setDisplaySelectionFromSubjectHierarchyItems(currentItemIDs);
+}
+
+//---------------------------------------------------------------------------
+void qSlicerModelsModuleWidget::onInformationSectionCollapsed(bool collapsed)
+{
+  Q_D(qSlicerModelsModuleWidget);
+
+  if (!collapsed)
+    {
+    QList<vtkIdType> currentItemIDs = d->SubjectHierarchyTreeView->currentItems();
+    this->setDisplaySelectionFromSubjectHierarchyItems(currentItemIDs);
+    }
 }

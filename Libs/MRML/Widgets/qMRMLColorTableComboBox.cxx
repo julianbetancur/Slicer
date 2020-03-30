@@ -55,7 +55,7 @@ void qMRMLColorTableComboBoxPrivate::init()
   comboBox->setVisibleModelColumn(0);
   q->setComboBox(comboBox);
   q->setShowHidden(true);
-  
+
   QStringList nodeTypes;
   nodeTypes << QString("vtkMRMLColorTableNode");
   nodeTypes << QString("vtkMRMLProceduralColorNode");
@@ -82,8 +82,7 @@ qMRMLColorTableComboBox::qMRMLColorTableComboBox(QWidget* parentWidget)
 
 // --------------------------------------------------------------------------
 qMRMLColorTableComboBox::~qMRMLColorTableComboBox()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 QAbstractItemModel* qMRMLColorTableComboBox::createSceneModel()

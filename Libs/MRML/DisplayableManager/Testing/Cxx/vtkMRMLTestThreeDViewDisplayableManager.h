@@ -26,14 +26,14 @@
 
 class vtkMRMLCameraNode;
 
-class vtkMRMLTestThreeDViewDisplayableManager : 
+class vtkMRMLTestThreeDViewDisplayableManager :
   public vtkMRMLAbstractThreeDViewDisplayableManager
 {
 
 public:
   static vtkMRMLTestThreeDViewDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLTestThreeDViewDisplayableManager,vtkMRMLAbstractThreeDViewDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLTestThreeDViewDisplayableManager,vtkMRMLAbstractThreeDViewDisplayableManager);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   // For testing
   static int NodeAddedCount;
@@ -41,25 +41,25 @@ public:
 protected:
 
   vtkMRMLTestThreeDViewDisplayableManager();
-  virtual ~vtkMRMLTestThreeDViewDisplayableManager();
+  ~vtkMRMLTestThreeDViewDisplayableManager() override;
 
   virtual void AdditionnalInitializeStep();
 
-  virtual void Create();
+  void Create() override;
 
 //  virtual void OnMRMLSceneAboutToBeClosedEvent(){}
 //  virtual void OnMRMLSceneClosedEvent(){}
 //  virtual void OnMRMLSceneAboutToBeImportedEvent(){}
 //  virtual void OnMRMLSceneImportedEvent(){}
 //  virtual void OnMRMLSceneRestoredEvent(){}
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
 //  virtual void OnMRMLSceneNodeRemovedEvent(vtkMRMLNode* /*node*/){}
-  
+
 private:
 
-  vtkMRMLTestThreeDViewDisplayableManager(const vtkMRMLTestThreeDViewDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLTestThreeDViewDisplayableManager&);                     // Not Implemented
-  
+  vtkMRMLTestThreeDViewDisplayableManager(const vtkMRMLTestThreeDViewDisplayableManager&) = delete;
+  void operator=(const vtkMRMLTestThreeDViewDisplayableManager&) = delete;
+
   class vtkInternal;
   vtkInternal * Internal;
 

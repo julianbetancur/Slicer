@@ -21,35 +21,33 @@
 #ifndef __qSlicerExtensionsInstallWidget_h
 #define __qSlicerExtensionsInstallWidget_h
 
-// Qt includes
-#include <QWidget>
-
 // CTK includes
 #include <ctkErrorLogModel.h>
 
 // QtGUI includes
 #include "qSlicerBaseQTGUIExport.h"
+#include "qSlicerWebWidget.h"
 
-class QNetworkReply;
 class qSlicerExtensionsInstallWidgetPrivate;
 class qSlicerExtensionsManagerModel;
 
 class Q_SLICER_BASE_QTGUI_EXPORT qSlicerExtensionsInstallWidget
-  : public QWidget
+  : public qSlicerWebWidget
 {
   Q_OBJECT
   Q_PROPERTY(QString slicerRevision READ slicerRevision WRITE setSlicerRevision)
   Q_PROPERTY(QString slicerOs READ slicerOs WRITE setSlicerOs)
   Q_PROPERTY(QString slicerArch READ slicerArch WRITE setSlicerArch)
+  Q_PROPERTY(bool browsingEnabled READ isBrowsingEnabled WRITE setBrowsingEnabled)
 public:
   /// Superclass typedef
-  typedef QWidget Superclass;
+  typedef qSlicerWebWidget Superclass;
 
   /// Constructor
-  explicit qSlicerExtensionsInstallWidget(QWidget* parent = 0);
+  explicit qSlicerExtensionsInstallWidget(QWidget* parent = nullptr);
 
   /// Destructor
-  virtual ~qSlicerExtensionsInstallWidget();
+  ~qSlicerExtensionsInstallWidget() override;
 
   Q_INVOKABLE qSlicerExtensionsManagerModel* extensionsManagerModel()const;
   Q_INVOKABLE void setExtensionsManagerModel(qSlicerExtensionsManagerModel* model);
@@ -62,6 +60,9 @@ public:
 
   QString slicerArch()const;
   void setSlicerArch(const QString& arch);
+
+  bool isBrowsingEnabled() const;
+  void setBrowsingEnabled(bool state);
 
 public slots:
   /// Refresh the web page associated with the widget
@@ -77,19 +78,13 @@ public slots:
 
   void onMessageLogged(const QString& text, ctkErrorLogLevel::LogLevels level);
 
-  void onDownloadStarted(QNetworkReply* reply);
-
-  void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
-
-  void onDownloadFinished(QNetworkReply* reply);
+protected:
+  bool acceptNavigationRequest(const QUrl & url, QWebEnginePage::NavigationType type, bool isMainFrame) override;
 
 protected slots:
-  void initJavascript();
-  void onLoadStarted();
-  void onLoadFinished(bool ok);
-
-protected:
-  QScopedPointer<qSlicerExtensionsInstallWidgetPrivate> d_ptr;
+  void initJavascript() override;
+  void onLoadFinished(bool ok) override;
+  void onLoadStarted() override;
 
 private:
   Q_DECLARE_PRIVATE(qSlicerExtensionsInstallWidget);
@@ -97,4 +92,3 @@ private:
 };
 
 #endif
-

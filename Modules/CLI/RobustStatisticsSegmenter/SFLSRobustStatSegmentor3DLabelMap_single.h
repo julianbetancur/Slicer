@@ -40,7 +40,7 @@ public:
      ----------------------------------------------------------------------
      ---------------------------------------------------------------------- */
 
-  typedef typename SuperClassType::TCharImage TLabelImage;
+  typedef typename SuperClassType::TShortImage TLabelImage;
   typedef typename TLabelImage::Pointer       TLabelImagePointer;
 
   typedef typename SuperClassType::TFloatImage TFloatImage;
@@ -61,9 +61,9 @@ public:
 
   void setInputLabelImage(TLabelImagePointer l);
 
-  void doSegmenation();
+  void doSegmenation() override;
 
-  void computeForce();
+  void computeForce() override;
 
   void setKernelWidthFactor(double f);
 

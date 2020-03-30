@@ -20,12 +20,15 @@
 
 // Qt includes
 #include <QDebug>
+#include <QApplication>
+#include <QMainWindow>
+#include <QWindow>
 
 // qMRML includes
 #include "qMRMLSliceWidget_p.h"
 
 // MRMLDisplayableManager includes
-#include <vtkSliceViewInteractorStyle.h>
+#include <vtkMRMLSliceViewInteractorStyle.h>
 
 // MRML includes
 #include <vtkMRMLSliceNode.h>
@@ -34,6 +37,9 @@
 // VTK includes
 #include <vtkNew.h>
 #include <vtkSmartPointer.h>
+#include <vtkCollection.h>
+#include <vtkWeakPointer.h>
+
 
 //--------------------------------------------------------------------------
 // qMRMLSliceWidgetPrivate methods
@@ -46,8 +52,7 @@ qMRMLSliceWidgetPrivate::qMRMLSliceWidgetPrivate(qMRMLSliceWidget& object)
 
 //---------------------------------------------------------------------------
 qMRMLSliceWidgetPrivate::~qMRMLSliceWidgetPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLSliceWidgetPrivate::init()
@@ -59,12 +64,27 @@ void qMRMLSliceWidgetPrivate::init()
     ->SetSliceLogic(this->SliceController->sliceLogic());
 
   connect(this->SliceView, SIGNAL(resized(QSize)),
-          this->SliceController, SLOT(setSliceViewSize(QSize)));
+          this, SLOT(setSliceViewSize(QSize)));
 
-  connect(this->SliceController, SIGNAL(imageDataChanged(vtkImageData*)),
-          this, SLOT(setImageData(vtkImageData*)));
+  connect(this->SliceController, SIGNAL(imageDataConnectionChanged(vtkAlgorithmOutput*)),
+          this, SLOT(setImageDataConnection(vtkAlgorithmOutput*)));
   connect(this->SliceController, SIGNAL(renderRequested()),
           this->SliceView, SLOT(scheduleRender()), Qt::QueuedConnection);
+  connect(this->SliceController, SIGNAL(nodeAboutToBeEdited(vtkMRMLNode*)),
+          q, SIGNAL(nodeAboutToBeEdited(vtkMRMLNode*)));
+}
+
+// --------------------------------------------------------------------------
+void qMRMLSliceWidgetPrivate::setSliceViewSize(const QSize& size)
+{
+  QSizeF scaledSizeF = QSizeF(size) * this->SliceView->devicePixelRatioF();
+  this->SliceController->setSliceViewSize(scaledSizeF.toSize());
+}
+
+// --------------------------------------------------------------------------
+void qMRMLSliceWidgetPrivate::resetSliceViewSize()
+{
+  this->setSliceViewSize(this->SliceView->size());
 }
 
 // --------------------------------------------------------------------------
@@ -72,15 +92,14 @@ void qMRMLSliceWidgetPrivate::endProcessing()
 {
   // When a scene is closed, we need to reconfigure the SliceNode to
   // the size of the widget.
-  QRect rect = this->SliceView->geometry();
-  this->SliceController->setSliceViewSize(QSize(rect.width(), rect.height()));
+  this->setSliceViewSize(this->SliceView->size());
 }
 
 // --------------------------------------------------------------------------
-void qMRMLSliceWidgetPrivate::setImageData(vtkImageData * imageData)
+void qMRMLSliceWidgetPrivate::setImageDataConnection(vtkAlgorithmOutput * imageDataConnection)
 {
-  //qDebug() << "qMRMLSliceWidgetPrivate::setImageData";
-  this->SliceView->setImageData(imageData);
+  //qDebug() << "qMRMLSliceWidgetPrivate::setImageDataConnection";
+  this->SliceView->setImageDataConnection(imageDataConnection);
 }
 
 // --------------------------------------------------------------------------
@@ -95,9 +114,17 @@ qMRMLSliceWidget::qMRMLSliceWidget(QWidget* _parent) : Superclass(_parent)
 }
 
 // --------------------------------------------------------------------------
-qMRMLSliceWidget::~qMRMLSliceWidget()
+qMRMLSliceWidget::qMRMLSliceWidget(qMRMLSliceWidgetPrivate* pimpl,
+                                   QWidget* _parent)
+  : Superclass(_parent)
+  , d_ptr(pimpl)
 {
+  // Note: You are responsible to call init() in the constructor of derived class.
 }
+
+// --------------------------------------------------------------------------
+qMRMLSliceWidget::~qMRMLSliceWidget()
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLSliceWidget::setMRMLScene(vtkMRMLScene* newScene)
@@ -195,17 +222,17 @@ QString qMRMLSliceWidget::sliceOrientation()const
 }
 
 //---------------------------------------------------------------------------
-void qMRMLSliceWidget::setImageData(vtkImageData* newImageData)
+void qMRMLSliceWidget::setImageDataConnection(vtkAlgorithmOutput* newImageDataConnection)
 {
   Q_D(qMRMLSliceWidget);
-  d->SliceController->setImageData(newImageData);
+  d->SliceController->setImageDataConnection(newImageDataConnection);
 }
 
 //---------------------------------------------------------------------------
-vtkImageData* qMRMLSliceWidget::imageData() const
+vtkAlgorithmOutput* qMRMLSliceWidget::imageDataConnection() const
 {
   Q_D(const qMRMLSliceWidget);
-  return d->SliceController->imageData();
+  return d->SliceController->imageDataConnection();
 }
 
 //---------------------------------------------------------------------------
@@ -242,7 +269,7 @@ void qMRMLSliceWidget::fitSliceToBackground()
 }
 
 // --------------------------------------------------------------------------
-const qMRMLSliceView* qMRMLSliceWidget::sliceView()const
+qMRMLSliceView* qMRMLSliceWidget::sliceView()const
 {
   Q_D(const qMRMLSliceWidget);
   return d->SliceView;
@@ -260,4 +287,30 @@ void qMRMLSliceWidget::setSliceLogics(vtkCollection* logics)
 {
   Q_D(qMRMLSliceWidget);
   d->SliceController->setSliceLogics(logics);
+}
+
+// --------------------------------------------------------------------------
+void qMRMLSliceWidget::showEvent(QShowEvent* event)
+{
+  Superclass::showEvent(event);
+
+  Q_D(qMRMLSliceWidget);
+
+  // Reset slice view size when screen changes to account for a possible change
+  // in the device pixel ratio.
+  QWindow* window = nullptr;
+  foreach(QWidget* widget, qApp->topLevelWidgets())
+    {
+    QMainWindow* mainWindow = qobject_cast<QMainWindow*>(widget);
+    if (mainWindow)
+      {
+      window = mainWindow->windowHandle();
+      break;
+      }
+    }
+  if (window)
+    {
+    connect(window, SIGNAL(screenChanged(QScreen*)),
+            d, SLOT(resetSliceViewSize()), Qt::UniqueConnection);
+    }
 }

@@ -11,19 +11,35 @@
 
 // this is a test of the slicer slice logic resampling pipeline
 
+// Slicer includes
+#include "vtkSlicerConfigure.h" // For Slicer_VTK_USE_QVTKOPENGLWIDGET, Slicer_BUILD_WEBENGINE_SUPPORT
+
 // Qt includes
 #include <QApplication>
-#include <QTimer>
-#include <QPushButton>
-#include <QVBoxLayout>
 #include <QProcessEnvironment>
-#include <QWebView>
+#include <QPushButton>
+#include <QString>
+#include <QTimer>
+#include <QVBoxLayout>
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+#include <QWebEngineView>
+#endif
 
 // SlicerQt includes
 #include "qSlicerWidget.h"
+#include "qMRMLWidget.h"
 
-// QVTK includes
-#include <QVTKWidget.h>
+// Slicer includes
+#include <vtkMRMLSliceLogic.h>
+
+// MRML includes
+#include <vtkMRMLScalarVolumeNode.h>
+#include <vtkMRMLScalarVolumeDisplayNode.h>
+#include <vtkMRMLVolumeArchetypeStorageNode.h>
+#include <vtkMRMLScene.h>
+#include <vtkMRMLSliceCompositeNode.h>
+#include <vtkMRMLSliceNode.h>
+#include <vtkMRMLColorTableNode.h>
 
 // VTK includes
 #include <vtkRenderWindow.h>
@@ -31,17 +47,12 @@
 #include <vtkImageMapper.h>
 #include <vtkProperty2D.h>
 #include <vtkActor2D.h>
-
-// MRML includes
-#include <vtkMRMLScalarVolumeNode.h>
-#include <vtkMRMLScalarVolumeDisplayNode.h>
-#include <vtkMRMLVolumeArchetypeStorageNode.h>
-#include <vtkMRMLSliceCompositeNode.h>
-#include <vtkMRMLSliceNode.h>
-#include <vtkMRMLColorTableNode.h>
-
-// Slicer includes
-#include <vtkMRMLSliceLogic.h>
+#include <vtkVersion.h>
+#ifdef Slicer_VTK_USE_QVTKOPENGLWIDGET
+#include <QVTKOpenGLWidget.h>
+#else
+#include <QVTKWidget.h>
+#endif
 
 // STD includes
 
@@ -54,6 +65,9 @@
 //
 vtkMRMLSliceLogic *setupSliceDisplay(vtkMRMLScene *scene, vtkRenderWindow *rw, const char *archetype)
 {
+  // Add default slice orientation presets
+  vtkMRMLSliceNode::AddDefaultSliceOrientationPresets(scene);
+
   //
   // allocate needed nodes, add them to the scene, and connect them together
   //
@@ -79,8 +93,8 @@ vtkMRMLSliceLogic *setupSliceDisplay(vtkMRMLScene *scene, vtkRenderWindow *rw, c
   displayNode->SetAndObserveColorNodeID( colorNode->GetID() );
 
   // read the data
-  storageNode->SetFileName( archetype ); 
-  storageNode->ReadData( volumeNode ); 
+  storageNode->SetFileName( archetype );
+  storageNode->ReadData( volumeNode );
 
 
   //
@@ -99,19 +113,20 @@ vtkMRMLSliceLogic *setupSliceDisplay(vtkMRMLScene *scene, vtkRenderWindow *rw, c
   //
   // get the output slice and put it into the render window
   //
-  vtkImageData *slice = sliceLogic->GetImageData();
+  // vtkImageData *slice = 0;
+  vtkAlgorithmOutput *slicePort = sliceLogic->GetImageDataConnection();
 
   vtkImageMapper *mapper = vtkImageMapper::New();
   mapper->SetColorWindow( 255. );
   mapper->SetColorLevel ( 127.5 );
-  mapper->SetInput( slice );
+  mapper->SetInputConnection( slicePort );
   vtkActor2D *actor = vtkActor2D::New();
   actor->SetMapper( mapper );
   actor->GetProperty()->SetDisplayLocationToBackground();
   vtkRenderer *renderer = vtkRenderer::New();
   renderer->AddActor2D( actor );
   rw->AddRenderer( renderer );
-  
+
   // clean up
   mapper->Delete();
   actor->Delete();
@@ -126,10 +141,23 @@ vtkMRMLSliceLogic *setupSliceDisplay(vtkMRMLScene *scene, vtkRenderWindow *rw, c
 
 int qSlicerWidgetTest2(int argc, char * argv[] )
 {
+  if (argc != 2 && argc != 3)
+    {
+    std::cerr << "Line " << __LINE__ << " - Missing parameters !" << std::endl
+      << "Usage:" << std::endl
+      << "  Default: " << argv[0] << " /path/to/temp" << std::endl
+      << "  For interactive testing: " << argv[0] << " /path/to/temp -I" << std::endl
+      << std::endl;
+    return EXIT_FAILURE;
+    }
+
   //
   // Create a simple gui with a quit button and render window
   //
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
+
   QWidget parentWidget;
   parentWidget.setWindowTitle("qSlicerWidgetTest2");
   QVBoxLayout vbox;
@@ -145,36 +173,38 @@ int qSlicerWidgetTest2(int argc, char * argv[] )
   widget->setParent(&parentWidget);
   vbox.addWidget(widget);
 
+#ifdef Slicer_VTK_USE_QVTKOPENGLWIDGET
+  QVTKOpenGLWidget * vtkWidget = new QVTKOpenGLWidget;
+  vtkWidget->setEnableHiDPI(true);
+#else
   QVTKWidget* vtkWidget = new QVTKWidget();
+#endif
+
   vtkWidget->setParent(&parentWidget);
   vbox.addWidget(vtkWidget);
   vtkWidget->GetRenderWindow()->Render();
 
-  QWebView webView;
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+  QWebEngineView webView;
   webView.setParent(&parentWidget);
   webView.setUrl(QUrl("http://pyjs.org/examples"));
   vbox.addWidget(&webView);
+#endif
 
   vtkMRMLScene* scene = vtkMRMLScene::New();
   widget->setMRMLScene(scene);
   parentWidget.show();
   parentWidget.raise();
 
-  //
-  // Get the sample data from a known spot in the build tree
-  // (relies on SLICER_HOME being set correctly, which it
-  // will be when the launcher is used).
-  //
-  QProcessEnvironment env;
-  QString qarchetype = env.value("SLICER_HOME", "");
-  qarchetype.append("share/MRML/Testing/TestData/fixed.nrrd");
-  QByteArray archetype = qarchetype.toAscii();
+  vtkMRMLSliceLogic *sliceLogic = setupSliceDisplay(
+          scene, vtkWidget->GetRenderWindow(), argv[1] );
 
-  vtkMRMLSliceLogic *sliceLogic = setupSliceDisplay( 
-          scene, vtkWidget->GetRenderWindow(), archetype.data() );
 
-  // quit after 5 seconds if the Quit button hasn't been clicked
-  QTimer::singleShot(5000, &parentWidget, SLOT(close()));
+  if (argc < 3 || QString(argv[2]) != "-I")
+  {
+    // quit after 5 seconds if the Quit button hasn't been clicked
+    QTimer::singleShot(5000, &parentWidget, SLOT(close()));
+  }
 
   // run the app
   app.exec();

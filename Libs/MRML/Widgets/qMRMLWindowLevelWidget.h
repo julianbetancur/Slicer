@@ -39,8 +39,8 @@ class QMRML_WIDGETS_EXPORT qMRMLWindowLevelWidget
 public:
   /// Constructors
   typedef qMRMLVolumeWidget Superclass;
-  explicit qMRMLWindowLevelWidget(QWidget* parentWidget = 0);
-  virtual ~qMRMLWindowLevelWidget();
+  explicit qMRMLWindowLevelWidget(QWidget* parentWidget = nullptr);
+  ~qMRMLWindowLevelWidget() override;
 
   enum ControlMode
   {
@@ -53,27 +53,27 @@ public:
   void setAutoWindowLevel(ControlMode autoWindowLevel);
   ControlMode autoWindowLevel() const;
 
-  /// 
+  ///
   /// Get window
   double window()const;
 
-  /// 
+  ///
   /// Get level
   double level()const;
 
-  /// 
+  ///
   /// Get minimum of the range
   double minimumValue()const;
 
-  /// 
+  ///
   /// Get maximum of the range
   double maximumValue()const;
 
 signals:
-  /// 
+  ///
   /// Signal sent if the window/level value is updated
   void windowLevelValuesChanged(double window, double level);
-  /// 
+  ///
   /// Signal sent if the auto/manual value is updated
   void autoWindowLevelValueChanged(ControlMode value);
 
@@ -81,19 +81,19 @@ public slots:
   /// Set Auto/Manual mode
   void setAutoWindowLevel(int autoWindowLevel);
 
-  /// 
+  ///
   /// Set window
   void setWindow(double window);
 
-  /// 
+  ///
   /// Set level
   void setLevel(double level);
 
-  /// 
+  ///
   /// Set window/level in once
   void setWindowLevel(double window, double level);
 
-  /// 
+  ///
   /// Set min/max range
   void setMinMaxRangeValue(double min, double max);
   void setMinimumValue(double min);
@@ -101,7 +101,7 @@ public slots:
 
 protected:
   /// Update the widget from volume display node properties.
-  virtual void updateWidgetFromMRMLDisplayNode();
+  void updateWidgetFromMRMLDisplayNode() override;
 
 private:
   Q_DECLARE_PRIVATE(qMRMLWindowLevelWidget);

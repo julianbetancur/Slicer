@@ -23,14 +23,13 @@
 #include "vtkRenderWindowInteractor.h"
 #include "vtkObjectFactory.h"
 #include "vtkWidgetEventTranslator.h"
-#include "vtkWidgetCallbackMapper.h" 
+#include "vtkWidgetCallbackMapper.h"
 #include "vtkEvent.h"
 #include "vtkWidgetEvent.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 
 
-vtkCxxRevisionMacro(vtkAnnotationROIWidget, "$Revision: 12141 $");
 vtkStandardNewMacro(vtkAnnotationROIWidget);
 
 //----------------------------------------------------------------------------
@@ -69,8 +68,7 @@ vtkAnnotationROIWidget::vtkAnnotationROIWidget()
 
 //----------------------------------------------------------------------------
 vtkAnnotationROIWidget::~vtkAnnotationROIWidget()
-{  
-}
+= default;
 
 //----------------------------------------------------------------------
 void vtkAnnotationROIWidget::SelectAction(vtkAbstractWidget *w)
@@ -81,15 +79,15 @@ void vtkAnnotationROIWidget::SelectAction(vtkAbstractWidget *w)
   // Get the event position
   int X = self->Interactor->GetEventPosition()[0];
   int Y = self->Interactor->GetEventPosition()[1];
-  
+
   // Okay, make sure that the pick is in the current renderer
-  if ( !self->CurrentRenderer || 
+  if ( !self->CurrentRenderer ||
        !self->CurrentRenderer->IsInViewport(X,Y) )
     {
     self->WidgetState = vtkAnnotationROIWidget::Start;
     return;
     }
-  
+
   // Begin the widget interaction which has the side effect of setting the
   // interaction state.
   double e[2];
@@ -101,7 +99,7 @@ void vtkAnnotationROIWidget::SelectAction(vtkAbstractWidget *w)
     {
     return;
     }
-  
+
   // We are definitely selected
   self->WidgetState = vtkAnnotationROIWidget::Active;
   self->GrabFocus(self->EventCallbackCommand);
@@ -113,7 +111,7 @@ void vtkAnnotationROIWidget::SelectAction(vtkAbstractWidget *w)
     reinterpret_cast<vtkAnnotationROIRepresentation*>(self->WidgetRep)->
       SetInteractionState(vtkAnnotationROIRepresentation::Translating);
     }
-  else 
+  else
     {
     reinterpret_cast<vtkAnnotationROIRepresentation*>(self->WidgetRep)->
       SetInteractionState(interactionState);
@@ -122,7 +120,7 @@ void vtkAnnotationROIWidget::SelectAction(vtkAbstractWidget *w)
   // start the interaction
   self->EventCallbackCommand->SetAbortFlag(1);
   self->StartInteraction();
-  self->InvokeEvent(vtkCommand::StartInteractionEvent,NULL);
+  self->InvokeEvent(vtkCommand::StartInteractionEvent,nullptr);
   self->Render();
 }
 
@@ -135,15 +133,15 @@ void vtkAnnotationROIWidget::TranslateAction(vtkAbstractWidget *w)
   // Get the event position
   int X = self->Interactor->GetEventPosition()[0];
   int Y = self->Interactor->GetEventPosition()[1];
-  
+
   // Okay, make sure that the pick is in the current renderer
-  if ( !self->CurrentRenderer || 
+  if ( !self->CurrentRenderer ||
        !self->CurrentRenderer->IsInViewport(X,Y) )
     {
     self->WidgetState = vtkAnnotationROIWidget::Start;
     return;
     }
-  
+
   // Begin the widget interaction which has the side effect of setting the
   // interaction state.
   double e[2];
@@ -155,17 +153,17 @@ void vtkAnnotationROIWidget::TranslateAction(vtkAbstractWidget *w)
     {
     return;
     }
-  
+
   // We are definitely selected
   self->WidgetState = vtkAnnotationROIWidget::Active;
   self->GrabFocus(self->EventCallbackCommand);
   reinterpret_cast<vtkAnnotationROIRepresentation*>(self->WidgetRep)->
     SetInteractionState(vtkAnnotationROIRepresentation::Translating);
-  
+
   // start the interaction
   self->EventCallbackCommand->SetAbortFlag(1);
   self->StartInteraction();
-  self->InvokeEvent(vtkCommand::StartInteractionEvent,NULL);
+  self->InvokeEvent(vtkCommand::StartInteractionEvent,nullptr);
   self->Render();
 }
 
@@ -178,15 +176,15 @@ void vtkAnnotationROIWidget::ScaleAction(vtkAbstractWidget *w)
   // Get the event position
   int X = self->Interactor->GetEventPosition()[0];
   int Y = self->Interactor->GetEventPosition()[1];
-  
+
   // Okay, make sure that the pick is in the current renderer
-  if ( !self->CurrentRenderer || 
+  if ( !self->CurrentRenderer ||
        !self->CurrentRenderer->IsInViewport(X,Y) )
     {
     self->WidgetState = vtkAnnotationROIWidget::Start;
     return;
     }
-  
+
   // Begin the widget interaction which has the side effect of setting the
   // interaction state.
   double e[2];
@@ -198,7 +196,7 @@ void vtkAnnotationROIWidget::ScaleAction(vtkAbstractWidget *w)
     {
     return;
     }
-  
+
   // We are definitely selected
   self->WidgetState = vtkAnnotationROIWidget::Active;
   self->GrabFocus(self->EventCallbackCommand);
@@ -208,7 +206,7 @@ void vtkAnnotationROIWidget::ScaleAction(vtkAbstractWidget *w)
   // start the interaction
   self->EventCallbackCommand->SetAbortFlag(1);
   self->StartInteraction();
-  self->InvokeEvent(vtkCommand::StartInteractionEvent,NULL);
+  self->InvokeEvent(vtkCommand::StartInteractionEvent,nullptr);
   self->Render();
 }
 
@@ -222,7 +220,7 @@ void vtkAnnotationROIWidget::MoveAction(vtkAbstractWidget *w)
     {
     return;
     }
-  
+
   // compute some info we need for all cases
   int X = self->Interactor->GetEventPosition()[0];
   int Y = self->Interactor->GetEventPosition()[1];
@@ -235,7 +233,7 @@ void vtkAnnotationROIWidget::MoveAction(vtkAbstractWidget *w)
 
   // moving something
   self->EventCallbackCommand->SetAbortFlag(1);
-  self->InvokeEvent(vtkCommand::InteractionEvent,NULL);
+  self->InvokeEvent(vtkCommand::InteractionEvent,nullptr);
   self->Render();
 }
 
@@ -247,7 +245,7 @@ void vtkAnnotationROIWidget::EndSelectAction(vtkAbstractWidget *w)
     {
     return;
     }
-  
+
   // Return state to not active
   self->WidgetState = vtkAnnotationROIWidget::Start;
   reinterpret_cast<vtkAnnotationROIRepresentation*>(self->WidgetRep)->
@@ -256,7 +254,7 @@ void vtkAnnotationROIWidget::EndSelectAction(vtkAbstractWidget *w)
 
   self->EventCallbackCommand->SetAbortFlag(1);
   self->EndInteraction();
-  self->InvokeEvent(vtkCommand::EndInteractionEvent,NULL);
+  self->InvokeEvent(vtkCommand::EndInteractionEvent,nullptr);
   self->Render();
 }
 

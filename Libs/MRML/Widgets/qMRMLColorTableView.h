@@ -40,22 +40,32 @@ class vtkMRMLNode;
 class QMRML_WIDGETS_EXPORT qMRMLColorTableView : public QTableView
 {
   Q_OBJECT
+  /// This property show/hides the colors whose name are (none).
+  /// false by default.
+  /// \sa showOnlyNamedColors(), setShowOnlyNamedColors()
   Q_PROPERTY(bool showOnlyNamedColors READ showOnlyNamedColors WRITE setShowOnlyNamedColors)
 public:
-  qMRMLColorTableView(QWidget *parent=0);
-  virtual ~qMRMLColorTableView();
+  qMRMLColorTableView(QWidget *parent=nullptr);
+  ~qMRMLColorTableView() override;
 
-  vtkMRMLColorNode* mrmlColorNode()const;
-  qMRMLColorModel* colorModel()const;
-  QSortFilterProxyModel* sortFilterProxyModel()const;
-  
+  Q_INVOKABLE vtkMRMLColorNode* mrmlColorNode()const;
+  Q_INVOKABLE qMRMLColorModel* colorModel()const;
+  Q_INVOKABLE QSortFilterProxyModel* sortFilterProxyModel()const;
+
+  /// Return the row of the color with name \a colorName.
+  /// \sa rowFromColorIndex()
+  Q_INVOKABLE int rowFromColorName(const QString& colorName)const;
+  /// Return the row of the color of index \a colorIndex.
+  /// \sa rowFromColorIndex()
+  Q_INVOKABLE int rowFromColorIndex(int colorIndex)const;
+
   bool showOnlyNamedColors()const;
 
 public slots:
   void setMRMLColorNode(vtkMRMLColorNode* colorNode);
   /// Utility function to simply connect signals/slots with Qt Designer
   void setMRMLColorNode(vtkMRMLNode* colorNode);
-  
+
   void setShowOnlyNamedColors(bool);
 
 protected:

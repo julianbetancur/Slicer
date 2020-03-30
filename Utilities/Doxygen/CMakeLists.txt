@@ -1,44 +1,48 @@
-find_package( Doxygen QUIET)
+find_package(Doxygen 1.8.4 QUIET)
 
 if( DOXYGEN_FOUND )
   if( DOXYGEN_DOT_FOUND )
-
-    # Automatically generate documentation at build time
-    set(all_arg)
-    if(DOCUMENTATION_TARGET_IN_ALL)
-      set(all_arg "ALL")
-    endif()
-
     #
     # User documentation
     #
+    set(userdoc_doxyfile ${CMAKE_CURRENT_BINARY_DIR}/UserDoxyfile.txt)
+    set(userdoc_tarball
+      ${DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY}/Slicer-cpp.tar.gz
+      )
+
     set( Slicer_USER_DOCUMENTATION "NO" )
     set( Slicer_ADDITIONAL_EXCLUDE_PATTERN "*_p.h\  *Private.*" )
-    set( Slicer_DOCUMENTATION_HTML_TARZ TRUE)
 
-    configure_file( Doxyfile.txt.in
-      ${CMAKE_CURRENT_BINARY_DIR}/UserDoxyfile.txt
+    configure_file(Doxyfile.txt.in ${userdoc_doxyfile})
+
+    # Generate doxygen documentation
+    add_custom_target(cpp-doc
+      COMMAND ${DOXYGEN_EXECUTABLE} ${userdoc_doxyfile}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      )
+    add_dependencies(doc cpp-doc)
+
+    # Create documentation tarball
+    add_custom_target(cpp-doc-tarball-clean
+      COMMAND ${CMAKE_COMMAND} -E remove ${userdoc_tarball}
       )
 
-    configure_file(
-      ${CMAKE_CURRENT_SOURCE_DIR}/generate_doc.cmake.in
-      ${CMAKE_CURRENT_BINARY_DIR}/generate_userdoc.cmake
-      @ONLY
+    add_custom_target(cpp-doc-tarball
+      DEPENDS cpp-doc cpp-doc-tarball-clean
+      COMMAND ${CMAKE_COMMAND} -E tar cfz ${userdoc_tarball} html
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
       )
+    add_dependencies(doc-tarballs cpp-doc-tarball)
 
-    set(userdoc_output "${CMAKE_CURRENT_BINARY_DIR}/doc/html/index.html")
+    set_target_properties(cpp-doc cpp-doc-tarball
+      PROPERTIES LABELS Documentation)
 
-    # Run doxygen as a custom command driven by a custom target.
-    add_custom_command(
-      OUTPUT ${userdoc_output}
-      COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/generate_userdoc.cmake"
-      DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/generate_userdoc.cmake"
-              "${CMAKE_CURRENT_BINARY_DIR}/UserDoxyfile.txt"
-      )
-
-    add_custom_target(doc ${all_arg} DEPENDS ${userdoc_output})
-    set_target_properties(doc PROPERTIES LABELS Documentation)
-
+    # Need to add EXCLUDE_FROM_DEFAULT_BUILD otherwise these targets would be built each time when build is started
+    # in the Visual Studio IDE (regardless of DOCUMENTATION_TARGET_IN_ALL setting).
+    set_target_properties(cpp-doc PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+    set_target_properties(cpp-doc-tarball-clean PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+    set_target_properties(cpp-doc-tarball PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+      
     #
     # Dev documentation
     #
@@ -58,9 +62,13 @@ if( DOXYGEN_FOUND )
     #  )
     #set_target_properties(doc-dev PROPERTIES LABELS Documentation)
 
-  else( DOXYGEN_DOT_FOUND )
+    # Need to add EXCLUDE_FROM_DEFAULT_BUILD otherwise these targets would be built each time when build is started
+    # in the Visual Studio IDE (regardless of DOCUMENTATION_TARGET_IN_ALL setting).
+    #set_target_properties(doc-dev PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+
+  else()
     message( WARNING
       "Warning: Dot not found - Documentation will not be created"
       )
-  endif( DOXYGEN_DOT_FOUND )
-endif( DOXYGEN_FOUND )
+  endif()
+endif()

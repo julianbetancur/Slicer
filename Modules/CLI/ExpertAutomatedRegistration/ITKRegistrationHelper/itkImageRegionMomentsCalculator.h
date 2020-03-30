@@ -14,8 +14,8 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef __itkImageRegionMomentsCalculator_h
-#define __itkImageRegionMomentsCalculator_h
+#ifndef itkImageRegionMomentsCalculator_h
+#define itkImageRegionMomentsCalculator_h
 
 #include "itkAffineTransform.h"
 #include "itkMacro.h"
@@ -57,7 +57,7 @@ namespace itk
  * \todo It's not yet clear how multi-echo images should be handled here.
  */
 template <class TImage>
-class ITK_EXPORT ImageRegionMomentsCalculator : public Object
+class ImageRegionMomentsCalculator : public Object
 {
 public:
   /** Standard class typedefs. */
@@ -152,7 +152,7 @@ public:
    * parameter and stores them in the object.  The values of these
    * moments and related parameters can then be retrieved by using
    * other methods of this object. */
-  void Compute( void );
+  void Compute();
 
   /** Return the total mass (or zeroth moment) of an image.
    * This method returns the sum of pixel intensities (also known as
@@ -211,18 +211,18 @@ public:
   /** Get the affine transform from principal axes to physical axes
    * This method returns an affine transform which transforms from
    * the principal axes coordinate system to physical coordinates. */
-  AffineTransformPointer GetPrincipalAxesToPhysicalAxesTransform(void) const;
+  AffineTransformPointer GetPrincipalAxesToPhysicalAxesTransform() const;
 
   /** Get the affine transform from physical axes to principal axes
    * This method returns an affine transform which transforms from
    * the physical coordinate system to the principal axes coordinate
    * system. */
-  AffineTransformPointer GetPhysicalAxesToPrincipalAxesTransform(void) const;
+  AffineTransformPointer GetPhysicalAxesToPrincipalAxesTransform() const;
 
 protected:
   ImageRegionMomentsCalculator();
-  virtual ~ImageRegionMomentsCalculator();
-  void PrintSelf(std::ostream& os, Indent indent) const;
+  ~ImageRegionMomentsCalculator() override;
+  void PrintSelf(std::ostream& os, Indent indent) const override;
 
 private:
   ImageRegionMomentsCalculator(const Self &); // purposely not implemented
@@ -252,4 +252,4 @@ private:
 #include "itkImageRegionMomentsCalculator.txx"
 #endif
 
-#endif /* __itkImageRegionMomentsCalculator_h */
+#endif /* itkImageRegionMomentsCalculator_h */

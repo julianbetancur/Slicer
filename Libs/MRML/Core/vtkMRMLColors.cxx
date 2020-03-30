@@ -23,6 +23,7 @@
 
 // VTK includes
 #include <vtkColor.h>
+#include <vtkVersion.h>
 
 // STD includes
 #include <sstream>
@@ -78,9 +79,9 @@ vtkColor3d vtkMRMLColors::sliceGray()
 //------------------------------------------------------------------------------
 bool vtkMRMLColors::toRGBColor(const vtkColor3d& from, double to[3])
 {
-  to[0] = from.Red();
-  to[1] = from.Green();
-  to[2] = from.Blue();
+  to[0] = from.GetRed();
+  to[1] = from.GetGreen();
+  to[2] = from.GetBlue();
   return true;
 }
 

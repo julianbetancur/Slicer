@@ -34,11 +34,11 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerLayoutManager : public qMRMLLayoutManage
   Q_OBJECT
 public:
   /// Constructors
-  explicit qSlicerLayoutManager(QWidget* widget = 0);
+  explicit qSlicerLayoutManager(QWidget* widget = nullptr);
 
-  /// Set the directory from which build-in scripted
+  /// Set the directory from which built-in scripted
   /// displayableManagers should be sourced from.
-  void setScriptedDisplayableManagerDirectory(const QString& scriptedDisplayableManagerDirectory);
+  Q_INVOKABLE void setScriptedDisplayableManagerDirectory(const QString& scriptedDisplayableManagerDirectory);
 
   void setCurrentModule(const QString& moduleName);
 

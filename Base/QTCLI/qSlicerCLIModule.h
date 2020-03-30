@@ -27,6 +27,9 @@
 // SlicerQt includes
 #include "qSlicerAbstractModule.h"
 
+// SlicerExecutionModel includes
+#include <ModuleDescription.h>
+
 #include "qSlicerBaseQTCLIExport.h"
 
 class ModuleLogo;
@@ -40,21 +43,21 @@ class Q_SLICER_BASE_QTCLI_EXPORT qSlicerCLIModule : public qSlicerAbstractModule
 public:
 
   typedef qSlicerAbstractModule Superclass;
-  qSlicerCLIModule(QWidget *parent=0);
-  virtual ~qSlicerCLIModule();
+  qSlicerCLIModule(QWidget *parent=nullptr);
+  ~qSlicerCLIModule() override;
 
-  /// 
+  ///
   /// Assign the module XML description.
   /// Note: That will also trigger the parsing of the XML structure
   void setXmlModuleDescription(const QString& xmlModuleDescription);
 
   /// Optionally set in the module XML description
-  virtual int index() const;
+  int index() const override;
 
-  /// 
+  ///
   /// Return help/acknowledgement text
-  virtual QString helpText() const;
-  virtual QString acknowledgementText() const;
+  QString helpText() const override;
+  QString acknowledgementText() const override;
 
   /// Set temporary directory associated with the module
   void setTempDirectory(const QString& tempDirectory);
@@ -75,31 +78,39 @@ public:
   /// 'createLogic' method.
   Q_INVOKABLE vtkSlicerCLIModuleLogic* cliModuleLogic();
 
-  virtual QString title() const;
+  QString title() const override;
 
   /// Extracted from the "category" field
-  virtual QStringList categories() const;
+  QStringList categories() const override;
 
   /// Extracted from the "contributor" field
-  virtual QStringList contributors() const;
+  QStringList contributors() const override;
 
-  virtual QImage logo() const;
+  /// Specify editable node types
+  QStringList associatedNodeTypes()const override;
+
+  QImage logo() const override;
   void setLogo(const ModuleLogo& logo);
 
   /// Convert a ModuleLogo into a QIcon
   /// \todo: Find a better place for this util function
   static QImage moduleLogoToImage(const ModuleLogo& logo);
+
+  /// Return the module description object used to store
+  /// the module properties.
+  ModuleDescription& moduleDescription();
+
 protected:
-  /// 
-  virtual void setup();
+  ///
+  void setup() override;
 
-  /// 
+  ///
   /// Create and return the widget representation associated to this module
-  virtual qSlicerAbstractModuleRepresentation * createWidgetRepresentation();
+  qSlicerAbstractModuleRepresentation * createWidgetRepresentation() override;
 
-  /// 
+  ///
   /// Create and return the logic associated to this module
-  virtual vtkMRMLAbstractLogic* createLogic();
+  vtkMRMLAbstractLogic* createLogic() override;
 
 protected:
   QScopedPointer<qSlicerCLIModulePrivate> d_ptr;

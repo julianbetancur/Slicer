@@ -14,78 +14,78 @@ class VTK_MRML_EXPORT vtkMRMLROINode : public vtkMRMLTransformableNode
 public:
   static vtkMRMLROINode *New();
   vtkTypeMacro(vtkMRMLROINode,vtkMRMLTransformableNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   //--------------------------------------------------------------------------
   /// MRML methods
   //--------------------------------------------------------------------------
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   virtual void ReadXMLString( const char *keyValuePairs);
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "MRMLROINode";};
+  const char* GetNodeTagName() override {return "MRMLROINode";}
 
-  /// 
-  /// 
-  virtual void UpdateScene(vtkMRMLScene *scene);
+  ///
+  ///
+  void UpdateScene(vtkMRMLScene *scene) override;
 
-  /// 
+  ///
   /// update display node ids
-  void UpdateReferences();
+  void UpdateReferences() override;
 
-  /// 
+  ///
   /// Indicates if the ROI is visible
   vtkBooleanMacro(Visibility, int);
   vtkGetMacro(Visibility, int);
   vtkSetMacro(Visibility, int);
 
-  /// 
+  ///
   /// Indicates if the ROI is updated interactively
   vtkBooleanMacro(InteractiveMode, int);
   vtkGetMacro(InteractiveMode, int);
   vtkSetMacro(InteractiveMode, int);
 
-  /// 
+  ///
   /// Get/Set for ROI Position in RAS cooridnates
-  /// Note: The ROI Postion is the center of the ROI 
+  /// Note: The ROI Position is the center of the ROI
   void SetXYZ(double X, double Y, double Z);
   void SetXYZ(double* XYZ);
   vtkGetVectorMacro(XYZ,double,3);
 
-  /// 
+  ///
   /// Get/Set for radius of the ROI in RAS cooridnates
   void SetRadiusXYZ(double RadiusX, double RadiusY, double RadiusZ);
   void SetRadiusXYZ(double* RadiusXYZ);
   vtkGetVectorMacro(RadiusXYZ,double,3);
 
-  /// 
+  ///
   /// Get/Set for ROI Position in IJK cooridnates
   void SetIJK(double I, double J, double K);
   void SetIJK(double* IJK);
   vtkGetVectorMacro(IJK,double,3);
 
-  /// 
+  ///
   /// Get/Set for radius of the ROI in IJK cooridnates
   void SetRadiusIJK(double RadiusI, double RadiusJ, double RadiusK);
   void SetRadiusIJK(double* RadiusIJK);
   vtkGetVectorMacro(RadiusIJK,double,3);
 
-  /// 
-  /// Set/Get the InsideOut flag. This data memeber is used in conjunction
+  ///
+  /// Set/Get the InsideOut flag. This data member is used in conjunction
   /// with the GetPlanes() method. When off, the normals point out of the
   /// box. When on, the normals point into the hexahedron.  InsideOut is off
   /// by default.
@@ -93,21 +93,20 @@ public:
   vtkGetMacro(InsideOut,int);
   vtkBooleanMacro(InsideOut,int);
 
-  /// 
+  ///
   /// Get/Set for LabelText
   vtkSetStringMacro(LabelText);
   vtkGetStringMacro(LabelText);
 
-  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData );
+  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData ) override;
 
   vtkGetStringMacro(VolumeNodeID);
   vtkSetStringMacro(VolumeNodeID);
 
-  /// 
+  ///
   /// transform utility functions
-  virtual bool CanApplyNonLinearTransforms()const;
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix);
-  virtual void ApplyTransform(vtkAbstractTransform* transform);
+  bool CanApplyNonLinearTransforms()const override;
+  void ApplyTransform(vtkAbstractTransform* transform) override;
 
   /// Description
   /// get transformed planes for the ROI region
@@ -115,24 +114,24 @@ public:
 
 protected:
   vtkMRMLROINode();
-  ~vtkMRMLROINode();
+  ~vtkMRMLROINode() override;
   vtkMRMLROINode(const vtkMRMLROINode&);
   void operator=(const vtkMRMLROINode&);
   int Visibility;
   int InteractiveMode;
 
-  /// 
+  ///
   /// The location of the ROI centroid in RAS space
-  /// Note: The ROI Postion is the center of the ROI 
-  double XYZ[3];  
-  /// 
+  /// Note: The ROI Position is the center of the ROI
+  double XYZ[3];
+  ///
   /// The raidus of  of the ROI box in RAS space
   double RadiusXYZ[3];
-  /// 
+  ///
   /// The location of the ROI centroid in IJK space
-  /// Note: The ROI Postion is the center of the ROI 
-  double IJK[3];  
-  /// 
+  /// Note: The ROI Position is the center of the ROI
+  double IJK[3];
+  ///
   /// The radius of the ROI box in IJK space
   double RadiusIJK[3];
 
@@ -141,8 +140,8 @@ protected:
 
   char *LabelText;
 
-  /// 
-  /// The ID of the volume associated with the ROI 
+  ///
+  /// The ID of the volume associated with the ROI
   char *VolumeNodeID;
 };
 

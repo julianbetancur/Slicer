@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // Volumes includes
 #include "qSlicerDiffusionTensorVolumeDisplayWidget.h"
 
@@ -32,11 +35,14 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 //-----------------------------------------------------------------------------
 int qSlicerDiffusionTensorVolumeDisplayWidgetTest1( int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
   vtkSmartPointer<vtkMRMLDiffusionTensorVolumeDisplayNode> displayNode =

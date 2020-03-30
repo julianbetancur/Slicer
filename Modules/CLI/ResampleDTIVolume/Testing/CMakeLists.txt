@@ -3,23 +3,30 @@
 set(BASELINE ${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline)
 set(INPUT ${CMAKE_CURRENT_SOURCE_DIR}/../Data/Input)
 set(TEMP "${Slicer_BINARY_DIR}/Testing/Temporary")
+
 set(CLP ${MODULE_NAME})
 
-#-----------------------------------------------------------------------------
-add_executable(${CLP}Test ${CLP}Test.cxx)
-target_link_libraries(${CLP}Test ${CLP}Lib)
-set_target_properties(${CLP}Test PROPERTIES LABELS ${CLP})
+if(NOT DEFINED SEM_DATA_MANAGEMENT_TARGET)
+  set(SEM_DATA_MANAGEMENT_TARGET ${CLP}Data)
+endif()
 
 #-----------------------------------------------------------------------------
-set(OriginalImage ${INPUT}/dt-helix.nrrd)
+ctk_add_executable_utf8(${CLP}Test ${CLP}Test.cxx)
+target_link_libraries(${CLP}Test ${CLP}Lib ${SlicerExecutionModel_EXTRA_EXECUTABLE_TARGET_LIBRARIES})
+set_target_properties(${CLP}Test PROPERTIES LABELS ${CLP})
+set_target_properties(${CLP}Test PROPERTIES FOLDER ${${CLP}_TARGETS_FOLDER})
+
+#-----------------------------------------------------------------------------
+set(OriginalImage DATA{${INPUT}/dt-helix.nrrd})
 
 #-----------------------------------------------------------------------------
 set(TransformFile ${INPUT}/rotation.tfm )
 set(TransformedImage1 ${TEMP}/dt-helix-transformed1.nrrd )
 set(testname ${CLP}RotationNNTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-Rotated.nrrd
+    DATA{${BASELINE}/dt-helix-ref-Rotated.nrrd}
     ${TransformedImage1}
   --compareIntensityTolerance 0
   ModuleEntryPoint
@@ -36,11 +43,12 @@ set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 set(RotationAndAffineFile ${INPUT}/rotationAndAffine.tfm )
 set(TransformedImage2 ${TEMP}/dt-helix-transformed2.nrrd )
 set(testname ${CLP}2RigidTransformsLinearTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-RotationAndAffine.nrrd
+    DATA{${BASELINE}/dt-helix-ref-RotationAndAffine.nrrd}
     ${TransformedImage2}
-  --compareIntensityTolerance 1
+  --compareIntensityTolerance 1e-10
   ModuleEntryPoint
     -f ${RotationAndAffineFile}
     -T FS
@@ -57,11 +65,12 @@ set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 set(BSplineFile ${INPUT}/FastNonrigidBSplineregistrationTransform.tfm)
 set(TransformedImage3 ${TEMP}/dt-helix-transformed3.nrrd )
 set(testname ${CLP}BSplineWSInterpolationTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-BS.nrrd
+    DATA{${BASELINE}/dt-helix-ref-BS.nrrd}
     ${TransformedImage3}
-  --compareIntensityTolerance 1
+  --compareIntensityTolerance 1e-10
   ModuleEntryPoint
     -f ${BSplineFile}
     --interpolation ws
@@ -76,11 +85,12 @@ set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 set(AffineFile ${INPUT}/affine.tfm)
 set(TransformedImage4 ${TEMP}/dt-helix-transformed4.nrrd )
 set(testname ${CLP}BSplineInterpolationTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-BSInterpolation.nrrd
+    DATA{${BASELINE}/dt-helix-ref-BSInterpolation.nrrd}
     ${TransformedImage4}
-  --compareIntensityTolerance 0
+  --compareIntensityTolerance 1e-10
   ModuleEntryPoint
     -f ${AffineFile}
     --interpolation bs
@@ -92,12 +102,13 @@ add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
 set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 
 #-----------------------------------------------------------------------------
-set(HFieldFile ${INPUT}/deformationField.nrrd)
+set(HFieldFile DATA{${INPUT}/deformationField.nrrd})
 set(TransformedImage5 ${TEMP}/dt-helix-transformed5.nrrd )
 set(testname ${CLP}HFieldTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-HField.nrrd
+    DATA{${BASELINE}/dt-helix-ref-HField.nrrd}
     ${TransformedImage5}
   --compareIntensityTolerance 0
   ModuleEntryPoint
@@ -110,34 +121,32 @@ set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 
 
 #-----------------------------------------------------------------------------
-message(WARNING "warning: Test named 'itkTestMainExtendedScalarTest' associated with ResampleDTI should be reviewed !")
-# TODO The baseline associated with each command line module has been moved within
-#      the Data/Baseline subdirectory of each module. For that reason, ResampleDTI shouldn't
-#      reference the baseline 'AddTest_DOUBLE.mha' as input data.
 #Test itkTestMainExtended.h
 #copy scalar file to binary directory so that if an error occurs the output files will be created in the binary directory
-#set(SourceScalarFile ${Slicer_SOURCE_DIR}/Testing/Data/Baseline/CLI/AddTest_DOUBLE.mha )
-#file( COPY ${SourceScalarFile} DESTINATION ${TEMP})
-#set( BinaryScalarFile ${TEMP}/AddTest_DOUBLE.mha)
-#set(TransformedImage ${TEMP}/dt-helix-transformed.nrrd)
-#set(testname itkTestMainExtendedScalarTest)
-#add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
-# --compare
-#   ${BinaryScalarFile}
-#   ${BinaryScalarFile}
-#  ModuleEntryPoint
-#    --interpolation nn
-#    ${OriginalImage}
-#    ${TransformedImage}
-#  )
-#set_property(TEST ${testname} PROPERTY LABELS ${CLP})
+#We run ResampleDTIVolume and do not care about the result. What interests us in that test is to make sure that by extending
+#itkTestMainExtended.h to work with DTI, we did not break it and that it still works with scalar images too.
+#Therefore, we compare a scalar image with itself and verify that the test passes successfully.
+set(testname itkTestMainExtendedScalarTest)
+set(TransformedImage7 ${TEMP}/dt-helix-transformed7.nrrd )
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
+ --compare
+   DATA{${BASELINE}/Brain_slice.nrrd}
+   DATA{${BASELINE}/Brain_slice.nrrd}
+  ModuleEntryPoint
+    --interpolation nn
+    ${OriginalImage}
+    ${TransformedImage7}
+  )
+set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 
 #-----------------------------------------------------------------------------
 set(TransformedImage6 ${TEMP}/dt-helix-transformed6.nrrd )
 set(testname itkTestMainExtendedFailedTest)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
   --compare
-    ${BASELINE}/dt-helix-ref-HField.nrrd
+    DATA{${BASELINE}/dt-helix-ref-HField.nrrd}
     ${TransformedImage6}
   --compareIntensityTolerance 0
   ModuleEntryPoint
@@ -147,3 +156,8 @@ add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
   )
 set_property(TEST ${testname} PROPERTY LABELS ${CLP})
 set_tests_properties( itkTestMainExtendedFailedTest PROPERTIES WILL_FAIL true)
+
+#-----------------------------------------------------------------------------
+if(${SEM_DATA_MANAGEMENT_TARGET} STREQUAL ${CLP}Data)
+  ExternalData_add_target(${CLP}Data)
+endif()

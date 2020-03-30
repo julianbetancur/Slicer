@@ -23,33 +23,30 @@
 #include <QDir>
 
 /// SlicerQt includes
-//#include "qSlicerAbstractModule.h"
 #include "qSlicerCoreApplication.h"
-//#include "qSlicerModuleManager.h"
 #include "qSlicerCoreIOManager.h"
 #include "qSlicerSlicer2SceneReader.h"
 #include "vtkSlicerApplicationLogic.h"
 
-/// Logic includes
-//#include "vtkSlicerVolumesLogic.h"
-//#include "vtkSlicerModelsLogic.h"
-
 /// MRML includes
 #include <vtkMRMLColorTableNode.h>
 #include <vtkMRMLFiducialListNode.h>
+#include <vtkMRMLFolderDisplayNode.h>
 #include <vtkMRMLLabelMapVolumeDisplayNode.h>
 #include <vtkMRMLLinearTransformNode.h>
 #include <vtkMRMLModelDisplayNode.h>
-#include <vtkMRMLModelHierarchyNode.h>
 #include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLScalarVolumeDisplayNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
 #include <vtkMRMLSelectionNode.h>
+#include <vtkMRMLSubjectHierarchyNode.h>
 
 /// VTK includes
 #include <vtkImageReader.h>
 #include <vtkLookupTable.h>
 #include <vtkMatrix4x4.h>
+#include <vtkNew.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringArray.h>
 #include <vtkXMLDataParser.h>
@@ -112,14 +109,6 @@ int dataType(QString type)
     {
     return VTK_UNSIGNED_LONG_LONG;
     }
-  else if (type == "__int64")
-    {
-    return VTK___INT64;
-    }
-  else if (type == "unsigned__int64")
-    {
-    return VTK_UNSIGNED___INT64;
-    }
   else if (type == "float")
     {
     return VTK_FLOAT;
@@ -132,24 +121,7 @@ int dataType(QString type)
 }
 
 }
-//-----------------------------------------------------------------------------
-/*
-vtkSlicerVolumesLogic* volumesLogic()
-{
-  return vtkSlicerVolumesLogic::SafeDownCast(
-    qSlicerCoreApplication::application()->moduleManager()
-    ->module("Volumes")->logic());
-}
 
-//-----------------------------------------------------------------------------
-vtkSlicerModelsLogic* modelsLogic()
-{
-  Q_ASSERT(qSlicerCoreApplication::application()->moduleManager()->module("Models"));
-  return vtkSlicerModelsLogic::SafeDownCast(
-    qSlicerCoreApplication::application()->moduleManager()
-    ->module("Models")->logic());
-}
-*/
 //-----------------------------------------------------------------------------
 class qSlicerSlicer2SceneReaderPrivate
 {
@@ -162,7 +134,7 @@ public:
   vtkSmartPointer<vtkSlicerApplicationLogic> ApplicationLogic;
   ///
   typedef QMap<QString, QString> NodeType;
-  
+
   void importElement(vtkXMLDataElement* element);
   void importNode(vtkXMLDataElement* node);
   void importMRMLNode(NodeType& node);
@@ -208,15 +180,15 @@ void qSlicerSlicer2SceneReaderPrivate::importElement(vtkXMLDataElement* element)
   // save current parent locally
   // set parent $::S2_HParent_ID
   QString parent = this->ParentID;
-  
+
   // import this element
   //ImportNode $element
   this->importNode(element);
-  
+
   // leave a place holder in case we are a group (transform) node
   //lappend ::S2(transformIDStack) "NestingMarker"
   this->TransformIDStack << "NestingMarker";
-  
+
   // process all the sub nodes, which may include a sequence of matrices
   // and/or nested transforms
   //set nNested [$element GetNumberOfNestedElements]
@@ -359,10 +331,9 @@ void qSlicerSlicer2SceneReaderPrivate::importMatrixNode(NodeType& node)
   Q_Q(qSlicerSlicer2SceneReader);
   //upvar $node n
   //set transformNode [vtkMRMLLinearTransformNode New]
-  vtkMRMLLinearTransformNode* transformNode = vtkMRMLLinearTransformNode::New();
+  vtkNew<vtkMRMLLinearTransformNode> transformNode;
 
   //set matrix [$transformNode GetMatrixTransformToParent]
-  vtkMatrix4x4* matrix = transformNode->GetMatrixTransformToParent();
   //if { [info exists n(name)] } {
   //  $transformNode SetName $n(name)
   //} else {
@@ -370,7 +341,7 @@ void qSlicerSlicer2SceneReaderPrivate::importMatrixNode(NodeType& node)
   //}
   if (node.contains("name"))
     {
-    transformNode->SetName(node["name"].toLatin1());
+    transformNode->SetName(node["name"].toUtf8());
     }
   else
     {
@@ -383,10 +354,13 @@ void qSlicerSlicer2SceneReaderPrivate::importMatrixNode(NodeType& node)
     {
     elements[i++] = element.toDouble();
     }
+  vtkNew<vtkMatrix4x4> matrix;
   matrix->DeepCopy(elements);
-  
+  transformNode->SetMatrixTransformToParent(matrix.GetPointer());
+
+
   //$::slicer3::MRMLScene AddNode $transformNode
-  q->mrmlScene()->AddNode(transformNode);
+  q->mrmlScene()->AddNode(transformNode.GetPointer());
   this->LoadedNodes << transformNode->GetID();
 
   //set parentTransform ""
@@ -408,13 +382,12 @@ void qSlicerSlicer2SceneReaderPrivate::importMatrixNode(NodeType& node)
       }
     }
   //$transformNode SetAndObserveTransformNodeID $parentTransform
-  transformNode->SetAndObserveTransformNodeID(parentTransform.toLatin1());
+  transformNode->SetAndObserveTransformNodeID(parentTransform.toUtf8());
 
   //lappend ::S2(transformIDStack) [$transformNode GetID]
   this->TransformIDStack << transformNode->GetID();
 
   //$transformNode Delete
-  transformNode->Delete();
 }
 
 //-----------------------------------------------------------------------------
@@ -444,16 +417,23 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     //set n(description) ""
     node["description"] = "";
     }
-  
-  vtkMRMLVolumeNode* volumeNode = 0;
-  QString volumeNodeID;
-  vtkMRMLVolumeDisplayNode* volumeDisplayNode = 0;
 
+  vtkSmartPointer<vtkMRMLVolumeNode> volumeNode;
+  QString volumeNodeID;
+  vtkSmartPointer<vtkMRMLVolumeDisplayNode> volumeDisplayNode;
+
+  // set labelMap 0
+  //   if { [info exists n(labelMap)] && ($n(labelMap) == "yes"  || $n(labelMap) == "true") } {
+  //       set labelMap 1
+  //   }
+  bool labelMap = node.contains("labelMap") &&
+    (node["labelMap"] == "yes" ||
+     node["labelMap"] == "true");
 
   //switch [string tolower $n(fileType)] {
   //  "nrrd" -
   //  "generic" {
-  if (node["fileType"].toLower() == "nrrd" || 
+  if (node["fileType"].toLower() == "nrrd" ||
       node["fileType"].toLower() == "generic")
     {
     //if { ![info exists n(fileName)] } {
@@ -461,8 +441,8 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
       {
       //set n(fileName) [format $n(filePattern) $n(filePrefix)]
       node["fileName"].sprintf(
-        node["filePattern"].toLatin1(), 
-        node["filePrefix"].toLatin1().data());
+        node["filePattern"].toUtf8(),
+        node["filePrefix"].toUtf8().data());
       }
 
     //if { [file pathtype $n(fileName)] == "relative" } {
@@ -481,14 +461,6 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
       {
       fileName = node["fileName"];
       }
-    
-    // set labelMap 0
-    //   if { [info exists n(labelMap)] && ($n(labelMap) == "yes"  || $n(labelMap) == "true") } {
-    //       set labelMap 1
-    //   }
-    bool labelMap = node.contains("labelMap") &&
-      (node["labelMap"] == "yes" ||
-       node["labelMap"] == "true");
 
     //set logic [$::slicer3::VolumesGUI GetLogic]
     //set loadingOptions $labelMap
@@ -496,8 +468,8 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     //set volumeNodeID [$volumeNode GetID]
     //int loadingOptions = labelMap ? 1 : 0;
     // volumeNode = volumesLogic()->AddArchetypeVolume(
-    //   fileName.toLatin1(), 
-    //   node["name"].toLatin1(), loadingOptions, 0);
+    //   fileName.toUtf8(),
+    //   node["name"].toUtf8(), loadingOptions, 0);
     qSlicerIO::IOProperties properties;
     properties["name"] = node["name"];
     properties["fileName"] = fileName;
@@ -512,8 +484,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     {
     //set fileList [vtkStringArray New]
     QStringList fileNames;
-    vtkSmartPointer<vtkStringArray> fileList = 
-      vtkSmartPointer<vtkStringArray>::New();
+    vtkNew<vtkStringArray> fileList;
     //foreach f $n(dicomFileNameList) {
     foreach(QString file, node["dicomFileNameList"].split(' '))
       {
@@ -534,7 +505,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
         fileName = file;
         }
       //$fileList InsertNextValue $fileName
-      fileList->InsertNextValue(fileName.toLatin1());
+      fileList->InsertNextValue(fileName.toUtf8());
       fileNames << fileName;
       }
     //set fileName [$fileList GetValue 0]
@@ -544,8 +515,8 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     //set volumeNodeID [$volumeNode GetID]
     //$fileList Delete
     // volumeNode = volumesLogic()->AddArchetypeVolume(
-    //   fileList->GetValue(0).c_str(), 
-    //   node["name"].toLatin1(), 
+    //   fileList->GetValue(0).c_str(),
+    //   node["name"].toUtf8(),
     //   0, fileList);
     qSlicerIO::IOProperties properties;
     properties["name"] = node["name"];
@@ -553,7 +524,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     properties["fileNames"] = fileNames;
     volumeNode = vtkMRMLVolumeNode::SafeDownCast(
       this->ioManager()->loadNodesAndGetFirst(QString("VolumeFile"), properties));
-    Q_ASSERT(volumeNode);
+    Q_ASSERT(volumeNode.GetPointer());
     volumeNodeID = volumeNode->GetID();
     this->LoadedNodes << volumeNode->GetID();
     }
@@ -571,7 +542,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
       //set n(dimensions) "256 256"
       node["dimensions"] = "256 256";
       }
-    
+
     //if { ![info exists n(scalarType)] } {
     if (!node.contains("scalarType"))
       {
@@ -585,7 +556,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
       //set n(littleEndian) "false"
       node["littleEndian"] = "false";
       }
-    
+
     //if { $n(littleEndian) } {
     //  set fileLittleEndian 1
     //} else {
@@ -603,7 +574,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
 #else
     bool platformLittleEndian = false;
 #endif
-    
+
     //if { $fileLittleEndian != $platformLittleEndian } {
     //   set swap 1
     // } else {
@@ -615,9 +586,8 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     // next, read the image data
     //
     //set imageReader [vtkImageReader New]
-    vtkSmartPointer<vtkImageReader> imageReader =
-      vtkSmartPointer<vtkImageReader>::New();
-    
+    vtkNew<vtkImageReader> imageReader;
+
     // if { [file pathtype $n(filePrefix)] == "relative" } {
     //   $imageReader SetFilePrefix  $::S2(dir)/$n(filePrefix)
     //   } else {
@@ -627,15 +597,15 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     if (fileInfo.isRelative())
       {
       fileInfo = QFileInfo(this->Directory, node["filePrefix"]);
-      imageReader->SetFilePrefix(fileInfo.absoluteFilePath().toLatin1());
+      imageReader->SetFilePrefix(fileInfo.absoluteFilePath().toUtf8());
       }
     else
       {
-      imageReader->SetFilePrefix(node["filePrefix"].toLatin1());
+      imageReader->SetFilePrefix(node["filePrefix"].toUtf8());
       }
     //$imageReader SetFilePattern  $n(filePattern)
-    imageReader->SetFilePattern(node["filePrefix"].toLatin1());
-    
+    imageReader->SetFilePattern(node["filePrefix"].toUtf8());
+
     //foreach {w h} $n(dimensions) {}
     QStringList dimensions = node["dimensions"].split(' ');
     int width = dimensions[0].toInt();
@@ -646,7 +616,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     int zhi = imageRange[1].toInt();
     //set d [expr $zhi - $zlo]
     int d = zhi - zlo;
-    
+
     //$imageReader SetDataExtent 0 [expr $w -1] 0 [expr $h - 1] 0 [expr $d -1]
     //$imageReader SetFileNameSliceOffset $zlo
     //$imageReader SetDataScalarTypeTo$n(scalarType)
@@ -657,43 +627,39 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     imageReader->SetDataScalarType(dataType(node["scalarType"]));
     imageReader->SetSwapBytes(swap);
     imageReader->Update();
-    
+
     //
     // now, construct the slicer3 node
     // - volume
     // - transform
     // - display
     //
-      
+
     //set volumeNode [vtkMRMLScalarVolumeNode New]
       // $volumeNode SetAndObserveImageData [$imageReader GetOutput]
       // $volumeNode SetName $n(name)
       // $volumeNode SetDescription $n(description)
       // $imageReader Delete
-    vtkSmartPointer<vtkMRMLScalarVolumeNode> volumeNode =
-      vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
+    volumeNode = vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
     volumeNode->SetAndObserveImageData(imageReader->GetOutput());
-    volumeNode->SetName(node["name"].toLatin1());
-    volumeNode->SetDescription(node["description"].toLatin1());
-    
+    volumeNode->SetName(node["name"].toUtf8());
+    volumeNode->SetDescription(node["description"].toUtf8());
+
     // if { [info exists n(labelMap)] && ($n(labelMap) == "yes"  || $n(labelMap) == "true") } {
     //       $volumeNode SetLabelMap 1
     //       set volumeDisplayNode [vtkMRMLLabelMapVolumeDisplayNode New]
     //   } else {
     //       set volumeDisplayNode [vtkMRMLScalarVolumeDisplayNode New]
     //   }
-    if (node.contains("labelMap") && 
-        (node["labelMap"] == "yes" ||
-         node["labelMap"] == "true"))
+    if (labelMap)
       {
-      volumeNode->SetLabelMap(1);
-      volumeDisplayNode = vtkMRMLLabelMapVolumeDisplayNode::New();
+      volumeDisplayNode = vtkSmartPointer<vtkMRMLLabelMapVolumeDisplayNode>::New();
       }
     else
       {
-      volumeDisplayNode = vtkMRMLScalarVolumeDisplayNode::New();
+      volumeDisplayNode = vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New();
       }
-      
+
     //
     // add nodes to the scene
     //
@@ -702,19 +668,18 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     //$::slicer3::MRMLScene AddNode $volumeNode
     //$volumeNode SetAndObserveDisplayNodeID [$volumeDisplayNode GetID]
     //$volumeNode SetModifiedSinceRead 1
-    q->mrmlScene()->AddNode(volumeNode);
+    q->mrmlScene()->AddNode(volumeNode.GetPointer());
     q->mrmlScene()->AddNode(volumeDisplayNode);
     volumeNode->SetAndObserveDisplayNodeID(volumeDisplayNode->GetID());
     this->LoadedNodes << volumeNode->GetID() << volumeDisplayNode->GetID();
-    
-    // use the RASToIJK information from the file, to override what the 
+
+    // use the RASToIJK information from the file, to override what the
     // archetype reader might have set
     //set rasToVTK [vtkMatrix4x4 New]
     //  eval $rasToVTK DeepCopy $n(rasToVtkMatrix)
     //  $volumeNode SetRASToIJKMatrix $rasToVTK
     //  $rasToVTK Delete
-    vtkSmartPointer<vtkMatrix4x4> rasToVTK =
-      vtkSmartPointer<vtkMatrix4x4>::New();
+    vtkNew<vtkMatrix4x4> rasToVTK;
     double elements[16];
     int i = 0;
     foreach(QString element, node["rasToVtkMatrix"].split(' '))
@@ -722,33 +687,30 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
       elements[i++] = element.toDouble();
       }
     rasToVTK->DeepCopy(elements);
-    volumeNode->SetRASToIJKMatrix(rasToVTK);
-    
+    volumeNode->SetRASToIJKMatrix(rasToVTK.GetPointer());
+
     //
     // clean up
     //
     //set volumeNodeID [$volumeNode GetID]
-    //$volumeNode Delete
-    //$volumeDisplayNode Delete
     volumeNodeID = volumeNode->GetID();
-    volumeDisplayNode->Delete();
     }
 
   //set volumeNode [$::slicer3::MRMLScene GetNodeByID $volumeNodeID]
-  Q_ASSERT(volumeNode == q->mrmlScene()->GetNodeByID(volumeNodeID.toLatin1()));
-  volumeNode = vtkMRMLVolumeNode::SafeDownCast(q->mrmlScene()->GetNodeByID(volumeNodeID.toLatin1()));
-  Q_ASSERT(volumeNode);
-  
+  Q_ASSERT(volumeNode.GetPointer() == q->mrmlScene()->GetNodeByID(volumeNodeID.toUtf8()));
+  volumeNode = vtkMRMLVolumeNode::SafeDownCast(q->mrmlScene()->GetNodeByID(volumeNodeID.toUtf8()));
+  Q_ASSERT(volumeNode.GetPointer());
+
   // use the current top of stack (might be "" if empty, but that's okay)
   //set transformID [lindex $::S2(transformIDStack) end]
   //$volumeNode SetAndObserveTransformNodeID $transformID
   int count = this->TransformIDStack.count();
   QString transformID =  count? this->TransformIDStack[count -1] : QString();
-  volumeNode->SetAndObserveTransformNodeID(transformID.toLatin1());
+  volumeNode->SetAndObserveTransformNodeID(transformID.toUtf8());
 
   //set volumeDisplayNode [$volumeNode GetDisplayNode]
   volumeDisplayNode = vtkMRMLVolumeDisplayNode::SafeDownCast(volumeNode->GetDisplayNode());
-  Q_ASSERT(volumeDisplayNode);
+  Q_ASSERT(volumeDisplayNode.GetPointer());
 
   // switch -- $n(colorLUT) {
   //   "0" {
@@ -788,7 +750,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
     else
       {
       qDebug() << "qSlicerSlicer2SceneReader: Can't set apply threshold, "
-               << "volumeDisplayNode is a " << volumeDisplayNode->GetClassName() 
+               << "volumeDisplayNode is a " << volumeDisplayNode->GetClassName()
                << " rather than a vtkMRMLScalarVolumeDisplayNode";
       }
     }
@@ -801,7 +763,7 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
   //   }
   if (volumeDisplayNode->IsA("vtkMRMLScalarVolumeDisplayNode"))
     {
-    vtkMRMLScalarVolumeDisplayNode* scalarDisplayNode= 
+    vtkMRMLScalarVolumeDisplayNode* scalarDisplayNode=
       vtkMRMLScalarVolumeDisplayNode::SafeDownCast(volumeDisplayNode);
     scalarDisplayNode->SetWindow(node["window"].toDouble());
     scalarDisplayNode->SetLevel(node["level"].toDouble());
@@ -813,10 +775,10 @@ void qSlicerSlicer2SceneReaderPrivate::importVolumeNode(NodeType& node)
   //$logic SetActiveVolumeNode $volumeNode
   //volumesLogic()->SetActiveVolumeNode(volumeNode);
 
-  //[[$::slicer3::VolumesGUI GetApplicationLogic] GetSelectionNode] SetReferenceActiveVolumeID [$volumeNode GetID]
+  //[[$::slicer3::VolumesGUI GetApplicationLogic] GetSelectionNode] SetActiveVolumeID [$volumeNode GetID]
   //[$::slicer3::VolumesGUI GetApplicationLogic] PropagateVolumeSelection
   this->ApplicationLogic->GetSelectionNode()
-    ->SetReferenceActiveVolumeID(volumeNodeID.toLatin1());
+    ->SetActiveVolumeID(volumeNodeID.toUtf8());
   this->ApplicationLogic->PropagateVolumeSelection();
 }
 
@@ -849,11 +811,11 @@ void qSlicerSlicer2SceneReaderPrivate::importModelNode(NodeType& node)
   qSlicerIO::IOProperties properties;
   properties["name"] = node["name"];
   properties["fileName"] = fileName;
-  vtkMRMLModelNode* mnode = 
-    //modelsLogic()->AddModel(fileName.toLatin1());
+  vtkMRMLModelNode* mnode =
+    //modelsLogic()->AddModel(fileName.toUtf8());
     vtkMRMLModelNode::SafeDownCast(this->ioManager()->loadNodesAndGetFirst(QString("ModelFile"), properties));
   Q_ASSERT(mnode);
-  vtkMRMLDisplayNode* dnode = 
+  vtkMRMLDisplayNode* dnode =
     mnode->GetDisplayNode();
   Q_ASSERT(dnode);
   this->LoadedNodes << mnode->GetID() << dnode->GetID();
@@ -911,15 +873,14 @@ void qSlicerSlicer2SceneReaderPrivate::importModelNode(NodeType& node)
       }
 
     //set cnode [vtkMRMLColorTableNode New]
-    vtkSmartPointer<vtkMRMLColorTableNode> cnode =
-      vtkSmartPointer<vtkMRMLColorTableNode>::New();
-    
+    vtkNew<vtkMRMLColorTableNode> cnode;
+
     //foreach colorType "SPLBrainAtlas Labels" {
     QStringList colorTypes;
     colorTypes << "SPLBrainAtlas" << "Labels";
     foreach(const QString& colorType, colorTypes)
       {
-      
+
       //$cnode SetTypeTo$colorType
       if (colorType == "SPLBrainAtlas")
         {
@@ -950,7 +911,7 @@ void qSlicerSlicer2SceneReaderPrivate::importModelNode(NodeType& node)
           //break
           break;
           }
-        } 
+        }
       //if {$saveColor == 0} {
       //  $dnode SetAttribute colorid $n(color)
       //} else {
@@ -958,7 +919,7 @@ void qSlicerSlicer2SceneReaderPrivate::importModelNode(NodeType& node)
       //}
       if (!saveColor)
         {
-        dnode->SetAttribute("colorid", node["color"].toLatin1());
+        dnode->SetAttribute("colorid", node["color"].toUtf8());
         }
       else
         {
@@ -988,13 +949,12 @@ void qSlicerSlicer2SceneReaderPrivate::importModelGroupNode(NodeType& node)
   //set dnode [vtkMRMLModelDisplayNode New]
   //$hnode SetScene $::slicer3::MRMLScene
   //$dnode SetScene $::slicer3::MRMLScene
-  vtkSmartPointer<vtkMRMLModelHierarchyNode> hnode =
-    vtkSmartPointer<vtkMRMLModelHierarchyNode>::New();
-  vtkSmartPointer<vtkMRMLModelDisplayNode> dnode =
-    vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
-  hnode->SetScene(q->mrmlScene());
+  // Folder display node belongs to the folder item, which replaced the model hierarchy
+  vtkSmartPointer<vtkMRMLFolderDisplayNode> dnode =
+    vtkSmartPointer<vtkMRMLFolderDisplayNode>::New();
   dnode->SetScene(q->mrmlScene());
-  
+  dnode->SetHideFromEditors(0); // Need to set this so that the folder shows up in SH as folder
+
   // if { [info exists n(visibility)] } {
   //   if {$n(visibility) == "false"} {
   //     $dnode SetVisibility 0
@@ -1013,7 +973,7 @@ void qSlicerSlicer2SceneReaderPrivate::importModelGroupNode(NodeType& node)
   //}
   if (node.contains("name"))
     {
-    hnode->SetName(node["name"].toLatin1());
+    dnode->SetName(node["name"].toUtf8());
     }
 
   // if { [info exists n(color)] } {
@@ -1022,9 +982,9 @@ void qSlicerSlicer2SceneReaderPrivate::importModelGroupNode(NodeType& node)
   //         if {[$cnode GetColorName $i] == $n(color)} {
   //             eval $dnode SetColor [lrange [[$cnode GetLookupTable] GetTableValue $i] 0 2]
   //         }
-  //     } 
+  //     }
   // }
-  vtkMRMLColorTableNode* cnode = 0;
+  vtkMRMLColorTableNode* cnode = nullptr;
   if (node.contains("color"))
     {
     cnode = vtkMRMLColorTableNode::SafeDownCast(
@@ -1040,31 +1000,37 @@ void qSlicerSlicer2SceneReaderPrivate::importModelGroupNode(NodeType& node)
     }
   //set dnode [$::slicer3::MRMLScene AddNode $dnode]
   //set hnode [$::slicer3::MRMLScene AddNode $hnode]
-  dnode = vtkMRMLModelDisplayNode::SafeDownCast(
+  dnode = vtkMRMLFolderDisplayNode::SafeDownCast(
     q->mrmlScene()->AddNode(dnode));
   Q_ASSERT(dnode);
-  hnode = vtkMRMLModelHierarchyNode::SafeDownCast(
-    q->mrmlScene()->AddNode(hnode));
-  Q_ASSERT(hnode);
-  this->LoadedNodes << dnode->GetID() << hnode->GetID();
+  this->LoadedNodes << dnode->GetID();
 
   //if {$::S2_HParent_ID != ""} {
   //  $hnode SetParentNodeIDReference $::S2_HParent_ID
   //}
   if (!this->ParentID.isEmpty())
     {
-    hnode->SetParentNodeID(this->ParentID.toLatin1());
+    vtkMRMLSubjectHierarchyNode* shNode = vtkMRMLSubjectHierarchyNode::GetSubjectHierarchyNode(q->mrmlScene());
+    if (!shNode)
+      {
+      qCritical() << Q_FUNC_INFO << "Unable to access subject hierarchy node";
+      return;
+      }
+
+    vtkMRMLNode* parentNode = q->mrmlScene()->GetNodeByID(this->ParentID.toUtf8());
+    if (parentNode)
+      {
+      vtkIdType parentItemId = shNode->GetItemByDataNode(parentNode);
+      vtkIdType folderItemId = shNode->GetItemByDataNode(dnode);
+      if (parentItemId && folderItemId)
+        {
+        shNode->SetItemParent(folderItemId, parentItemId);
+        }
+      }
     }
 
-  //$hnode SetAndObserveDisplayNodeID [$dnode GetID]
-  //$hnode SetHideFromEditors 0
-  //$hnode SetSelectable 1
-  hnode->SetAndObserveDisplayNodeID(dnode->GetID());
-  hnode->SetHideFromEditors(0);
-  hnode->SetSelectable(1);
-
   //set ::S2_HParent_ID [$hnode GetID]
-  this->ParentID = hnode->GetID();
+  this->ParentID = dnode->GetID();
 }
 
 //-----------------------------------------------------------------------------
@@ -1075,12 +1041,9 @@ void qSlicerSlicer2SceneReaderPrivate::importModelRefNode(NodeType& node)
   //upvar $node n
   //set hnode [vtkMRMLModelHierarchyNode New]
   //$hnode SetScene $::slicer3::MRMLScene
-  vtkSmartPointer<vtkMRMLModelHierarchyNode> hnode = 
-    vtkSmartPointer<vtkMRMLModelHierarchyNode>::New();
-  hnode->SetScene(q->mrmlScene());
 
-  //$hnode SetExpanded 1
-  hnode->SetExpanded(1);
+  // Important! Leaf hierarchy nodes are not needed any more.
+  //   Simply set parent folder to the model node in subject hierarchy
 
   //set id2 $n(ModelRefID)
   //set id3 $::S2_Model_ID($id2)
@@ -1088,34 +1051,42 @@ void qSlicerSlicer2SceneReaderPrivate::importModelRefNode(NodeType& node)
   QString id3 = this->ModelIDs[id2];
 
   //$hnode SetName [[$::slicer3::MRMLScene GetNodeByID $id3] GetName]
-  Q_ASSERT(q->mrmlScene()->GetNodeByID(id3.toLatin1()));
-  hnode->SetName(q->mrmlScene()->GetNodeByID(id3.toLatin1())->GetName());
-
-  //set hnode [$::slicer3::MRMLScene AddNode $hnode]
-  hnode = vtkMRMLModelHierarchyNode::SafeDownCast(
-    q->mrmlScene()->AddNode(hnode));
-  this->LoadedNodes << hnode->GetID();
+  vtkMRMLNode* modelNode = q->mrmlScene()->GetNodeByID(id3.toUtf8());
+  if (!modelNode)
+    {
+    qCritical() << Q_FUNC_INFO << "Unable to access referenced model node";
+    return;
+    }
 
   //if {$::S2_HParent_ID != ""} {
   //  $hnode SetParentNodeIDReference $::S2_HParent_ID
   //}
   if (!this->ParentID.isEmpty())
     {
-    hnode->SetParentNodeID(this->ParentID.toLatin1());
-    }
-  //$hnode SetModelNodeIDReference $id3
-  hnode->SetModelNodeIDReference(id3.toLatin1());
+    vtkMRMLSubjectHierarchyNode* shNode = vtkMRMLSubjectHierarchyNode::GetSubjectHierarchyNode(q->mrmlScene());
+    if (!shNode)
+      {
+      qCritical() << Q_FUNC_INFO << "Unable to access subject hierarchy node";
+      return;
+      }
 
-  //$hnode SetHideFromEditors 1
-  //$hnode SetSelectable 0
-  hnode->SetHideFromEditors(1);
-  hnode->SetSelectable(0);
+    vtkMRMLNode* parentNode = q->mrmlScene()->GetNodeByID(this->ParentID.toUtf8());
+    if (parentNode)
+      {
+      vtkIdType parentItemId = shNode->GetItemByDataNode(parentNode);
+      vtkIdType modelItemId = shNode->GetItemByDataNode(modelNode);
+      if (parentItemId && modelItemId)
+        {
+        shNode->SetItemParent(modelItemId, parentItemId);
+        }
+      }
+    }
 }
 
 //-----------------------------------------------------------------------------
 //proc ImportNodeFiducials {node} {
 void qSlicerSlicer2SceneReaderPrivate::importFiducialsNode(NodeType& node)
-{  
+{
   Q_Q(qSlicerSlicer2SceneReader);
   //upvar $node n
   //set fiducialNode [vtkMRMLFiducialListNode New]
@@ -1156,28 +1127,28 @@ void qSlicerSlicer2SceneReaderPrivate::importFiducialsNode(NodeType& node)
     }
   // if { [info exists n(name)] } {
   //   $fiducialNode SetName $n(name)
-  // } 
+  // }
   if (node.contains("name"))
     {
-    fiducialNode->SetName(node["name"].toLatin1());
+    fiducialNode->SetName(node["name"].toUtf8());
     }
   //$::slicer3::MRMLScene AddNode $fiducialNode
   q->mrmlScene()->AddNode(fiducialNode);
   this->LoadedNodes << fiducialNode->GetID();
   //set ::S2(fiducialListNode) $fiducialNode
-  this->FiducialListNode = fiducialNode;
+  this->FiducialListNode = fiducialNode.GetPointer();
 
   // set it to be the selected one, last one imported will stick
   //set selNode [$::slicer3::ApplicationLogic GetSelectionNode]
-  vtkMRMLSelectionNode* selNode = 
+  vtkMRMLSelectionNode* selNode =
     this->ApplicationLogic->GetSelectionNode();
   //if { $selNode != "" } {
-  //   $selNode SetReferenceActiveFiducialListID [$fiducialNode GetID]
+  //   $selNode SetActiveFiducialListID [$fiducialNode GetID]
   //   $::slicer3::ApplicationLogic PropagateFiducialListSelection
   //}
-  if (selNode != 0)
+  if (selNode != nullptr)
     {
-    selNode->SetReferenceActiveFiducialListID(fiducialNode->GetID());
+    selNode->SetActiveFiducialListID(fiducialNode->GetID());
     this->ApplicationLogic->PropagateFiducialListSelection();
     }
 }
@@ -1198,17 +1169,17 @@ void qSlicerSlicer2SceneReaderPrivate::importPointNode(NodeType& node)
   if (node.contains("xyz"))
     {
     QStringList xyz = node["xyz"].split(' ');
-    this->FiducialListNode->SetNthFiducialXYZ(f, 
+    this->FiducialListNode->SetNthFiducialXYZ(f,
                                               xyz[0].toFloat(),
                                               xyz[1].toFloat(),
                                               xyz[2].toFloat());
     }
   //if { [info exists n(name)] } {
   //  $::S2(fiducialListNode) SetNthFiducialLabelText $f $n(name)
-  //} 
+  //}
   if (node.contains("name"))
     {
-    this->FiducialListNode->SetNthFiducialLabelText(f, node["name"].toLatin1());
+    this->FiducialListNode->SetNthFiducialLabelText(f, node["name"].toUtf8());
     }
 }
 
@@ -1223,7 +1194,7 @@ void qSlicerSlicer2SceneReaderPrivate::importColorNode(NodeType& node)
     {
     return;
     }
-    
+
   //set id $n(name)
   QString id = node["name"];
   //if { [info exists n(diffuseColor)] } {
@@ -1234,16 +1205,13 @@ void qSlicerSlicer2SceneReaderPrivate::importColorNode(NodeType& node)
   //foreach {r g b} $n(diffuseColor) {}
   QStringList rgb = node["diffuseColor"].split(' ');
   //$::slicer3::MRMLScene InitTraversal
-  q->mrmlScene()->InitTraversal();
-  //set ndnodes [$::slicer3::MRMLScene GetNumberOfNodesByClass vtkMRMLModelDisplayNode]
-  int ndnodes = q->mrmlScene()->GetNumberOfNodesByClass("vtkMRMLModelDisplayNode");
-  //for {set i 0} {$i < $ndnodes} {incr i} {
-  for (int i = 0; i < ndnodes; ++i)
+  std::vector<vtkMRMLNode*> nodes;
+  q->mrmlScene()->GetNodesByClass("vtkMRMLModelDisplayNode", nodes);
+  for (std::vector< vtkMRMLNode* >::iterator nodeIt = nodes.begin(); nodeIt != nodes.end(); ++nodeIt)
     {
     //set dnode [$::slicer3::MRMLScene GetNthNodeByClass $i vtkMRMLModelDisplayNode]
-    vtkMRMLModelDisplayNode* dnode = 
-      vtkMRMLModelDisplayNode::SafeDownCast(
-        q->mrmlScene()->GetNthNodeByClass(i, "vtkMRMLModelDisplayNode"));
+    vtkMRMLModelDisplayNode* dnode =
+      vtkMRMLModelDisplayNode::SafeDownCast(*nodeIt);
     // set cid [$dnode GetAttribute colorid]
     QString cid = dnode->GetAttribute("colorid");
     //if {$id == $cid} {
@@ -1286,8 +1254,7 @@ qSlicerSlicer2SceneReader::qSlicerSlicer2SceneReader(vtkSlicerApplicationLogic* 
 
 //-----------------------------------------------------------------------------
 qSlicerSlicer2SceneReader::~qSlicerSlicer2SceneReader()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 vtkSlicerApplicationLogic* qSlicerSlicer2SceneReader::applicationLogic()const
@@ -1329,7 +1296,7 @@ bool qSlicerSlicer2SceneReader::load(const IOProperties& properties)
   Q_ASSERT(!file.isEmpty());
 
   d->TransformIDStack.clear();
-  d->FiducialListNode = 0;
+  d->FiducialListNode = nullptr;
   d->ParentID = "";
   d->ModelIDs.clear();
   d->LoadedNodes.clear();
@@ -1341,9 +1308,8 @@ bool qSlicerSlicer2SceneReader::load(const IOProperties& properties)
     this->mrmlScene()->Clear(false);
     }
 
-  vtkSmartPointer<vtkXMLDataParser> slicer2Parser = 
-    vtkSmartPointer<vtkXMLDataParser>::New();
-  slicer2Parser->SetFileName(file.toLatin1());
+  vtkNew<vtkXMLDataParser> slicer2Parser;
+  slicer2Parser->SetFileName(file.toUtf8());
   slicer2Parser->Parse();
   vtkXMLDataElement* root = slicer2Parser->GetRootElement();
   d->importElement(root);

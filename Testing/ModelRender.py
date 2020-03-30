@@ -15,6 +15,7 @@ def newSphere(name=''):
   modelDisplayNode.SetColor(random.random(), random.random(), random.random())
   Slicer.slicer.MRMLScene.AddNode(modelDisplayNode)
   modelNode = Slicer.slicer.vtkMRMLModelNode()
+# VTK6 TODO
   modelNode.SetAndObservePolyData( sphere.GetOutput() )
   modelNode.SetAndObserveDisplayNodeID( modelDisplayNode.GetID() )
   modelNode.SetName(name)
@@ -22,7 +23,7 @@ def newSphere(name=''):
 
 def sphereMovie(dir="."):
 
-  for i in xrange(20):
+  for i in range(20):
     newSphere()
     Slicer.TkCall( "update" )
     Slicer.TkCall( "SlicerSaveLargeImage %s/spheres-%d.png 3" % (dir, i) )

@@ -49,8 +49,8 @@ class Q_SLICER_MODULE_VOLUMERENDERING_WIDGETS_EXPORT qMRMLVolumePropertyNodeWidg
 public:
   /// Constructors
   typedef QWidget Superclass;
-  explicit qMRMLVolumePropertyNodeWidget(QWidget* parent=0);
-  virtual ~qMRMLVolumePropertyNodeWidget();
+  explicit qMRMLVolumePropertyNodeWidget(QWidget* parent=nullptr);
+  ~qMRMLVolumePropertyNodeWidget() override;
 
   /// Return the VTK volume property associated with the MRML volume property
   /// node.
@@ -74,6 +74,10 @@ public slots:
                      bool dontMoveFirstAndLast = false);
   void spreadAllPoints(double factor,
                        bool dontSpreadFirstAndLast = false);
+
+  /// Set chart extent
+  void setChartsExtent(double extent[2]);
+  void setChartsExtent(double min, double max);
 
 signals:
   void thresholdChanged(bool enabled);

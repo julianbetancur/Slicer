@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include <ctkModelTester.h>
 
@@ -30,15 +33,19 @@
 #include "qMRMLSceneTransformModel.h"
 #include "qMRMLTreeView.h"
 
+// VTK includes
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLSceneTransformModelTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLSceneTransformModel model;
-  qMRMLSceneFactoryWidget sceneFactory(0);
+  qMRMLSceneFactoryWidget sceneFactory(nullptr);
 
   try
     {
@@ -52,25 +59,25 @@ int qMRMLSceneTransformModelTest1(int argc, char * argv [])
 
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
 
@@ -122,14 +129,14 @@ int qMRMLSceneTransformModelTest1(int argc, char * argv [])
   items[0]->setBackground(QLinearGradient());
   item->insertRow(0,items);
   */
-  QTreeView* view = new QTreeView(0);
+  QTreeView* view = new QTreeView(nullptr);
   //view->setSelectionBehavior(QAbstractItemView::SelectRows);
   view->setDragDropMode(QAbstractItemView::InternalMove);
   view->setModel(&model);
   //view->setModel(&m);
   view->show();
   view->resize(500, 800);
-  
+
   qMRMLTreeView treeWidget;
   treeWidget.setWindowTitle("qMRMLTreeView");
   treeWidget.setMRMLScene(sceneFactory.mrmlScene());
@@ -138,7 +145,7 @@ int qMRMLSceneTransformModelTest1(int argc, char * argv [])
 
   qMRMLSortFilterProxyModel sortModel;
   sortModel.setSourceModel(&model);
-  
+
   QTreeView view2;
   view2.setWindowTitle("qMRMLSortFilterProxyModel");
   view2.setDragDropMode(QAbstractItemView::InternalMove);

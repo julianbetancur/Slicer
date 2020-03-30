@@ -1,6 +1,17 @@
 #ifndef __qMRMLChartView_p_h
 #define __qMRMLChartView_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 class QToolButton;
 
@@ -33,7 +44,7 @@ protected:
   qMRMLChartView* const q_ptr;
 public:
   qMRMLChartViewPrivate(qMRMLChartView& object);
-  ~qMRMLChartViewPrivate();
+  ~qMRMLChartViewPrivate() override;
 
   virtual void init();
 
@@ -48,7 +59,7 @@ public slots:
   void updateWidgetFromMRML();
 
   /// slot when the view is configured to look at a different chart node
-  void onChartNodeChanged(); 
+  void onChartNodeChanged();
 
   // slot when mouse is over a point
   void onDataMouseOver(int series, int pointidx, double x, double y);
@@ -106,7 +117,7 @@ protected:
   // Convert the array names (for all the arrays) into a string that
   // can be passed as tick locations for a chart, e.g. Box chart
   QString arrayTicksString(vtkStringArray*);
-  
+
   // Convert the data in all the arrays into a structure suitable for
   // plotting as lines.
   QString lineData(vtkMRMLChartNode*);
@@ -162,14 +173,14 @@ protected:
   // Generate a string containing the options that are common to all
   // char types
   QString genericOptions(vtkMRMLChartNode*, bool rotateXTickLabels = false);
-  
+
 
   vtkMRMLScene*                      MRMLScene;
   vtkMRMLChartViewNode*              MRMLChartViewNode;
   vtkMRMLChartNode*                  MRMLChartNode;
 
   vtkWeakPointer<vtkMRMLColorLogic>  ColorLogic;
-  
+
   QToolButton*                       PinButton;
   ctkPopupWidget*                    PopupWidget;
 };

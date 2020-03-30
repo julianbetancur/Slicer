@@ -21,19 +21,26 @@
 // QT includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLSceneDisplayableModel.h"
 #include "qMRMLSortFilterProxyModel.h"
 
-
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLScene.h>
 
-// STD includes
+// VTK includes
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 int qMRMLSceneDisplayableModelTest2(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
   if( argc < 2 )
     {
     std::cerr << "Error: missing arguments" << std::endl;
@@ -48,6 +55,8 @@ int qMRMLSceneDisplayableModelTest2(int argc, char * argv [] )
     qMRMLSortFilterProxyModel sort;
     sort.setSourceModel(&model);
     vtkMRMLScene* scene = vtkMRMLScene::New();
+    vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+    applicationLogic->SetMRMLScene(scene);
     model.setMRMLScene(scene);
     scene->SetURL(argv[1]);
     scene->Connect();

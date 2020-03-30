@@ -29,21 +29,21 @@ class VTK_MRML_EXPORT vtkMRMLScriptedModuleNode : public vtkMRMLNode
 public:
   static vtkMRMLScriptedModuleNode *New();
   vtkTypeMacro(vtkMRMLScriptedModuleNode,vtkMRMLNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName();
+  const char* GetNodeTagName() override;
 
   /// The name of the Module - this is used to
   /// customize the node selectors and other things
@@ -75,11 +75,11 @@ public:
 
 protected:
   vtkMRMLScriptedModuleNode();
-  ~vtkMRMLScriptedModuleNode();
+  ~vtkMRMLScriptedModuleNode() override;
 
   vtkMRMLScriptedModuleNode(const vtkMRMLScriptedModuleNode&);
   void operator=(const vtkMRMLScriptedModuleNode&);
-  
+
   typedef std::map<std::string, std::string> ParameterMap;
   ParameterMap Parameters;
   char *ModuleName;

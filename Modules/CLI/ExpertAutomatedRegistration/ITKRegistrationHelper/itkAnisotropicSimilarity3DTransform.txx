@@ -14,8 +14,8 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef _itkAnisotropicSimilarity3DTransform_txx
-#define _itkAnisotropicSimilarity3DTransform_txx
+#ifndef itkAnisotropicSimilarity3DTransform_txx
+#define itkAnisotropicSimilarity3DTransform_txx
 
 #include "itkAnisotropicSimilarity3DTransform.h"
 #include "vnl/vnl_math.h"
@@ -28,11 +28,7 @@ namespace itk
 template <class TScalarType>
 AnisotropicSimilarity3DTransform<TScalarType>
 ::AnisotropicSimilarity3DTransform() :
-#if ITK_VERSION_MAJOR >= 4
   Superclass(ParametersDimension)
-#else
-  Superclass(OutputSpaceDimension, ParametersDimension)
-#endif
 {
   m_Scale[0] = 1.0;
   m_Scale[1] = 1.0;
@@ -42,11 +38,7 @@ AnisotropicSimilarity3DTransform<TScalarType>
 // Constructor with arguments
 template <class TScalarType>
 AnisotropicSimilarity3DTransform<TScalarType>::AnisotropicSimilarity3DTransform(unsigned int paramDim) :
-#if ITK_VERSION_MAJOR >= 4
   Superclass(paramDim)
-#else
-  Superclass(OutputSpaceDimension, paramDim)
-#endif
 {
 }
 
@@ -150,7 +142,7 @@ AnisotropicSimilarity3DTransform<TScalarType>
   axis[2] = parameters[2];
   if( norm > 0 )
     {
-    norm = vcl_sqrt(norm);
+    norm = std::sqrt(norm);
     }
 
   double epsilon = 1e-10;
@@ -188,16 +180,15 @@ AnisotropicSimilarity3DTransform<TScalarType>
 //
 // Parameters are ordered as:
 //
-// p[0:2] = right part of the versor (axis times vcl_sin(t/2))
+// p[0:2] = right part of the versor (axis times std::sin(t/2))
 // p[3:5} = translation components
 // p[6:8} = scaling factor (isotropic)
 //
 
 template <class TScalarType>
-const typename AnisotropicSimilarity3DTransform<TScalarType>::ParametersType
-& AnisotropicSimilarity3DTransform<TScalarType>
-::GetParameters( void ) const
-  {
+const typename AnisotropicSimilarity3DTransform<TScalarType>::ParametersType&
+AnisotropicSimilarity3DTransform<TScalarType>::GetParameters() const
+{
   itkDebugMacro( << "Getting parameters ");
 
   this->m_Parameters[0] = this->GetVersor().GetX();
@@ -216,17 +207,9 @@ const typename AnisotropicSimilarity3DTransform<TScalarType>::ParametersType
   itkDebugMacro(<< "After getting parameters " << this->m_Parameters );
 
   return this->m_Parameters;
-  }
+}
 
 // Set parameters
-template <class TScalarType>
-const typename AnisotropicSimilarity3DTransform<TScalarType>::JacobianType
-& AnisotropicSimilarity3DTransform<TScalarType>::
-GetJacobian( const InputPointType &p ) const
-  {
-  ComputeJacobianWithRespectToParameters( p, this->m_NonThreadsafeSharedJacobian );
-  return this->m_NonThreadsafeSharedJacobian;
-  }
 template <class TScalarType>
 void
 AnisotropicSimilarity3DTransform<TScalarType>::ComputeJacobianWithRespectToParameters(const InputPointType & p,
@@ -328,9 +311,7 @@ AnisotropicSimilarity3DTransform<TScalarType>
 
 /** Compute the matrix */
 template <class TScalarType>
-void
-AnisotropicSimilarity3DTransform<TScalarType>
-::ComputeMatrixParameters( void )
+void AnisotropicSimilarity3DTransform<TScalarType>::ComputeMatrixParameters()
 {
   MatrixType matrix = this->GetMatrix();
 
@@ -354,7 +335,6 @@ AnisotropicSimilarity3DTransform<TScalarType>
   VersorType v;
   v.Set( matrix );
   this->SetVarVersor( v );
-
 }
 
 // Print self

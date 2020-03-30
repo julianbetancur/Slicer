@@ -29,29 +29,44 @@
 #include "qSlicerBaseQTGUIExport.h"
 
 class qSlicerMouseModeToolBarPrivate;
+class vtkMRMLInteractionNode;
 class vtkMRMLScene;
 class vtkSlicerApplicationLogic;
 
 ///
-/// qSlicerMouseModeToolBar is a toolbar that can be used to switch between 
+/// qSlicerMouseModeToolBar is a toolbar that can be used to switch between
 /// mouse modes: PickMode, PickModePersistent, PlaceMode, PlaceModePersistent, TransformMode
 /// \note The toolbar expects qSlicerCoreApplication::mrmlApplicationLogic() to return a valid object
+/// qSlicerMouseModeToolBar observes the singletons selection node and
+/// interaction node to control its state.
 class Q_SLICER_BASE_QTGUI_EXPORT qSlicerMouseModeToolBar: public QToolBar
 {
   Q_OBJECT
+  /// "vtkMRMLAnnotationFiducialNode" by default.
+  Q_PROPERTY(QString defaultPlaceClassName READ defaultPlaceClassName WRITE setDefaultPlaceClassName)
 public:
   typedef QToolBar Superclass;
 
   /// Constructor
   /// Title is the name of the toolbar (can appear using right click on the toolbar area)
-  qSlicerMouseModeToolBar(const QString& title, QWidget* parent = 0);
-  qSlicerMouseModeToolBar(QWidget* parent = 0);
-  virtual ~qSlicerMouseModeToolBar();
+  qSlicerMouseModeToolBar(const QString& title, QWidget* parent = nullptr);
+  qSlicerMouseModeToolBar(QWidget* parent = nullptr);
+  ~qSlicerMouseModeToolBar() override;
+
+  QString defaultPlaceClassName()const;
+  void setDefaultPlaceClassName(const QString& className);
+
+  /// Get interaction node.
+  /// \sa setInteractionNode()
+  Q_INVOKABLE vtkMRMLInteractionNode* interactionNode()const;
 
 public slots:
 
+  /// Set the application logic. It is used to retrieve the selection and
+  /// interaction nodes.
   void setApplicationLogic(vtkSlicerApplicationLogic* logic);
 
+  /// Observe the mrml scene to prevent updates in batch processing modes.
   void setMRMLScene(vtkMRMLScene* newScene);
 
   void switchToViewTransformMode();
@@ -62,15 +77,20 @@ public slots:
   void switchPlaceMode();
 
   /// Update the interaction node's persistent place mode from the UI
-  void onPersistenceToggled();
+  void setPersistence(bool persistent);
 
-  /// For testing, return the active action text
-  QString activeActionText();
-  
+  /// Set interaction node used to update the toolbar.
+  /// \sa interactionNode()
+  void setInteractionNode(vtkMRMLInteractionNode* interactionNode);
+
+  void interactionModeActionTriggered(bool);
+
+  void setAdjustWindowLevelMode(int);
+
 protected:
   QScopedPointer<qSlicerMouseModeToolBarPrivate> d_ptr;
 
-  bool isActionTextInMenu(QString actionText, QMenu *menu);
+  QAction* actionFromPlaceNodeClassName(QString placeNodeClassName, QMenu *menu);
 private:
   Q_DECLARE_PRIVATE(qSlicerMouseModeToolBar);
   Q_DISABLE_COPY(qSlicerMouseModeToolBar);

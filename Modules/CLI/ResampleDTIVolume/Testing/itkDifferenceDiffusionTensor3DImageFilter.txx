@@ -12,8 +12,8 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef __itkDifferenceDiffusionTensor3DImageFilter_txx
-#define __itkDifferenceDiffusionTensor3DImageFilter_txx
+#ifndef itkDifferenceDiffusionTensor3DImageFilter_txx
+#define itkDifferenceDiffusionTensor3DImageFilter_txx
 
 #include "itkDifferenceDiffusionTensor3DImageFilter.h"
 
@@ -37,18 +37,26 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
   this->SetNumberOfRequiredInputs(2);
 
   // Set the default DifferenceThreshold.
-  m_DifferenceThreshold = NumericTraits<OutputPixelType>::Zero;
+  m_DifferenceThreshold = NumericTraits<OutputPixelType>::ZeroValue();
 
   // Set the default ToleranceRadius.
   m_ToleranceRadius = 0;
 
   // Initialize statistics about difference image.
-  m_MeanDifference = NumericTraits<RealType>::Zero;
-  m_TotalDifference = NumericTraits<AccumulateType>::Zero;
+  m_MeanDifference = NumericTraits<RealType>::ZeroValue();
+  m_TotalDifference = NumericTraits<AccumulateType>::ZeroValue();
   m_NumberOfPixelsWithDifferences = 0;
   m_IgnoreBoundaryPixels = false;
-  measurementFrameValid.SetIdentity();
-  measurementFrameTest.SetIdentity();
+  m_MeasurementFrameValid.SetIdentity();
+  m_MeasurementFrameTest.SetIdentity();
+
+  // Keep using the ITKv4 threading system.
+  // This class could be updated to use the ITKv5 dynamic threading system in the future
+  // Check the ITK migration guide:
+  // https://github.com/InsightSoftwareConsortium/ITK/blob/master/Documentation/ITK5MigrationGuide.md
+  // This class in particular does use threadId, so a more complex solution is needed
+  // Check the example of using std::atomic in the migration guide.
+  this->DynamicMultiThreadingOff();
 }
 
 // ----------------------------------------------------------------------------
@@ -127,8 +135,8 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
   int numberOfThreads = this->GetNumberOfThreads();
 
   // Initialize statistics about difference image.
-  m_MeanDifference = NumericTraits<RealType>::Zero;
-  m_TotalDifference = NumericTraits<AccumulateType>::Zero;
+  m_MeanDifference = NumericTraits<RealType>::ZeroValue();
+  m_TotalDifference = NumericTraits<AccumulateType>::ZeroValue();
   m_NumberOfPixelsWithDifferences = 0;
 
   // Resize the thread temporaries
@@ -136,11 +144,11 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
   m_ThreadNumberOfPixels.SetSize(numberOfThreads);
 
   // Initialize the temporaries
-  m_ThreadDifferenceSum.Fill(NumericTraits<AccumulateType>::Zero);
+  m_ThreadDifferenceSum.Fill(NumericTraits<AccumulateType>::ZeroValue());
   m_ThreadNumberOfPixels.Fill(0);
 
-  measurementFrameValid = GetMetaDataDictionary( this->GetInput(0) );
-  measurementFrameTest = GetMetaDataDictionary( this->GetInput(1) );
+  m_MeasurementFrameValid = GetMetaDataDictionary( this->GetInput(0) );
+  m_MeasurementFrameTest = GetMetaDataDictionary( this->GetInput(1) );
 
 }
 
@@ -174,19 +182,16 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
 // ----------------------------------------------------------------------------
 template <class TInputImage, class TOutputImage>
 void
-#if ITK_VERSION_MAJOR < 4
-DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
-::ThreadedGenerateData(const OutputImageRegionType & threadRegion, int threadId)
-#else
 DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
 ::ThreadedGenerateData(const OutputImageRegionType &threadRegion, ThreadIdType threadId)
-#endif
   {
   typedef ConstNeighborhoodIterator<InputImageType> SmartIterator;
   typedef ImageRegionConstIterator<InputImageType>  InputIterator;
   typedef ImageRegionIterator<OutputImageType>      OutputIterator;
+
   typedef NeighborhoodAlgorithm::ImageBoundaryFacesCalculator<InputImageType>
   FacesCalculator;
+
   typedef typename FacesCalculator::RadiusType   RadiusType;
   typedef typename FacesCalculator::FaceListType FaceListType;
   typedef typename FaceListType::iterator        FaceListIterator;
@@ -232,13 +237,13 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
         {
         // Get the current valid pixel.
 
-        InputPixelType t = ApplyMeasurementFrameToTensor( valid.Get(), measurementFrameValid );
+        InputPixelType t = ApplyMeasurementFrameToTensor( valid.Get(), m_MeasurementFrameValid );
 
         //  Assume a good match - so test center pixel first, for speed
         typename InputPixelType::Iterator it;
         typename InputPixelType::Iterator ittest;
-        RealType       sumdifference = NumericTraits<RealType>::Zero;
-        InputPixelType centerTensor = ApplyMeasurementFrameToTensor( test.GetCenterPixel(), measurementFrameTest );
+        RealType       sumdifference = NumericTraits<RealType>::ZeroValue();
+        InputPixelType centerTensor = ApplyMeasurementFrameToTensor( test.GetCenterPixel(), m_MeasurementFrameTest );
         for( it = t.Begin(), ittest = centerTensor.Begin(); it != t.End(); ++it, ++ittest )
           {
           RealType difference = static_cast<RealType>( (*it) ) - (*ittest);
@@ -259,8 +264,8 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
             {
             // Use the RealType for the difference to make sure we get the
             // sign.
-            sumdifference = NumericTraits<RealType>::Zero;
-            InputPixelType tensor = ApplyMeasurementFrameToTensor( test.GetPixel(i), measurementFrameTest );
+            sumdifference = NumericTraits<RealType>::ZeroValue();
+            InputPixelType tensor = ApplyMeasurementFrameToTensor( test.GetPixel(i), m_MeasurementFrameTest );
             for( it = t.Begin(), ittest = tensor.Begin(); it != t.End(); ++it, ++ittest )
               {
               RealType difference = static_cast<RealType>( *it ) - (*ittest);
@@ -295,7 +300,7 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
         else
           {
           // Difference is below threshold.
-          out.Set(NumericTraits<OutputPixelType>::Zero);
+          out.Set(NumericTraits<OutputPixelType>::ZeroValue());
           }
 
         // Update progress.
@@ -306,7 +311,7 @@ DifferenceDiffusionTensor3DImageFilter<TInputImage, TOutputImage>
       {
       for( out.GoToBegin(); !out.IsAtEnd(); ++out )
         {
-        out.Set(NumericTraits<OutputPixelType>::Zero);
+        out.Set(NumericTraits<OutputPixelType>::ZeroValue());
         progress.CompletedPixel();
         }
       }

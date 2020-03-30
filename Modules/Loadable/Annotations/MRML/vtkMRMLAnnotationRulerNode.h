@@ -2,7 +2,7 @@
 #define __vtkMRMLAnnotationRulerNode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationLinesNode.h" 
+#include "vtkMRMLAnnotationLinesNode.h"
 
 class vtkMatrix4x4;
 class vtkAbstractTransform;
@@ -15,47 +15,47 @@ public:
   static vtkMRMLAnnotationRulerNode *New();
   vtkTypeMacro(vtkMRMLAnnotationRulerNode,vtkMRMLAnnotationLinesNode);
   // Description:
-  // Just prints short summary 
-  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  // Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationRuler";};
+  const char* GetNodeTagName() override {return "AnnotationRuler";}
 
-  virtual const char* GetIcon() {return ":/Icons/AnnotationDistance.png";};
+  const char* GetIcon() override {return ":/Icons/AnnotationDistance.png";}
 
   // Description:
   // Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
 
 
   // Get position of the first point
   void GetPosition1(double position[3]);
 
-  // Get position of the first point in world coordinates, including parnts transfroms
+  // Get position of the first point in world coordinates, including parent transforms
   void GetPositionWorldCoordinates1(double position[4])
     {
     double p[4]={0,0,0,1};
@@ -66,34 +66,34 @@ public:
   // Legacy code
   // Description:
   // get/set the first point position
-  double* GetPosition1() 
+  double* GetPosition1()
     {
     return this->GetControlPointCoordinates(0);
     }
 
-  int SetPosition1(double newControl[3]) 
-    { 
-    return this->SetControlPoint(0, newControl) ; 
+  int SetPosition1(double newControl[3])
+    {
+    return this->SetControlPoint(0, newControl) ;
     }
 
-  int SetPositionWorldCoordinates1(double newControl[4]) 
-    { 
+  int SetPositionWorldCoordinates1(double newControl[4])
+    {
     double locPoint[4]={0,0,0,1};
     this->TransformPointFromWorld(newControl, locPoint);
-    return this->SetPosition1(locPoint) ; 
+    return this->SetPosition1(locPoint) ;
     }
 
-  int SetPosition1(double nC1, double nC2, double nC3) 
-    { 
+  int SetPosition1(double nC1, double nC2, double nC3)
+    {
     double newControl[3] = {nC1,nC2,nC3};
-    return this->SetPosition1(newControl) ; 
+    return this->SetPosition1(newControl) ;
     }
 
 
   // Get position of the second point
   void GetPosition2(double position[3]);
 
-  // Get position of the second point in world coordinates, including parnts transfroms
+  // Get position of the second point in world coordinates, including parent transforms
   void GetPositionWorldCoordinates2(double position[4])
     {
     double p[4]={0,0,0,1};
@@ -101,27 +101,27 @@ public:
     this->TransformPointToWorld(p,position);
     }
 
-  double* GetPosition2() 
+  double* GetPosition2()
     {
     return this->GetControlPointCoordinates(1);
     }
 
-  int SetPosition2(double newControl[3]) 
-    { 
+  int SetPosition2(double newControl[3])
+    {
     return this->SetControlPoint(1, newControl);
     }
 
-  int SetPositionWorldCoordinates2(double newControl[4]) 
-    { 
+  int SetPositionWorldCoordinates2(double newControl[4])
+    {
     double locPoint[4]={0,0,0,1};
     this->TransformPointFromWorld(newControl, locPoint);
-    return this->SetPosition2(locPoint) ; 
+    return this->SetPosition2(locPoint) ;
     }
 
-  int SetPosition2(double nC1, double nC2, double nC3) 
-    { 
+  int SetPosition2(double nC1, double nC2, double nC3)
+    {
     double newControl[3] = {nC1,nC2,nC3};
-    return this->SetPosition2(newControl) ; 
+    return this->SetPosition2(newControl) ;
     }
 
   // Description:
@@ -130,7 +130,7 @@ public:
   vtkSetStringMacro(DistanceAnnotationFormat);
 
   // Description:
-  // KP Define - should be part of AnnotationRulerDisplayNode 
+  // KP Define - should be part of AnnotationRulerDisplayNode
   double GetDistanceAnnotationScale();
   void SetDistanceAnnotationScale(double init);
 
@@ -139,12 +139,7 @@ public:
   int GetDistanceAnnotationVisibility();
   void SetDistanceAnnotationVisibility(int flag);
 
-  int SetRuler(vtkIdType line1Id, int sel, int vis);  
-
-  // Description:
-  // get/set the resolution (number of subdivisions) of the line.
-  vtkGetMacro(Resolution, int);
-  vtkSetMacro(Resolution, int);
+  int SetRuler(vtkIdType line1Id, int sel, int vis);
 
   // Description:
   // get/set the point representation colour
@@ -161,19 +156,18 @@ public:
   double *GetDistanceAnnotationTextColour();
   void SetDistanceAnnotationTextColour(double initColor[3]);
 
- // Description:
+  // Description:
   // transform utility functions
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix);
-  virtual void ApplyTransform(vtkAbstractTransform* transform);
+  void ApplyTransform(vtkAbstractTransform* transform) override;
 
   // Description:
-  // Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();  
+  // Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
 //  void Initialize(vtkMRMLScene* mrmlScene);
 
+  /// Calculate the distance between world coordinates of the two end points
   double GetDistanceMeasurement();
-  void SetDistanceMeasurement(double val);
 
 
   /// get/set the id of the model the first and second end of the ruler is constrained upon
@@ -191,15 +185,14 @@ public:
 
 protected:
   vtkMRMLAnnotationRulerNode();
-  ~vtkMRMLAnnotationRulerNode();
+  ~vtkMRMLAnnotationRulerNode() override;
   vtkMRMLAnnotationRulerNode(const vtkMRMLAnnotationRulerNode&);
   void operator=(const vtkMRMLAnnotationRulerNode&);
 
   // Description:
-  // number of subdivisions on the line
-  int Resolution;
+  // The format string that defines the text showing the distance
   char* DistanceAnnotationFormat;
- 
+
   int SetControlPoint(int id, double newControl[3]);
 
   int AddControlPoint(double newControl[3],int selectedFlag, int visibleFlag);
@@ -208,7 +201,6 @@ protected:
   /// to
   char *ModelID1;
   char *ModelID2;
-  double distanceMeasurement;
 };
 
 #endif

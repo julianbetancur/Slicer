@@ -23,15 +23,34 @@
 #
 
 macro(SlicerMacroBuildModuleVTKLibrary)
-  SLICER_PARSE_ARGUMENTS(MODULEVTKLIBRARY
-    "NAME;EXPORT_DIRECTIVE;SRCS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES"
-    "DISABLE_WRAP_PYTHON;NO_INSTALL"
+  set(options
+    DISABLE_WRAP_PYTHON
+    NO_INSTALL
+    )
+  set(oneValueArgs
+    NAME
+    EXPORT_DIRECTIVE
+    FOLDER
+    )
+  set(multiValueArgs
+    SRCS
+    INCLUDE_DIRECTORIES
+    TARGET_LIBRARIES
+    )
+  cmake_parse_arguments(MODULEVTKLIBRARY
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
     )
 
   # --------------------------------------------------------------------------
   # Sanity checks
   # --------------------------------------------------------------------------
+  if(MODULEVTKLIBRARY_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown keywords given to SlicerMacroBuildModuleVTKLibrary(): \"${MODULEVTKLIBRARY_UNPARSED_ARGUMENTS}\"")
+  endif()
+
   set(expected_nonempty_vars NAME EXPORT_DIRECTIVE SRCS)
   foreach(var ${expected_nonempty_vars})
     if("${MODULEVTKLIBRARY_${var}}" STREQUAL "")
@@ -43,6 +62,22 @@ macro(SlicerMacroBuildModuleVTKLibrary)
   # Define library name
   # --------------------------------------------------------------------------
   set(lib_name ${MODULEVTKLIBRARY_NAME})
+
+  # --------------------------------------------------------------------------
+  # Set <MODULEVTKLIBRARY_NAME>_INCLUDE_DIRS
+  # --------------------------------------------------------------------------
+  set(_include_dirs
+    ${${MODULEVTKLIBRARY_NAME}_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  # Since module developer may have already set the variable to some
+  # specific values in the module CMakeLists.txt, we make sure to
+  # consider the already set variable and remove duplicates.
+  list(REMOVE_DUPLICATES _include_dirs)
+  set(${MODULEVTKLIBRARY_NAME}_INCLUDE_DIRS
+    ${_include_dirs}
+    CACHE INTERNAL "${MODULEVTKLIBRARY_NAME} include directories" FORCE)
 
   # --------------------------------------------------------------------------
   # Include dirs
@@ -100,6 +135,10 @@ macro(SlicerMacroBuildModuleVTKLibrary)
   # Apply user-defined properties to the library target.
   if(Slicer_LIBRARY_PROPERTIES)
     set_target_properties(${lib_name} PROPERTIES ${Slicer_LIBRARY_PROPERTIES})
+  endif()
+
+  if(NOT "${MODULEVTKLIBRARY_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name} PROPERTIES FOLDER ${MODULEVTKLIBRARY_FOLDER})
   endif()
 
   # --------------------------------------------------------------------------

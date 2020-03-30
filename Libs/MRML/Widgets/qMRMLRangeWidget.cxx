@@ -19,38 +19,43 @@
 ==============================================================================*/
 
 // Qt includes
-#include <QDoubleSpinBox>
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QStyleOptionSlider>
 #include <QToolButton>
 #include <QWidgetAction>
 
-// CTK includes
+// qMRML includes
+#include <qMRMLSpinBox.h>
+
 #include "qMRMLRangeWidget.h"
+
+// --------------------------------------------------------------------------
+// qMRMLRangeWidget
+//
 
 // --------------------------------------------------------------------------
 qMRMLRangeWidget::qMRMLRangeWidget(QWidget* parentWidget)
   : ctkRangeWidget(parentWidget)
 {
-  this->setSlider(new qMRMLDoubleRangeSlider(0));
-  
+  this->setSlider(new qMRMLDoubleRangeSlider(nullptr));
+
   QWidget* rangeWidget = new QWidget(this);
   QHBoxLayout* rangeLayout = new QHBoxLayout;
   rangeWidget->setLayout(rangeLayout);
   rangeLayout->setContentsMargins(0,0,0,0);
 
-  this->MinSpinBox = new QDoubleSpinBox(rangeWidget);
+  this->MinSpinBox = new qMRMLSpinBox(rangeWidget);
   this->MinSpinBox->setPrefix("Min: ");
-  this->MinSpinBox->setRange(-1000000., 1000000.);
+  this->MinSpinBox->setRange(-std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
   this->MinSpinBox->setValue(this->minimum());
   connect(this->MinSpinBox, SIGNAL(valueChanged(double)),
           this, SLOT(updateRange()));
   rangeLayout->addWidget(this->MinSpinBox);
 
-  this->MaxSpinBox = new QDoubleSpinBox(rangeWidget);
+  this->MaxSpinBox = new qMRMLSpinBox(rangeWidget);
   this->MaxSpinBox->setPrefix("Max: ");
-  this->MaxSpinBox->setRange(-1000000., 1000000.);
+  this->MaxSpinBox->setRange(-std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
   this->MaxSpinBox->setValue(this->maximum());
   connect(this->MaxSpinBox, SIGNAL(valueChanged(double)),
           this, SLOT(updateRange()));
@@ -58,20 +63,20 @@ qMRMLRangeWidget::qMRMLRangeWidget(QWidget* parentWidget)
 
   connect(this->slider(), SIGNAL(rangeChanged(double,double)),
           this, SLOT(updateSpinBoxRange(double,double)));
-  
+
   QWidgetAction* rangeAction = new QWidgetAction(this);
   rangeAction->setDefaultWidget(rangeWidget);
-  
+
   QAction* symmetricAction = new QAction(tr("Symmetric handles"),this);
   symmetricAction->setCheckable(true);
   connect(symmetricAction, SIGNAL(toggled(bool)),
           this, SLOT(updateSymmetricMoves(bool)));
   symmetricAction->setChecked(this->symmetricMoves());
-  
+
   QMenu* optionsMenu = new QMenu(this);
   optionsMenu->addAction(rangeAction);
   optionsMenu->addAction(symmetricAction);
-  
+
   QToolButton* optionsButton = new QToolButton(this);
   optionsButton->setIcon(QIcon(":Icons/SliceMoreOptions.png"));
   optionsButton->setMenu(optionsMenu);
@@ -136,11 +141,54 @@ void qMRMLRangeWidget::updateSymmetricMoves(bool symmetric)
   this->setSymmetricMoves(symmetric);
 }
 
+//-----------------------------------------------------------------------------
+void qMRMLRangeWidget::setQuantity(const QString& quantity)
+{
+  if (quantity == this->quantity())
+    {
+    return;
+    }
+
+  this->MinSpinBox->setQuantity(quantity);
+  this->MaxSpinBox->setQuantity(quantity);
+}
+
+//-----------------------------------------------------------------------------
+QString qMRMLRangeWidget::quantity()const
+{
+  Q_ASSERT(this->MinSpinBox->quantity() == this->MaxSpinBox->quantity());
+  return this->MinSpinBox->quantity();
+}
+
+// --------------------------------------------------------------------------
+vtkMRMLScene* qMRMLRangeWidget::mrmlScene()const
+{
+  Q_ASSERT(this->MinSpinBox->mrmlScene() == this->MaxSpinBox->mrmlScene());
+  return this->MinSpinBox->mrmlScene();
+}
+
+// --------------------------------------------------------------------------
+void qMRMLRangeWidget::setMRMLScene(vtkMRMLScene* scene)
+{
+  if (this->mrmlScene() == scene)
+    {
+    return;
+    }
+
+  this->MinSpinBox->setMRMLScene(scene);
+  this->MaxSpinBox->setMRMLScene(scene);
+  this->setEnabled(this->isEnabled() && scene != nullptr);
+}
+
+// --------------------------------------------------------------------------
+// qMRMLDoubleRangeSlider
+//
+
 // --------------------------------------------------------------------------
 qMRMLDoubleRangeSlider::qMRMLDoubleRangeSlider(QWidget* parentWidget)
   :ctkDoubleRangeSlider(parentWidget)
 {
-  this->setSlider(new qMRMLRangeSlider(0));
+  this->setSlider(new qMRMLRangeSlider(nullptr));
 }
 
 // --------------------------------------------------------------------------
@@ -172,6 +220,10 @@ void qMRMLDoubleRangeSlider::setMaximumHandlePalette(const QPalette& palette)
 }
 
 // --------------------------------------------------------------------------
+// qMRMLRangeSlider
+//
+
+// --------------------------------------------------------------------------
 class qMRMLRangeSliderPrivate
 {
   Q_DECLARE_PUBLIC(qMRMLRangeSlider);
@@ -200,8 +252,7 @@ qMRMLRangeSlider::qMRMLRangeSlider(QWidget* parentWidget)
 
 // --------------------------------------------------------------------------
 qMRMLRangeSlider::~qMRMLRangeSlider()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 QPalette qMRMLRangeSlider::minimumHandlePalette()const

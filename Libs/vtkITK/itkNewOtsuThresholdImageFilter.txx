@@ -9,13 +9,13 @@
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
 
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef _itkNewOtsuThresholdImageFilter_txx
-#define _itkNewOtsuThresholdImageFilter_txx
+#ifndef itkNewOtsuThresholdImageFilter_txx
+#define itkNewOtsuThresholdImageFilter_txx
 #include "itkNewOtsuThresholdImageFilter.h"
 
 #include "itkBinaryThresholdImageFilter.h"
@@ -28,9 +28,9 @@ template<class TInputImage, class TOutputImage>
 NewOtsuThresholdImageFilter<TInputImage, TOutputImage>
 ::NewOtsuThresholdImageFilter()
 {
-  m_OutsideValue   = NumericTraits<OutputPixelType>::Zero;
+  m_OutsideValue   = NumericTraits<OutputPixelType>::ZeroValue();
   m_InsideValue    = NumericTraits<OutputPixelType>::max();
-  m_Threshold      = NumericTraits<InputPixelType>::Zero;
+  m_Threshold      = NumericTraits<InputPixelType>::ZeroValue();
   m_NumberOfHistogramBins = 128;
   m_Omega = 2;
 }
@@ -76,7 +76,7 @@ NewOtsuThresholdImageFilter<TInputImage, TOutputImage>
 }
 
 template<class TInputImage, class TOutputImage>
-void 
+void
 NewOtsuThresholdImageFilter<TInputImage,TOutputImage>
 ::PrintSelf(std::ostream& os, Indent indent) const
 {
@@ -95,4 +95,5 @@ NewOtsuThresholdImageFilter<TInputImage,TOutputImage>
 
 
 }// end namespace itk
+
 #endif

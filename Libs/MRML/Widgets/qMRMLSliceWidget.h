@@ -23,6 +23,7 @@
 
 // CTK includes
 #include <ctkPimpl.h>
+#include <vtkVersion.h>
 
 // qMRMLWidget includes
 #include "qMRMLWidget.h"
@@ -39,21 +40,27 @@ class vtkMRMLSliceLogic;
 class vtkMRMLSliceNode;
 class vtkMRMLSliceCompositeNode;
 
+class vtkAlgorithmOutput;
 class vtkImageData;
 class vtkInteractorObserver;
 class vtkCornerAnnotation;
+class vtkCollection;
 
 class QMRML_WIDGETS_EXPORT qMRMLSliceWidget : public qMRMLWidget
 {
   Q_OBJECT
   Q_PROPERTY(QString sliceOrientation READ sliceOrientation WRITE setSliceOrientation)
+  Q_PROPERTY(QString sliceViewName READ sliceViewName WRITE setSliceViewName)
+  Q_PROPERTY(QString sliceViewLabel READ sliceViewLabel WRITE setSliceViewLabel)
+  Q_PROPERTY(QColor sliceViewColor READ sliceViewColor WRITE setSliceViewColor)
+
 public:
   /// Superclass typedef
   typedef qMRMLWidget Superclass;
-  
+
   /// Constructors
-  explicit qMRMLSliceWidget(QWidget* parent = 0);
-  virtual ~qMRMLSliceWidget();
+  explicit qMRMLSliceWidget(QWidget* parent = nullptr);
+  ~qMRMLSliceWidget() override;
 
   /// Get slice controller
   Q_INVOKABLE qMRMLSliceControllerWidget* sliceController()const;
@@ -62,16 +69,16 @@ public:
   /// \sa setMRMLSliceNode()
   Q_INVOKABLE vtkMRMLSliceNode* mrmlSliceNode()const;
 
-  // \sa qMRMLSliceControllerWidget::sliceLogic()
+  /// \sa qMRMLSliceControllerWidget::sliceLogic()
   Q_INVOKABLE vtkMRMLSliceLogic* sliceLogic()const;
 
   /// \sa qMRMLSliceControllerWidget::sliceOrientation()
   /// \sa setSliceOrientation()
-  QString sliceOrientation()const;
+  Q_INVOKABLE QString sliceOrientation()const;
 
   /// \sa qMRMLSliceControllerWidget::imageData()
   /// \sa setImageData();
-  Q_INVOKABLE vtkImageData* imageData()const;
+  Q_INVOKABLE vtkAlgorithmOutput* imageDataConnection()const;
 
   /// \sa qMRMLSliceControllerWidget::mrmlSliceCompositeNode()
   Q_INVOKABLE vtkMRMLSliceCompositeNode* mrmlSliceCompositeNode()const;
@@ -107,21 +114,18 @@ public:
   Q_INVOKABLE vtkInteractorObserver* interactorStyle()const;
 
   /// Return the overlay corner annotation of the view
-  vtkCornerAnnotation* overlayCornerAnnotation()const;
+  Q_INVOKABLE vtkCornerAnnotation* overlayCornerAnnotation()const;
 
   /// propagates the logics to the qMRMLSliceControllerWidget
-  void setSliceLogics(vtkCollection* logics);
+  Q_INVOKABLE void setSliceLogics(vtkCollection* logics);
 
-  /// Get a reference to the underlying Slice View
-  /// A const ctkVTKSliceView pointer is returned as you shouldn't
-  /// mess too much with it. If you do, be aware that you are probably
-  /// unsynchronizing the view from the nodes/logics.
-  Q_INVOKABLE const qMRMLSliceView* sliceView()const;
+  /// Get a reference to the underlying slice view. It is the widget that
+  /// renders the view (contains vtkRenderWindow).
+  /// \sa sliceController()
+  Q_INVOKABLE qMRMLSliceView* sliceView()const;
 
-  //virtual bool eventFilter(QObject* object, QEvent* event);
 public slots:
-
-  void setMRMLScene(vtkMRMLScene * newScene);
+  void setMRMLScene(vtkMRMLScene * newScene) override;
 
   /// \sa qMRMLSliceControllerWidget::setMRMLSliceNode()
   /// \sa mrmlSliceNode()
@@ -129,17 +133,30 @@ public slots:
 
   /// \sa qMRMLSliceControllerWidget::setImageData()
   /// \sa imageData()
-  void setImageData(vtkImageData* newImageData);
-  
+  void setImageDataConnection(vtkAlgorithmOutput* newImageDataConnection);
+
   /// \sa qMRMLSliceControllerWidget::setSliceOrientation()
   /// \sa sliceOrientation()
-  void setSliceOrientation(const QString& orienation);
+  void setSliceOrientation(const QString& orientation);
 
   /// Fit slices to background
   void fitSliceToBackground();
 
+signals:
+  /// Signal emitted when editing of a node is requested from within the slice widget
+  void nodeAboutToBeEdited(vtkMRMLNode* node);
+
 protected:
+  void showEvent(QShowEvent *) override;
+
   QScopedPointer<qMRMLSliceWidgetPrivate> d_ptr;
+
+  /// Constructor allowing derived class to specify a specialized pimpl.
+  ///
+  /// \note You are responsible to call init() in the constructor of
+  /// derived class. Doing so ensures the derived class is fully
+  /// instantiated in case virtual method are called within init() itself.
+  qMRMLSliceWidget(qMRMLSliceWidgetPrivate* obj, QWidget* parent);
 
 private:
   Q_DECLARE_PRIVATE(qMRMLSliceWidget);

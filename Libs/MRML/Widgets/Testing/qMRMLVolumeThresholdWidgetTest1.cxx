@@ -22,22 +22,30 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLVolumeThresholdWidget.h"
 
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSliceViewDisplayableManagerFactory.h>
 #include <vtkMRMLVolumeNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLVolumeThresholdWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
+  qMRMLWidget::postInitializeApplication();
+
   if( argc < 2 )
     {
     std::cerr << "Error: missing arguments" << std::endl;
@@ -46,7 +54,11 @@ int qMRMLVolumeThresholdWidgetTest1(int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
+  vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+  applicationLogic->SetMRMLScene(scene.GetPointer());
+  vtkMRMLSliceViewDisplayableManagerFactory::GetInstance()->SetMRMLApplicationLogic(applicationLogic);
+
   scene->SetURL(argv[1]);
   scene->Connect();
   if (scene->GetNumberOfNodes() == 0)
@@ -54,20 +66,19 @@ int qMRMLVolumeThresholdWidgetTest1(int argc, char * argv [] )
     std::cerr << "Can't load scene:" << argv[1] << " error: " <<scene->GetErrorMessage() << std::endl;
     return EXIT_FAILURE;
     }
-  scene->InitTraversal();
-  vtkMRMLNode* node = scene->GetNextNodeByClass("vtkMRMLScalarVolumeNode");
+  vtkMRMLNode* node = scene->GetFirstNodeByClass("vtkMRMLScalarVolumeNode");
   vtkMRMLVolumeNode* volumeNode = vtkMRMLVolumeNode::SafeDownCast(node);
   if (!volumeNode)
     {
     std::cerr << "Scene must contain a valid vtkMRMLVolumeNode:" << node << std::endl;
     return EXIT_FAILURE;
     }
-  
+
   qMRMLVolumeThresholdWidget volumeThreshold;
   volumeThreshold.setMRMLVolumeNode(volumeNode);
-  
+
   volumeThreshold.show();
-  
+
   if (argc < 3 || QString(argv[2]) != "-I" )
     {
     QTimer::singleShot(200, &app, SLOT(quit()));

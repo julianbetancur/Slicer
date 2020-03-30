@@ -8,14 +8,14 @@ class vtkURIHandler;
 // VTK includes
 #include <vtkObject.h>
 
-class VTK_MRML_EXPORT vtkDataTransfer : public vtkObject 
+class VTK_MRML_EXPORT vtkDataTransfer : public vtkObject
 {
   public:
-  
+
   /// The Usual vtk class functions
   static vtkDataTransfer *New();
-  vtkTypeRevisionMacro(vtkDataTransfer, vtkObject);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkDataTransfer, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
   vtkGetStringMacro ( SourceURI );
   vtkSetStringMacro ( SourceURI );
   vtkGetStringMacro ( DestinationURI );
@@ -29,7 +29,7 @@ class VTK_MRML_EXPORT vtkDataTransfer : public vtkObject
   vtkGetMacro ( SizeOnDisk, int );
   vtkSetMacro ( SizeOnDisk, int );
   vtkGetStringMacro ( TransferNodeID);
-  vtkSetStringMacro ( TransferNodeID);  
+  vtkSetStringMacro ( TransferNodeID);
   vtkGetMacro ( Progress, int );
   vtkSetMacro ( Progress, int );
   vtkGetMacro ( TransferStatus, int );
@@ -104,11 +104,11 @@ class VTK_MRML_EXPORT vtkDataTransfer : public vtkObject
 
  protected:
   vtkDataTransfer();
-  virtual ~vtkDataTransfer();
+  ~vtkDataTransfer() override;
   vtkDataTransfer(const vtkDataTransfer&);
   void operator=(const vtkDataTransfer&);
 
-  /// 
+  ///
   char *SourceURI;
   char *DestinationURI;
   vtkURIHandler *Handler;

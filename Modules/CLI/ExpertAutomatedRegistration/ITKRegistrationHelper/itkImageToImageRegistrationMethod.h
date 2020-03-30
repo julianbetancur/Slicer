@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __ImageToImageRegistrationMethod_h
-#define __ImageToImageRegistrationMethod_h
+#ifndef itkImageToImageRegistrationMethod_h
+#define itkImageToImageRegistrationMethod_h
 
 #include "itkSpatialObject.h"
 #include "itkImageRegistrationMethod.h"
@@ -24,7 +24,9 @@
 namespace itk
 {
 
-/** \class ImageToImageRegistrationMethod base class for the registration methods.
+/** \class ImageToImageRegistrationMethod
+ *
+ * This is the base class for the registration methods.
  *
  * This class has a separate hierarchy from the ImageRegistrationMethod defined
  * in ITK.  The purpose of this class is to provide the common functionalities
@@ -63,6 +65,8 @@ public:
   typedef DataObjectDecorator<TransformType> TransformOutputType;
 
   typedef typename DataObject::Pointer DataObjectPointer;
+  typedef Superclass::DataObjectPointerArraySizeType
+                                       DataObjectPointerArraySizeType;
 
   typedef TImage ImageType;
 
@@ -116,30 +120,30 @@ public:
   itkBooleanMacro( ReportProgress );
 
   /** Return the output of the registration process, which is a Transform */
-  const TransformOutputType * GetOutput( void ) const;
+  const TransformOutputType* GetOutput() const;
 
 protected:
+  ImageToImageRegistrationMethod();
+  ~ImageToImageRegistrationMethod() override;
 
-  ImageToImageRegistrationMethod( void );
-  virtual ~ImageToImageRegistrationMethod( void );
-
-  virtual void    Initialize( void );
+  virtual void Initialize();
 
   /** Method that actually computes the registration. This method is intended
    * to be overloaded by derived classes. Those overload, however, must
    * invoke this method in the base class. */
-  void GenerateData( void );
+  void GenerateData() override;
 
-  void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
   /** Provide derived classes with access to the Transform member variable. */
   itkSetObjectMacro( Transform, TransformType );
   itkGetObjectMacro( Transform, TransformType );
   itkGetConstObjectMacro( Transform, TransformType );
 
-  virtual DataObjectPointer       MakeOutput( unsigned int idx );
+  using Superclass::MakeOutput;
+  DataObjectPointer   MakeOutput( DataObjectPointerArraySizeType idx ) override;
 
-  unsigned long                   GetMTime( void ) const;
+  ModifiedTimeType GetMTime() const override;
 
 protected:
 
@@ -160,10 +164,10 @@ private:
   PointType m_RegionOfInterestPoint1;
   PointType m_RegionOfInterestPoint2;
 
-  bool m_UseFixedImageMaskObject;
+  bool                                   m_UseFixedImageMaskObject;
   typename MaskObjectType::ConstPointer  m_FixedImageMaskObject;
 
-  bool m_UseMovingImageMaskObject;
+  bool                                   m_UseMovingImageMaskObject;
   typename MaskObjectType::ConstPointer  m_MovingImageMaskObject;
 
   bool m_ReportProgress;

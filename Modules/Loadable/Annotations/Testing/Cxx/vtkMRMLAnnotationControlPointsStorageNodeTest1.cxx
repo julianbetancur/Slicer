@@ -8,11 +8,11 @@
 
 int vtkMRMLAnnotationControlPointsStorageNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLAnnotationControlPointsStorageNode > node2 = vtkSmartPointer< vtkMRMLAnnotationControlPointsStorageNode >::New();
-  EXERCISE_BASIC_OBJECT_METHODS( node2 );
+  vtkNew<vtkMRMLAnnotationControlPointsStorageNode> node2;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node2.GetPointer());
 
   vtkMRMLAnnotationControlPointsStorageNode* node1 = dynamic_cast <  vtkMRMLAnnotationControlPointsStorageNode *> (node2->CreateNodeInstance());
-  if( node1 == NULL )
+  if( node1 == nullptr )
     {
       std::cerr << "Error in CreateNodeInstance()" << std::endl;
       return EXIT_FAILURE;
@@ -47,14 +47,14 @@ int vtkMRMLAnnotationControlPointsStorageNodeTest1(int , char * [] )
     {
        std::cerr << "Error in vtkMRMLAnnotationNode::AnnotationTextDisplayNode() " << std::endl;
        return EXIT_FAILURE;
-    }  
+    }
 
   annNode->CreateAnnotationPointDisplayNode();
   if (!annNode->GetAnnotationPointDisplayNode())
     {
        std::cerr << "Error in vtkMRMLAnnotationControlPointsNode::AnnotationPointDisplayNode() " << std::endl;
        return EXIT_FAILURE;
-    }  
+    }
   cout << "AnnotationPointDisplayNode Passed" << endl;
 
   annNode->Modified();
@@ -69,15 +69,15 @@ int vtkMRMLAnnotationControlPointsStorageNodeTest1(int , char * [] )
   annNode->ResetAnnotations();
   node2->ReadData(annNode);
   annNode->PrintAnnotationInfo(afterAnnotation,in);
-  if (initialAnnotation.str().compare(afterAnnotation.str())) 
+  if (initialAnnotation.str().compare(afterAnnotation.str()))
   {
     std::cerr << endl << "Error in WriteData() or ReadData()" << std::endl;
     std::cerr << "Before:" << std::endl << initialAnnotation.str() <<std::endl;
     std::cerr << "After:" << std::endl << afterAnnotation.str() <<std::endl;
-    std::cerr << "KP : need to fix annText field ones we have AnnotationFiducials defined" <<std::endl; 
+    std::cerr << "KP : need to fix annText field ones we have AnnotationFiducials defined" <<std::endl;
     return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
-  
+
 }

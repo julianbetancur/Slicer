@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __InitialImageToImageRegistrationMethod_txx
-#define __InitialImageToImageRegistrationMethod_txx
+#ifndef itkInitialImageToImageRegistrationMethod_txx
+#define itkInitialImageToImageRegistrationMethod_txx
 
 #include "itkInitialImageToImageRegistrationMethod.h"
 
@@ -26,8 +26,7 @@ namespace itk
 {
 
 template <class TImage>
-InitialImageToImageRegistrationMethod<TImage>
-::InitialImageToImageRegistrationMethod( void )
+InitialImageToImageRegistrationMethod<TImage>::InitialImageToImageRegistrationMethod()
 {
   this->SetTransform( TransformType::New() );
   this->GetTypedTransform()->SetIdentity();
@@ -37,21 +36,17 @@ InitialImageToImageRegistrationMethod<TImage>
   this->m_ComputeCenterOfRotationOnly = false;
 
   this->m_UseLandmarks = false;
-
 }
 
 template <class TImage>
-InitialImageToImageRegistrationMethod<TImage>
-::~InitialImageToImageRegistrationMethod( void )
+InitialImageToImageRegistrationMethod<TImage>::~InitialImageToImageRegistrationMethod()
 {
 }
 
 /** Only the GenerateData() method should be overloaded. The Update() method
  * must not be overloaded */
 template <class TImage>
-void
-InitialImageToImageRegistrationMethod<TImage>
-::GenerateData( void )
+void InitialImageToImageRegistrationMethod<TImage>::GenerateData()
 {
   Superclass::GenerateData();
 
@@ -82,11 +77,11 @@ InitialImageToImageRegistrationMethod<TImage>
       landmarkTransform->SetIdentity();
       landmarkCalc->SetTransform(landmarkTransform);
       landmarkCalc->InitializeTransform();
-      for( int i = 0; i < TImage::ImageDimension; i++ )
+      for( unsigned int i = 0; i < TImage::ImageDimension; i++ )
         {
         center[i] = landmarkTransform->GetCenter()[i];
         offset[i] = landmarkTransform->GetTranslation()[i];
-        for( int j = 0; j < TImage::ImageDimension; j++ )
+        for( unsigned int j = 0; j < TImage::ImageDimension; j++ )
           {
           matrix(i, j) = landmarkTransform->GetMatrix() (i, j);
           }
@@ -109,11 +104,11 @@ InitialImageToImageRegistrationMethod<TImage>
       landmarkTransform->SetIdentity();
       landmarkCalc->SetTransform(landmarkTransform);
       landmarkCalc->InitializeTransform();
-      for( int i = 0; i < TImage::ImageDimension; i++ )
+      for( unsigned int i = 0; i < TImage::ImageDimension; i++ )
         {
         center[i] = landmarkTransform->GetCenter()[i];
         offset[i] = landmarkTransform->GetTranslation()[i];
-        for( int j = 0; j < TImage::ImageDimension; j++ )
+        for( unsigned int j = 0; j < TImage::ImageDimension; j++ )
           {
           matrix(i, j) = landmarkTransform->GetMatrix() (i, j);
           }
@@ -170,7 +165,7 @@ InitialImageToImageRegistrationMethod<TImage>
     Point<double, ImageDimension> movingCenterPoint;
 
     size = this->GetMovingImage()->GetLargestPossibleRegion().GetSize();
-    for( int i = 0; i < ImageDimension; i++ )
+    for( unsigned int i = 0; i < ImageDimension; i++ )
       {
       movingCenterIndex[i] = size[i] / 2;
       }
@@ -192,7 +187,7 @@ InitialImageToImageRegistrationMethod<TImage>
     if( !this->GetUseRegionOfInterest() )
       {
       std::cout << "Init: Using full image extent" << std::endl;
-      for( int i = 0; i < ImageDimension; i++ )
+      for( unsigned int i = 0; i < ImageDimension; i++ )
         {
         fixedCenterIndex[i] = size[i] / 2;
         }
@@ -202,7 +197,7 @@ InitialImageToImageRegistrationMethod<TImage>
     else
       {
       std::cout << "Init: Using region of interest" << std::endl;
-      for( int i = 0; i < ImageDimension; i++ )
+      for( unsigned int i = 0; i < ImageDimension; i++ )
         {
         fixedCenterPoint[i] = ( this->GetRegionOfInterestPoint1()[i]
                                 + this->GetRegionOfInterestPoint2()[i] ) / 2;
@@ -214,7 +209,7 @@ InitialImageToImageRegistrationMethod<TImage>
     Point<double, ImageDimension> movingCenterPoint;
 
     size = this->GetMovingImage()->GetLargestPossibleRegion().GetSize();
-    for( int i = 0; i < ImageDimension; i++ )
+    for( unsigned int i = 0; i < ImageDimension; i++ )
       {
       movingCenterIndex[i] = size[i] / 2;
       }
@@ -230,8 +225,6 @@ InitialImageToImageRegistrationMethod<TImage>
     }
   else
     {
-    typedef ImageRegionMomentsCalculator<TImage> MomentsCalculatorType;
-
     typename MomentsCalculatorType::Pointer momCalc;
     momCalc = MomentsCalculatorType::New();
 
@@ -334,25 +327,22 @@ InitialImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-typename InitialImageToImageRegistrationMethod<TImage>::TransformType
-* InitialImageToImageRegistrationMethod<TImage>
-::GetTypedTransform( void )
-  {
+typename InitialImageToImageRegistrationMethod<TImage>::TransformType*
+InitialImageToImageRegistrationMethod<TImage>::GetTypedTransform()
+{
   return static_cast<TransformType  *>( Superclass::GetTransform() );
-  }
+}
 
 template <class TImage>
-const typename InitialImageToImageRegistrationMethod<TImage>::TransformType
-* InitialImageToImageRegistrationMethod<TImage>
-::GetTypedTransform( void ) const
-  {
-  return static_cast<const TransformType  *>( this->Superclass::GetTransform() );
-  }
+const typename InitialImageToImageRegistrationMethod<TImage>::TransformType*
+InitialImageToImageRegistrationMethod<TImage>::GetTypedTransform() const
+{
+  return static_cast<const TransformType *>( this->Superclass::GetTransform() );
+}
 
 template <class TImage>
 typename InitialImageToImageRegistrationMethod<TImage>::TransformPointer
-InitialImageToImageRegistrationMethod<TImage>
-::GetAffineTransform( void ) const
+InitialImageToImageRegistrationMethod<TImage>::GetAffineTransform() const
 {
   typename TransformType::Pointer trans = TransformType::New();
 
@@ -398,6 +388,6 @@ InitialImageToImageRegistrationMethod<TImage>
   os << indent << "Use Landmarks = " << this->m_UseLandmarks << std::endl;
 }
 
-};
+}
 
 #endif

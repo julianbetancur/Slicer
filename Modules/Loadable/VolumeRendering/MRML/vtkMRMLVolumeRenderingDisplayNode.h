@@ -23,6 +23,8 @@
 class vtkMRMLAnnotationROINode;
 class vtkMRMLVolumeNode;
 class vtkMRMLVolumePropertyNode;
+class vtkMRMLShaderPropertyNode;
+class vtkMRMLViewNode;
 
 class vtkIntArray;
 
@@ -34,83 +36,41 @@ class VTK_SLICER_VOLUMERENDERING_MODULE_MRML_EXPORT vtkMRMLVolumeRenderingDispla
 {
 public:
   vtkTypeMacro(vtkMRMLVolumeRenderingDisplayNode,vtkMRMLDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// Mark the volume, ROI and volume property nodes as references.
-  virtual void SetSceneReferences();
-
-  /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
-
-  /// Updates this node if it depends on other nodes
-  /// when the node is deleted in the scene
-  virtual void UpdateReferences();
-
-  /// Observe the reference transform node
-  virtual void UpdateScene(vtkMRMLScene *scene);
-
-  /// the ID of a MRMLVolumeNode
-  vtkGetStringMacro (VolumeNodeID);
+  const char* GetVolumeNodeID();
   void SetAndObserveVolumeNodeID(const char *volumeNodeID);
-
-  /// Associated transform MRML node
   vtkMRMLVolumeNode* GetVolumeNode();
 
-  /// the ID of a parameter MRMLVolumePropertyNode
-  vtkGetStringMacro (VolumePropertyNodeID);
+  const char* GetVolumePropertyNodeID();
   void SetAndObserveVolumePropertyNodeID(const char *volumePropertyNodeID);
-
-  /// Associated transform MRML node
   vtkMRMLVolumePropertyNode* GetVolumePropertyNode();
 
-  /// the ID of a parameter MRMLROINode
-  vtkGetStringMacro (ROINodeID);
-  void SetAndObserveROINodeID(const char *roiNodeID);
+  const char* GetShaderPropertyNodeID();
+  void SetAndObserveShaderPropertyNodeID(const char *shaderPropertyNodeID);
+  vtkMRMLShaderPropertyNode* GetShaderPropertyNode();
+  vtkMRMLShaderPropertyNode* GetOrCreateShaderPropertyNode( vtkMRMLScene * mrmlScene );
 
-  /// Associated transform MRML node
+  const char* GetROINodeID();
+  void SetAndObserveROINodeID(const char *roiNodeID);
   vtkMRMLAnnotationROINode* GetROINode();
 
-  /// Is cropping enabled?
+  vtkMRMLViewNode* GetFirstViewNode();
+
+  double GetSampleDistance();
+
   vtkSetMacro(CroppingEnabled,int);
   vtkGetMacro(CroppingEnabled,int);
   vtkBooleanMacro(CroppingEnabled,int);
-
-  //vtkSetMacro(UseThreshold,int);
-  //vtkGetMacro(UseThreshold,int);
-  //vtkBooleanMacro(UseThreshold,int);
-
-  /// Estimated Sample Distance
-  vtkSetMacro(EstimatedSampleDistance,double);
-  vtkGetMacro(EstimatedSampleDistance,double);
-
-  /// Expected FPS
-  vtkSetMacro(ExpectedFPS,double);
-  vtkGetMacro(ExpectedFPS,double);
-
-  vtkSetMacro(PerformanceControl,int);
-  vtkGetMacro(PerformanceControl,int);
-
-  vtkGetMacro (GPUMemorySize, int);
-  vtkSetMacro (GPUMemorySize, int);
-
-  enum RayCastType
-  {
-    Composite = 0, // composite with directional lighting (default)
-    CompositeEdgeColoring, // composite with fake lighting (edge coloring, faster)
-    MaximumIntensityProjection,
-    MinimumIntensityProjection,
-    GradiantMagnitudeOpacityModulation,
-    IllustrativeContextPreservingExploration
-  };
 
   vtkSetVector2Macro(Threshold, double);
   vtkGetVectorMacro(Threshold, double, 2);
@@ -129,43 +89,28 @@ public:
 
 protected:
   vtkMRMLVolumeRenderingDisplayNode();
-  ~vtkMRMLVolumeRenderingDisplayNode();
+  ~vtkMRMLVolumeRenderingDisplayNode() override;
   vtkMRMLVolumeRenderingDisplayNode(const vtkMRMLVolumeRenderingDisplayNode&);
   void operator=(const vtkMRMLVolumeRenderingDisplayNode&);
 
-  virtual void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData);
+  void ProcessMRMLEvents(vtkObject *caller, unsigned long event, void *callData) override;
 
-  vtkIntArray* ObservedEvents;
+  static const char* VolumeNodeReferenceRole;
+  static const char* VolumeNodeReferenceMRMLAttributeName;
+  static const char* VolumePropertyNodeReferenceRole;
+  static const char* VolumePropertyNodeReferenceMRMLAttributeName;
+  static const char* ROINodeReferenceRole;
+  static const char* ROINodeReferenceMRMLAttributeName;
+  static const char* ShaderPropertyNodeReferenceRole;
+  static const char* ShaderPropertyNodeReferenceMRMLAttributeName;
 
-  char *VolumeNodeID;
-  virtual void SetVolumeNodeID(const char* arg);
-  vtkMRMLVolumeNode* VolumeNode;
-
-  char *VolumePropertyNodeID;
-  virtual void SetVolumePropertyNodeID(const char* arg);
-  vtkMRMLVolumePropertyNode* VolumePropertyNode;
-
-  char *ROINodeID;
-  virtual void SetROINodeID(const char* arg);
-  vtkMRMLAnnotationROINode* ROINode;
-
+protected:
+  /// Flag indicating whether cropping is enabled
   int CroppingEnabled;
-
-  double  EstimatedSampleDistance;
-  double  ExpectedFPS;
-
-  /// Tracking GPU memory size (in Mo), not saved into scene file
-  /// because different machines may have different GPU memory
-  /// values.
-  /// A value of 0 indicates to use the default value in the settings
-  ///
-  int GPUMemorySize;
 
   double Threshold[2];
 
-  //int UseThreshold;
-
-  /// follow window/level and thresholding setting in volume display node
+  /// Follow window/level and thresholding setting in volume display node
   int FollowVolumeDisplayNode;
   int IgnoreVolumeDisplayNodeThreshold;
 
@@ -173,12 +118,6 @@ protected:
 
   /// Volume window & level
   double WindowLevel[2];
-
-  /// Performance Control method
-  /// 0: Adaptive
-  /// 1: Maximum Quality
-  /// 2: Fixed Framerate
-  int PerformanceControl;
 };
 
 #endif

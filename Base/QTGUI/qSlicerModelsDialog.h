@@ -35,17 +35,19 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerModelsDialog : public qSlicerFileDialog
 {
   Q_OBJECT
 public:
-  typedef QObject Superclass;
-  qSlicerModelsDialog(QObject* parent =0);
-  virtual ~qSlicerModelsDialog();
+  typedef qSlicerFileDialog Superclass;
+  qSlicerModelsDialog(QObject* parent =nullptr);
+  ~qSlicerModelsDialog() override;
 
-  virtual qSlicerIO::IOFileType fileType()const;
-  virtual qSlicerFileDialog::IOAction action()const;
+  qSlicerIO::IOFileType fileType()const override;
+  QString description()const override;
+  qSlicerFileDialog::IOAction action()const override;
 
   /// run the dialog to select the file/files/directory
-  virtual bool exec(const qSlicerIO::IOProperties& readerProperties =
-                    qSlicerIO::IOProperties());
+  bool exec(const qSlicerIO::IOProperties& readerProperties =
+                    qSlicerIO::IOProperties()) override;
 
+  QStringList loadedNodes()const override;
 protected:
   QScopedPointer<qSlicerModelsDialogPrivate> d_ptr;
 

@@ -5,18 +5,13 @@
   See COPYRIGHT.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   3D Slicer
-  Module:    $RCSfile: vtkFSSurfaceLabelReader.h,v $
-  Date:      $Date: 2006/05/26 19:40:15 $
-  Version:   $Revision: 1.5 $
-
 =========================================================================auto=*/
 
 #ifndef __vtkFSSurfaceLabelReader_h
 #define __vtkFSSurfaceLabelReader_h
 
 #include "FreeSurferConfigure.h"
-#include "vtkFreeSurferWin32Header.h"
+#include "vtkFreeSurferExport.h"
 
 // VTK includes
 #include <vtkDataReader.h>
@@ -36,7 +31,7 @@ class VTK_FreeSurfer_EXPORT vtkFSSurfaceLabelReader : public vtkDataReader
 public:
   static vtkFSSurfaceLabelReader *New();
   vtkTypeMacro(vtkFSSurfaceLabelReader,vtkDataReader);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   vtkFloatArray *GetOutput()
       {return this->Scalars; };
@@ -83,7 +78,7 @@ public:
 
 protected:
   vtkFSSurfaceLabelReader();
-  ~vtkFSSurfaceLabelReader();
+  ~vtkFSSurfaceLabelReader() override;
 
   vtkFloatArray *Scalars;
 
@@ -105,8 +100,8 @@ protected:
   int ReadFloat (FILE* iFile, float& oInt);
 */
 private:
-  vtkFSSurfaceLabelReader(const vtkFSSurfaceLabelReader&);  /// Not implemented.
-  void operator=(const vtkFSSurfaceLabelReader&);  /// Not implemented.
+  vtkFSSurfaceLabelReader(const vtkFSSurfaceLabelReader&) = delete;
+  void operator=(const vtkFSSurfaceLabelReader&) = delete;
 };
 
 #endif

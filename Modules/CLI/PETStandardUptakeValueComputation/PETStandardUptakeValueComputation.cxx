@@ -1,4 +1,10 @@
 
+// XXX # Workaround bug in packaging of DCMTK 3.6.0 on Debian.
+//     # See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=637687
+#ifdef HAVE_CONFIG_H
+#undef HAVE_CONFIG_H
+#endif
+
 #include "PETStandardUptakeValueComputationCLP.h"
 
 // MRML includes
@@ -14,7 +20,8 @@
 #include <vtkImageData.h>
 #include <vtkImageThreshold.h>
 #include <vtkImageToImageStencil.h>
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include <vtkVersion.h>
 
 // ITK includes
 #include <itkGDCMImageIO.h>
@@ -116,9 +123,9 @@ struct parameters
 
 double ConvertTimeToSeconds(const char *time )
 {
-  if( time == NULL )
+  if( time == nullptr )
     {
-    std::cerr << "ConvertTimeToSeconds got a NULL time string." << std::endl;
+    std::cerr << "ConvertTimeToSeconds got a nullptr time string." << std::endl;
     return -1.0;
     }
 
@@ -131,7 +138,7 @@ double ConvertTimeToSeconds(const char *time )
   double minutes;
   double seconds;
 
-  if( time == NULL )
+  if( time == nullptr )
     {
     return 0.0;
     }
@@ -141,12 +148,10 @@ double ConvertTimeToSeconds(const char *time )
   // --- convert to a double count of seconds.
   // ---
   std::string timeStr = time;
-  size_t      i = timeStr.find_first_of(":");
   h = timeStr.substr( 0, 2 );
   hours = atof( h.c_str() );
 
   minAndsecStr = timeStr.substr( 3 );
-  i = minAndsecStr.find_first_of( ":" );
   m = minAndsecStr.substr(0, 2 );
   minutes = atof( m.c_str() );
 
@@ -167,14 +172,14 @@ double ConvertWeightUnits(double count, const char *fromunits, const char *touni
 
   double conversion = count;
 
-  if( fromunits == NULL )
+  if( fromunits == nullptr )
     {
-    std::cout << "Got NULL parameter fromunits. A bad param was probably specified." << std::endl;
+    std::cout << "Got nullptr parameter fromunits. A bad param was probably specified." << std::endl;
     return -1.0;
     }
-  if( tounits == NULL )
+  if( tounits == nullptr )
     {
-    std::cout << "Got NULL parameter from tounits. A bad parameter was probably specified." << std::endl;
+    std::cout << "Got nullptr parameter from tounits. A bad parameter was probably specified." << std::endl;
     return -1.0;
     }
 
@@ -244,14 +249,14 @@ double ConvertRadioactivityUnits(double count, const char *fromunits, const char
 
   double conversion = count;
 
-  if( fromunits == NULL )
+  if( fromunits == nullptr )
     {
-    std::cout << "Got NULL parameter in fromunits. A bad parameter was probably specified." << std::endl;
+    std::cout << "Got nullptr parameter in fromunits. A bad parameter was probably specified." << std::endl;
     return -1.0;
     }
-  if( tounits == NULL )
+  if( tounits == nullptr )
     {
-    std::cout << "Got NULL parameter in tounits. A bad parameter was probably specified." << std::endl;
+    std::cout << "Got nullptr parameter in tounits. A bad parameter was probably specified." << std::endl;
     return -1.0;
     }
 
@@ -732,17 +737,17 @@ double DecayCorrection(parameters & list, double inVal )
 // ...
 // ...............................................................................................
 // ...
-const char * MapLabelIDtoColorName( int id, std::string colorFile )
+std::string MapLabelIDtoColorName( int id, std::string colorFile )
 {
   // use the colour table that was passed in with the VOI volume
 
-  const char *colorName = "";
+  std::string colorName;
 
-  vtkSmartPointer<vtkMRMLColorTableNode>        colorNode = vtkSmartPointer<vtkMRMLColorTableNode>::New();
-  vtkSmartPointer<vtkMRMLColorTableStorageNode> colorStorageNode = vtkSmartPointer<vtkMRMLColorTableStorageNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorNode;
+  vtkNew<vtkMRMLColorTableStorageNode> colorStorageNode;
   colorStorageNode->SetFileName(colorFile.c_str() );
 
-  if( !colorStorageNode->ReadData(colorNode) )
+  if( !colorStorageNode->ReadData(colorNode.GetPointer()) )
     {
     std::cerr << "Error reading colour file " << colorStorageNode->GetFileName() << endl;
     }
@@ -759,20 +764,6 @@ const char * MapLabelIDtoColorName( int id, std::string colorFile )
 template <class T>
 int LoadImagesAndComputeSUV( parameters & list, T )
 {
-
-
-  typedef    T                           InputPixelType;
-  typedef itk::Image<InputPixelType,  3> InputImageType;
-
-  typedef itk::Image<unsigned char, 3> LabelImageType;
-
-  typedef    T                           OutputPixelType;
-  typedef itk::Image<OutputPixelType, 3> OutputImageType;
-
-  typedef itk::ImageFileReader<InputImageType>  ReaderType;
-  typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
-  typedef itk::ImageFileWriter<OutputImageType> WriterType;
-
   //
   // for writing csv output files
   //
@@ -782,13 +773,15 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   std::ofstream stringFile;
   vtkImageData *                    petVolume;
   vtkImageData *                    voiVolume;
-  vtkITKArchetypeImageSeriesReader *reader1 = NULL;
-  vtkITKArchetypeImageSeriesReader *reader2 = NULL;
+  vtkITKArchetypeImageSeriesReader *reader1 = nullptr;
+  vtkITKArchetypeImageSeriesReader *reader2 = nullptr;
+  vtkAlgorithmOutput* petVolumeConnection = nullptr;
+  vtkAlgorithmOutput* voiVolumeConnection = nullptr;
 
   // check for the input files
   FILE * petfile;
   petfile = fopen(list.PETVolumeName.c_str(), "r");
-  if( petfile == NULL )
+  if( petfile == nullptr )
     {
     std::cerr << "ERROR: cannot open input volume file '" << list.PETVolumeName.c_str() << "'" << endl;
     return EXIT_FAILURE;
@@ -797,7 +790,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
   FILE * voifile;
   voifile = fopen(list.VOIVolumeName.c_str(), "r");
-  if( voifile == NULL )
+  if( voifile == nullptr )
     {
     std::cerr << "ERROR: cannot open ROI Volume  file '" << list.VOIVolumeName.c_str() << "'" << endl;
     return EXIT_FAILURE;
@@ -827,26 +820,24 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   std::cout << "Done reading the file " << list.VOIVolumeName.c_str() << endl;
 
   // stuff the images.
-//  reader1->Update();
-//  reader2->Update();
   petVolume = reader1->GetOutput();
-  petVolume->Update();
+  petVolumeConnection = reader1->GetOutputPort();
   voiVolume = reader2->GetOutput();
-  voiVolume->Update();
+  voiVolumeConnection = reader2->GetOutputPort();
 
 
   //
   // COMPUTE SUV ///////////////////////////////////////////////////////////////////////////////RSNA CHANGE//////////////////////////
   //
 
-  if( petVolume == NULL )
+  if( petVolume == nullptr )
     {
     std::cerr << "No input PET volume found." << std::endl;
     return EXIT_FAILURE;
     }
 
   // find input labelmap volume
-  if( voiVolume == NULL )
+  if( voiVolume == nullptr )
     {
     std::cerr <<  "No input VOI volume found" << std::endl;
     return EXIT_FAILURE;
@@ -857,11 +848,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
   typedef short PixelValueType;
   typedef itk::Image< PixelValueType, 3 > VolumeType;
   typedef itk::ImageSeriesReader< VolumeType > VolumeReaderType;
-  typedef itk::Image< PixelValueType, 2 > SliceType;
-  typedef itk::ImageFileReader< SliceType > SliceReaderType;
-  typedef itk::GDCMImageIO ImageIOType;
   typedef itk::GDCMSeriesFileNames InputNamesGeneratorType;
-  typedef itk::VectorImage< PixelValueType, 3 > NRRDImageType;
 
   if ( !list.PETDICOMPath.compare(""))
     {
@@ -953,7 +940,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
         //---1. "070907.0705" represents a time of 7 hours, 9 minutes and 7.0705 seconds.
         //---2. "1010" represents a time of 10 hours, and 10 minutes.
         //---3. "021" is an invalid value.
-        if ( tag.c_str() == NULL || *(tag.c_str()) == '\0' )
+        if ( tag.c_str() == nullptr || *(tag.c_str()) == '\0' )
           {
           list.injectionTime  = "MODULE_INIT_NO_VALUE" ;
           }
@@ -1043,8 +1030,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
         {
         //--- I think these are piled together. MBq ml... search for all.
         std::string units = tag.c_str();
-        if ( ( units.find ("BQML") != std::string::npos) ||
-             ( units.find ("BQML") != std::string::npos) )
+        if (units.find ("BQML") != std::string::npos)
           {
           list.radioactivityUnits= "Bq";
           list.tissueRadioactivityUnits = "Bq";
@@ -1339,14 +1325,14 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
 
   // convert from input units.
-  if( list.radioactivityUnits.c_str() == NULL )
+  if( list.radioactivityUnits.c_str() == nullptr )
     {
-    std::cerr << "ComputeSUV: Got NULL radioactivity units. No computation done." << std::endl;
+    std::cerr << "ComputeSUV: Got nullptr radioactivity units. No computation done." << std::endl;
     return EXIT_FAILURE;
     }
-  if( list.weightUnits.c_str() == NULL )
+  if( list.weightUnits.c_str() == nullptr )
     {
-    std::cerr << "ComputeSUV: Got NULL weight units. No computation could be done." << std::endl;
+    std::cerr << "ComputeSUV: Got nullptr weight units. No computation could be done." << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -1361,7 +1347,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
   // --- find the max and min label in mask
   vtkImageAccumulate *stataccum = vtkImageAccumulate::New();
-  stataccum->SetInput( voiVolume );
+  stataccum->SetInputConnection( voiVolumeConnection );
   stataccum->Update();
   int lo = static_cast<int>(stataccum->GetMin()[0]);
   int hi = static_cast<int>(stataccum->GetMax()[0]);
@@ -1393,7 +1379,7 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
     // create the binary volume of the label
     vtkImageThreshold *thresholder = vtkImageThreshold::New();
-    thresholder->SetInput(voiVolume);
+    thresholder->SetInputConnection(voiVolumeConnection);
     thresholder->SetInValue(1);
     thresholder->SetOutValue(0);
     thresholder->ReplaceOutOn();
@@ -1403,12 +1389,12 @@ int LoadImagesAndComputeSUV( parameters & list, T )
 
     // use vtk's statistics class with the binary labelmap as a stencil
     vtkImageToImageStencil *stencil = vtkImageToImageStencil::New();
-    stencil->SetInput(thresholder->GetOutput() );
+    stencil->SetInputConnection(thresholder->GetOutputPort() );
     stencil->ThresholdBetween(1, 1);
 
     vtkImageAccumulate *labelstat = vtkImageAccumulate::New();
-    labelstat->SetInput(petVolume);
-    labelstat->SetStencil(stencil->GetOutput() );
+    labelstat->SetInputConnection(petVolumeConnection);
+    labelstat->SetInputConnection(1, stencil->GetOutputPort() ); // == SetStencilData()
     labelstat->Update();
 
     stencil->Delete();
@@ -1433,14 +1419,14 @@ int LoadImagesAndComputeSUV( parameters & list, T )
       double dose = list.injectedDose;
 
       // --- do some error checking and reporting.
-      if( list.radioactivityUnits.c_str() == NULL )
+      if( list.radioactivityUnits.c_str() == nullptr )
         {
         std::cerr << "ComputeSUV: Got null radioactivityUnits." << std::endl;
         return EXIT_FAILURE;
         }
       if( dose == 0.0 )
         {
-        std::cerr << "ComputeSUV: Got NULL dose!" << std::endl;
+        std::cerr << "ComputeSUV: Got nullptr dose!" << std::endl;
         return EXIT_FAILURE;
         }
       if( weight == 0.0 )
@@ -1497,24 +1483,34 @@ int LoadImagesAndComputeSUV( parameters & list, T )
       // --- write output CSV file
 
       // open file containing suvs and append to it.
-      ofile.open( outputFile.c_str(), ios::out | ios::app );
-      if( !ofile.is_open() )
+      if (outputFile.compare("") != 0)
         {
-        // report error, clean up, and get out.
-        std::cerr << "ERROR: cannot open nuclear medicine output csv parameter file '" << outputFile.c_str() << "', see return strings for values" << std::endl;
-        }
-      else
-        {
-        // --- for each value..
-        // --- format looks like:
-        // patientID, studyDate, dose, labelID, suvmin, suvmax, suvmean, labelName
-        // ...
-        ss.str("");
-        ss << list.patientName << ", " << list.studyDate << ", " << list.injectedDose  << ", "  << i << ", " << suvmin << ", " << suvmax
-           << ", " << suvmean << ", " << labelName.c_str() << std::endl;
-        ofile << ss.str();
-        ofile.close();
-        std::cout << "Wrote output for label " << labelName.c_str() << " to " << outputFile.c_str() << std::endl;
+        ofile.open( outputFile.c_str(), ios::out | ios::app );
+        if( !ofile.is_open() )
+          {
+          // report error, clean up, and get out.
+          std::cerr << "ERROR: cannot open nuclear medicine output csv parameter file '" << outputFile.c_str() << "', see return strings for values" << std::endl;
+          }
+        else
+          {
+          ss.str("");
+          ofile.seekp(0,ios::end);
+          long pos = ofile.tellp();
+          if (pos == 0)
+            {
+            ss << "patientID,studyDate,dose,labelID,suvmin,suvmax,suvmean,labelName" << std::endl;
+            }
+          // --- for each value..
+          // --- format looks like:
+          // patientID, studyDate, dose, labelID, suvmin, suvmax, suvmean, labelName
+          // ...
+
+          ss << list.patientName << ", " << list.studyDate << ", " << list.injectedDose  << ", "  << i << ", " << suvmin << ", " << suvmax
+             << ", " << suvmean << ", " << labelName.c_str() << std::endl;
+          ofile << ss.str();
+          ofile.close();
+          std::cout << "Wrote output for label " << labelName.c_str() << " to " << outputFile.c_str() << std::endl;
+          }
         }
       }
 
@@ -1523,24 +1519,36 @@ int LoadImagesAndComputeSUV( parameters & list, T )
     labelstat->Delete();
     }
   // --- write output return string file
-  std::stringstream ss;
-  ss << outputLabelString << std::endl;
-  ss << outputLabelValueString << std::endl;
-  ss << outputSUVMaxString << std::endl;
-  ss << outputSUVMeanString << std::endl;
-  ss << outputSUVMinString << std::endl;
-  std::string stringOutput = ss.str();
-  stringFile.open(list.SUVOutputStringFile.c_str());
-  if (!stringFile.is_open() )
+  if (outputStringFile.compare("") != 0)
     {
-    // report error, clean up
-    std::cerr << "ERROR: cannot open nuclear medicine output string parameter file '" << list.SUVOutputStringFile.c_str() << "', output string was:\n" << stringOutput.c_str() << std::endl;
-    return EXIT_FAILURE;
+    std::stringstream ss;
+    ss << outputLabelString << std::endl;
+    ss << outputLabelValueString << std::endl;
+    ss << outputSUVMaxString << std::endl;
+    ss << outputSUVMeanString << std::endl;
+    ss << outputSUVMinString << std::endl;
+    std::string stringOutput = ss.str();
+    stringFile.open(outputStringFile.c_str());
+    if (!stringFile.is_open() )
+      {
+      // report error, clean up
+      std::cerr << "ERROR: cannot open nuclear medicine output string parameter file '" << outputStringFile.c_str() << "', output string was:\n" << stringOutput.c_str() << std::endl;
+      return EXIT_FAILURE;
+      }
+    stringFile << stringOutput;
+    stringFile.close();
+    std::cout << "Wrote return string to " << outputStringFile.c_str() << ": " << std::endl << stringOutput.c_str() << std::endl;
     }
-  stringFile << stringOutput;
-  stringFile.close();
-  std::cout << "Wrote return string to " << list.SUVOutputStringFile.c_str() << ": " << std::endl << stringOutput.c_str() << std::endl;
-
+  else
+    {
+    // if nothing was written because no output file was specified, report an
+    // error
+     if (outputFile.compare("") == 0)
+       {
+       std::cerr << "Neither the nuclear medicine output csv parameter file nor the string parameter file were specified, please specify one or the other to obtain the calculated output." << std::endl;
+       return EXIT_FAILURE;
+       }
+    }
   reader1->Delete();
   reader2->Delete();
 

@@ -18,43 +18,52 @@
 
 ==============================================================================*/
 
-#include "vtkMRMLCoreTestingMacros.h"
-
 // MRML includes
 #include "vtkMRMLColorTableNode.h"
-#include "vtkMRMLScalarVolumeNode.h"
+#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLScalarVolumeDisplayNode.h"
+#include "vtkMRMLScalarVolumeNode.h"
 #include "vtkMRMLScene.h"
 
 // VTK includes
 #include <vtkImageData.h>
-
-// STD includes
+#include <vtkNew.h>
 
 int vtkMRMLScalarVolumeNodeTest2(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLScalarVolumeNode > volumeNode = vtkSmartPointer< vtkMRMLScalarVolumeNode >::New();
-
-  vtkSmartPointer< vtkImageData > imageData = vtkSmartPointer< vtkImageData >::New();
+  vtkNew<vtkImageData> imageData;
   imageData->SetDimensions(256, 256, 1);
-  imageData->SetScalarTypeToUnsignedShort();
-  imageData->SetNumberOfScalarComponents(1); // image holds one value intensities
-  //imageData->SetSpacing(2., 2., 512.); not used by vtkMRMLVolumeNode
-  //imageData->SetOrigin(0.0,0.0,0.0); not used by vtkMRMLVolumeNode
-  imageData->AllocateScalars(); // allocate storage for image data  
-  
-  volumeNode->SetAndObserveImageData(imageData);
+  imageData->AllocateScalars(VTK_UNSIGNED_SHORT, 1); // allocate storage for image data
 
-  vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode> displayNode = vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New();
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  scene->AddNode(volumeNode);
-  scene->AddNode(displayNode);
+  // Fill every entry of the image data with "0"
+  int* dims = imageData->GetDimensions();
+  for (int z = 0; z < dims[2]; z++)
+    {
+    for (int y = 0; y < dims[1]; y++)
+      {
+      for (int x = 0; x < dims[0]; x++)
+        {
+        vtkTypeUInt16* pixel = static_cast<vtkTypeUInt16*>(imageData->GetScalarPointer(x,y,z));
+        pixel[0] = 0;
+        }
+      }
+    }
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorNode = vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLScene> scene;
+
+  vtkNew<vtkMRMLScalarVolumeNode> volumeNode;
+  volumeNode->SetAndObserveImageData(imageData.GetPointer());
+  scene->AddNode(volumeNode.GetPointer());
+
+  vtkNew<vtkMRMLScalarVolumeDisplayNode> displayNode;
+  scene->AddNode(displayNode.GetPointer());
+
+  vtkNew<vtkMRMLColorTableNode> colorNode;
   colorNode->SetTypeToGrey();
-  scene->AddNode(colorNode);
+  scene->AddNode(colorNode.GetPointer());
   displayNode->SetAndObserveColorNodeID(colorNode->GetID());
 
   volumeNode->SetAndObserveDisplayNodeID(displayNode->GetID());
+
   return EXIT_SUCCESS;
 }

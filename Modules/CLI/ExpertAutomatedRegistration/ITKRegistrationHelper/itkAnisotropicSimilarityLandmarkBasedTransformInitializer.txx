@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx
-#define __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx
+#ifndef itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx
+#define itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx
 
 #include "itkAnisotropicSimilarityLandmarkBasedTransformInitializer.h"
 #include "itkMatrix.h"
@@ -114,7 +114,6 @@ AnisotropicSimilarityLandmarkBasedTransformInitializer<TTransform, TFixedImage, 
 
       typedef typename AnisotropicSimilarity3DTransformType::OutputVectorType VectorType;
       typedef typename AnisotropicSimilarity3DTransformType::OutputPointType  PointType;
-      typedef typename AnisotropicSimilarity3DTransformType::CenterType       RotationCenterType;
 
       // Compute the centroids
       PointType fixedCentroid;
@@ -515,9 +514,9 @@ AnisotropicSimilarityLandmarkBasedTransformInitializer<TTransform, TFixedImage, 
           }
 
         itkDebugMacro(<< "Dot Product of landmarks: " << s_dot << " Cross Product: " << s_cross);
-        if( vcl_fabs(s_dot) > 0.00005 )
+        if( std::fabs(s_dot) > 0.00005 )
           {
-          rotationAngle = vcl_atan2(s_cross, s_dot);
+          rotationAngle = std::atan2(s_cross, s_dot);
           }
         else
           {
@@ -548,11 +547,12 @@ AnisotropicSimilarityLandmarkBasedTransformInitializer<TTransform, TFixedImage, 
     case Else:
       itkWarningMacro(<< "Landmark initialization using the specified input transform not implemented");
       m_Transform->SetIdentity();
+      ITK_FALLTHROUGH;
 
     default:
       itkWarningMacro(<< "Landmark initialization using the specified input transform not implemented");
       m_Transform->SetIdentity();
-
+      break;
     }
 
 }
@@ -614,4 +614,4 @@ AnisotropicSimilarityLandmarkBasedTransformInitializer<TTransform, TFixedImage, 
 
 }  // namespace itk
 
-#endif /* __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx */
+#endif /* itkAnisotropicSimilarityLandmarkBasedTransformInitializer_txx */

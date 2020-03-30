@@ -24,7 +24,7 @@
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractDisplayableManager.h"
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkMRMLSliceNode;
 
@@ -36,12 +36,12 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLAbstractSliceViewDisplayableMana
     public vtkMRMLAbstractDisplayableManager
 {
 public:
-  
+
   typedef vtkMRMLAbstractSliceViewDisplayableManager Self;
 
   static vtkMRMLAbstractSliceViewDisplayableManager *New();
-  void PrintSelf(ostream& os, vtkIndent indent);
-  vtkTypeRevisionMacro(vtkMRMLAbstractSliceViewDisplayableManager,
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+  vtkTypeMacro(vtkMRMLAbstractSliceViewDisplayableManager,
                        vtkMRMLAbstractDisplayableManager);
 
   /// Get MRML SliceNode
@@ -56,6 +56,12 @@ public:
   /// Parameter \a xyz is double[3]
   static void ConvertDeviceToXYZ(vtkRenderWindowInteractor * interactor,
                                  vtkMRMLSliceNode * sliceNode, double x, double y, double xyz[3]);
+
+  /// Convenience function allowing to convert device coordinates (display) to XYZ coordinates (viewport).
+  /// Parameter \a xyz is double[3]
+  static void ConvertDeviceToXYZ(vtkRenderer * renderer,
+    vtkMRMLSliceNode * sliceNode, double x, double y, double xyz[3]);
+
 
   /// Convert RAS to XYZ coordinates (viewport).
   /// Parameters \a ras and \a xyz are double[3]. \a xyz[2] is the lightbox id.
@@ -74,21 +80,21 @@ public:
   /// Convenience function allowing to Convert XYZ (viewport) to RAS coordinates.
   /// Parameters \a ras and \a xyz are double[3]. \a xyz[2] is the lightbox id.
   static void ConvertXYZToRAS(vtkMRMLSliceNode * sliceNode, double xyz[3], double ras[3]);
-  
+
 protected:
 
   vtkMRMLAbstractSliceViewDisplayableManager();
-  virtual ~vtkMRMLAbstractSliceViewDisplayableManager();
+  ~vtkMRMLAbstractSliceViewDisplayableManager() override;
 
-  virtual void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller);
+  void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller) override;
 
   /// Could be overloaded if DisplayableManager subclass
   virtual void OnMRMLSliceNodeModifiedEvent(){}
 
 private:
 
-  vtkMRMLAbstractSliceViewDisplayableManager(const vtkMRMLAbstractSliceViewDisplayableManager&); // Not implemented
-  void operator=(const vtkMRMLAbstractSliceViewDisplayableManager&);                    // Not implemented
+  vtkMRMLAbstractSliceViewDisplayableManager(const vtkMRMLAbstractSliceViewDisplayableManager&) = delete;
+  void operator=(const vtkMRMLAbstractSliceViewDisplayableManager&) = delete;
 };
 
 #endif

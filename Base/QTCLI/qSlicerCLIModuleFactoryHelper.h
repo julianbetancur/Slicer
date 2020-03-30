@@ -30,17 +30,20 @@ class Q_SLICER_BASE_QTCLI_EXPORT qSlicerCLIModuleFactoryHelper
 {
 public:
 
-  /// 
+  ///
   /// Convenient method returning a list of module paths that the factory could use
   static const QStringList modulePaths();
 
   /// Convenient method returning True if the given CLI path corresponds to an installed module
   static bool isInstalled(const QString& path);
 
+  /// Convenient method returning True if the given CLI path corresponds to a built-in module
+  static bool isBuiltIn(const QString& path);
+
 private:
   /// Not implemented
-  qSlicerCLIModuleFactoryHelper(){}
-  virtual ~qSlicerCLIModuleFactoryHelper(){}
+  qSlicerCLIModuleFactoryHelper() = default;
+  virtual ~qSlicerCLIModuleFactoryHelper() = default;
 };
 
 #endif

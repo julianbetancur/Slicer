@@ -10,17 +10,15 @@ vtkMRMLNodeNewMacro(vtkMRMLAnnotationAngleStorageNode);
 
 //----------------------------------------------------------------------------
 vtkMRMLAnnotationAngleStorageNode::vtkMRMLAnnotationAngleStorageNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkMRMLAnnotationAngleStorageNode::~vtkMRMLAnnotationAngleStorageNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLAnnotationAngleStorageNode::PrintSelf(ostream& os, vtkIndent indent)
-{  
+{
   vtkMRMLStorageNode::PrintSelf(os,indent);
 }
 
@@ -47,10 +45,10 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleData(vtkMRMLAnnotation
       return 1;
     }
 
-  vtkDebugMacro("got a line: \n\"" << line << "\""); 
+  vtkDebugMacro("got a line: \n\"" << line << "\"");
   std::string attValue(line);
   size_t size = std::string(this->GetAnnotationStorageType()).size();
- 
+
   if (attValue.compare(0,size,this->GetAnnotationStorageType()))
     {
       return 0;
@@ -58,18 +56,18 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleData(vtkMRMLAnnotation
 
   int sel = 1, vis = 1;
   std::string annotation;
-  
-  // Jump over type 
+
+  // Jump over type
   size_t  startPos =attValue.find("|",0) +1;
   size_t  endPos =attValue.find("|",startPos);
   int columnNumber = 1;
   vtkIdType lineID[2] = {-1, -1};
-  while (startPos != std::string::npos && (columnNumber < numColumns)) 
+  while (startPos != std::string::npos && (columnNumber < numColumns))
     {
-    if (startPos != endPos) 
+    if (startPos != endPos)
       {
       std::string tokenString;
-      if (endPos == std::string::npos) 
+      if (endPos == std::string::npos)
         {
         tokenString = attValue.substr(startPos,endPos);
         }
@@ -77,7 +75,7 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleData(vtkMRMLAnnotation
         {
         tokenString = attValue.substr(startPos,endPos-startPos);
         }
-      
+
       if (columnNumber == line1IDColumn)
         {
         lineID[0] = atoi(tokenString.c_str());
@@ -99,8 +97,8 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleData(vtkMRMLAnnotation
     endPos =attValue.find("|",startPos);
     columnNumber ++;
     }
-  
-  if (refNode->SetAngle(lineID[0],lineID[1], sel, vis) < 0 ) 
+
+  if (refNode->SetAngle(lineID[0],lineID[1], sel, vis) < 0 )
     {
     vtkErrorMacro("Error setting angle , lineID = " << lineID[0] << " " << lineID[1]);
     return -1;
@@ -110,11 +108,11 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleData(vtkMRMLAnnotation
 
 
 //----------------------------------------------------------------------------
-int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleProperties(vtkMRMLAnnotationAngleNode *refNode, char line[1024], int &typeColumn, 
+int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleProperties(vtkMRMLAnnotationAngleNode *refNode, char line[1024], int &typeColumn,
                                      int& line1IDColumn, int& line2IDColumn, int& selColumn, int& visColumn, int& numColumns)
 {
 
- if (line[0] != '#' || line[1] != ' ') 
+ if (line[0] != '#' || line[1] != ' ')
     {
       return 0;
     }
@@ -143,18 +141,18 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleProperties(vtkMRMLAnno
      vtkDebugMacro("Getting LabelFormat, substr = " << str);
      refNode->SetLabelFormat(str.c_str());
      return 1;
-   } 
+   }
  else if (lineString.find(preposition + "Columns = ") != std::string::npos)
     {
       std::string str = lineString.substr(10 + pointOffset, std::string::npos);
-      
+
       vtkDebugMacro("Getting column order for the fids, substr = " << str.c_str());
       // reset all of them
       typeColumn= line1IDColumn = line2IDColumn = selColumn = visColumn = -1;
       numColumns = 0;
       char *columns = (char *)str.c_str();
       char *ptr = strtok(columns, "|");
-      while (ptr != NULL)
+      while (ptr != nullptr)
     {
       if (strcmp(ptr, "type") == 0)
         {
@@ -176,7 +174,7 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleProperties(vtkMRMLAnno
         {
           visColumn =  numColumns;
         }
-      ptr = strtok(NULL, "|");
+      ptr = strtok(nullptr, "|");
       numColumns++;
     }
       // set the total number of columns
@@ -192,13 +190,13 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotationAngleProperties(vtkMRMLAnno
 int vtkMRMLAnnotationAngleStorageNode::ReadAnnotation(vtkMRMLAnnotationAngleNode *refNode)
 {
 
-  if (refNode == NULL)
+  if (refNode == nullptr)
     {
       vtkErrorMacro("ReadAnnotation: unable to cast input node " << refNode->GetID() << " to a annotation node");
       return 0;
     }
 
-  if (!Superclass::ReadAnnotation(refNode)) 
+  if (!Superclass::ReadAnnotation(refNode))
     {
       return 0;
     }
@@ -226,22 +224,22 @@ int vtkMRMLAnnotationAngleStorageNode::ReadAnnotation(vtkMRMLAnnotationAngleNode
   while (fstr.good())
     {
     fstr.getline(line, 1024);
-    
+
     // does it start with a #?
         // Property
-    if ((line[0] == '#') && (line[1] == ' ')) 
+    if ((line[0] == '#') && (line[1] == ' '))
       {
-        this->ReadAnnotationAngleProperties(refNode, line, typePointColumn, line1IDColumn, line2IDColumn, selPointColumn, visPointColumn, numPointColumns); 
+        this->ReadAnnotationAngleProperties(refNode, line, typePointColumn, line1IDColumn, line2IDColumn, selPointColumn, visPointColumn, numPointColumns);
       }
         else
           {
-        if (this->ReadAnnotationAngleData(refNode, line, typePointColumn, line1IDColumn, line2IDColumn, selPointColumn,  
-                          visPointColumn, numPointColumns) < 0 ) 
+        if (this->ReadAnnotationAngleData(refNode, line, typePointColumn, line1IDColumn, line2IDColumn, selPointColumn,
+                          visPointColumn, numPointColumns) < 0 )
           {
         return 0;
           }
       }
-    }   
+    }
     refNode->SetDisableModifiedEvent(modFlag);
 
     fstr.close();
@@ -263,7 +261,7 @@ int vtkMRMLAnnotationAngleStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
   vtkMRMLAnnotationAngleNode *aNode =
     vtkMRMLAnnotationAngleNode::SafeDownCast(refNode);
 
-  if (aNode == NULL)
+  if (aNode == nullptr)
     {
     vtkErrorMacro("ReadData: unable to cast input node " << refNode->GetID() << " to a annotation control point node");
     return 0;
@@ -286,7 +284,7 @@ int vtkMRMLAnnotationAngleStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 int vtkMRMLAnnotationAngleStorageNode::WriteAnnotationAngleProperties(fstream& of, vtkMRMLAnnotationAngleNode *refNode)
 {
    // put down a header
-  if (refNode == NULL)
+  if (refNode == nullptr)
     {
       return 0;
     }
@@ -308,7 +306,7 @@ int vtkMRMLAnnotationAngleStorageNode::WriteAnnotationAngleData(fstream& of, vtk
     }
   int sel = refNode->GetSelected();
   int vis = refNode->GetDisplayVisibility();
-  of << this->GetAnnotationStorageType() << "|" << 0 << "|" <<  1  << "|" << sel << "|" << vis << endl;   
+  of << this->GetAnnotationStorageType() << "|" << 0 << "|" <<  1  << "|" << sel << "|" << vis << endl;
 
   return 1;
 }
@@ -316,7 +314,7 @@ int vtkMRMLAnnotationAngleStorageNode::WriteAnnotationAngleData(fstream& of, vtk
 //----------------------------------------------------------------------------
 int vtkMRMLAnnotationAngleStorageNode::WriteAnnotationDataInternal(vtkMRMLNode *refNode, fstream& of)
 {
-  
+
   if (!this->Superclass::WriteAnnotationDataInternal(refNode,of))
     {
     return 0;
@@ -326,7 +324,7 @@ int vtkMRMLAnnotationAngleStorageNode::WriteAnnotationDataInternal(vtkMRMLNode *
   vtkMRMLAnnotationAngleNode *aNode =
     vtkMRMLAnnotationAngleNode::SafeDownCast(refNode);
 
-  if (aNode == NULL)
+  if (aNode == nullptr)
     {
     vtkErrorMacro("WriteAnnotationDataInternal: unable to cast input node " << refNode->GetID() << " to a known annotation line node");
     return 0;

@@ -34,12 +34,32 @@ private:
 
 private slots:
   void testInitialize();
+  void toPythonStringLiteral();
 };
 
 // ----------------------------------------------------------------------------
 void qSlicerCorePythonManagerWithoutApplicationTester::testInitialize()
 {
   this->PythonManager.initialize();
+}
+
+// ----------------------------------------------------------------------------
+void qSlicerCorePythonManagerWithoutApplicationTester::toPythonStringLiteral()
+{
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("simple string"),
+                                                  QString("'simple string'"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("C:\\folder1\\folder2"),
+                                                  QString("'C:\\\\folder1\\\\folder2'"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("C:/folder1/folder2"),
+                                                  QString("'C:/folder1/folder2'"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("this \"special\" string contains double-quotes"),
+                                                  QString("'this \"special\" string contains double-quotes'"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("this name O'Neil contains a single-quote"),
+                                                  QString("'this name O\\'Neil contains a single-quote'"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("'single-quoted string'"),
+                                               QString("'\\\'single-quoted string\\\''"));
+  QCOMPARE(qSlicerCorePythonManager::toPythonStringLiteral("\"double-quoted string\""),
+                                                  QString("'\"double-quoted string\"'"));
 }
 
 // ----------------------------------------------------------------------------

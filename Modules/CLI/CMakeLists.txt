@@ -1,23 +1,13 @@
 
-
 #-----------------------------------------------------------------------------
 # WARNING: CLI modules should be topologically ordered.
 #-----------------------------------------------------------------------------
 set(cli_modules
   ACPCTransform
   AddScalarVolumes
-#  BlobDetection
   CastScalarVolume
   CheckerBoardFilter
-#  ConnectedComponent
   CurvatureAnisotropicDiffusion
-  DiffusionTensorScalarMeasurements
-  DiffusionWeightedVolumeMasking
-  DWIJointRicianLMMSEFilter
-  DWIRicianLMMSEFilter
-  DWIToDTIEstimation
-  DWIUnbiasedNonLocalMeansFilter
-  DTIImportExport
   ExecutionModelTour
   ExtractSkeleton
   FreesurferSurfaceSectionExtraction
@@ -38,15 +28,17 @@ set(cli_modules
   N4ITKBiasFieldCorrection
   OrientScalarVolume
   ProbeVolumeWithModel
-  ResampleDTIVolume
-  ResampleScalarVectorDWIVolume # Depends on DiffusionApplications
+  ResampleDTIVolume # Needed by ResampleScalarVectorDWIVolume (compiletime dependency)
+  ResampleScalarVectorDWIVolume # Depends on DiffusionApplications, needed by CropVolume (runtime dependency)
   RobustStatisticsSegmenter
   SimpleRegionGrowingSegmentation
   SubtractScalarVolumes
   ThresholdScalarVolume
-  TractographyLabelMapSeeding
   VotingBinaryHoleFillingImageFilter
   )
+if(BUILD_TESTING)
+  list(APPEND cli_modules ROITest)
+endif()
 
 if(Slicer_BUILD_DICOM_SUPPORT)
   list(APPEND cli_modules CreateDICOMSeries)
@@ -55,42 +47,24 @@ endif()
 
 if(Slicer_BUILD_LEGACY_CLI)
   set(legacy_cli_modules
-    AffineRegistration
-    BSplineDeformableRegistration
-    BSplineToDeformationField
-    DiffusionTensorTest
     ExpertAutomatedRegistration
     FiducialRegistration
-    LinearRegistration
-    MultiResolutionAffineRegistration
-    OtsuThresholdImageFilter
-    OtsuThresholdSegmentation
     ResampleScalarVolume
-    RigidRegistration
-    TestGridTransformRegistration
     )
+  if(BUILD_TESTING)
+    list(APPEND legacy_cli_modules
+      DiffusionTensorTest
+      TestGridTransformRegistration
+      )
+  endif()
   list(APPEND cli_modules ${legacy_cli_modules})
 endif()
 
 if (Slicer_BUILD_EMSegment)
   ## EMSegment requires some LEGACY_CLI to work. Add them if not already added
-  if (NOT Slicer_BUILD_LEGACY_CLI)
+  if(NOT Slicer_BUILD_LEGACY_CLI)
     list(APPEND cli_modules BSplineToDeformationField)
   endif()
-endif()
-
-if("${ITK_VERSION_MAJOR}" LESS 4)
-  if(Slicer_BUILD_DICOM_SUPPORT)
-    list(APPEND cli_modules DicomToNrrdConverter)
-  endif()
-endif()
-
-if(Slicer_USE_MIDAS)
-  list(APPEND cli_modules MIDASApplications)
-endif()
-
-if(Slicer_USE_BatchMake)
-  list(APPEND cli_modules BatchMakeApplications)
 endif()
 
 if(BUILD_TESTING)
@@ -102,73 +76,26 @@ if(BUILD_TESTING)
     DOC "Directory with data taken from http://public.kitware.com/pub/itk/Data/BrainWeb/")
   mark_as_advanced(SLICER_BRAINWEB_DATA_ROOT)
 
-  set(Launcher_Command ${Slicer_LAUNCH_COMMAND})
-  if(USE_VALGRIND)
-    set(Launcher_Command "${Slicer_BINARY_DIR}/Scripts/runValgrindForOneModule.sh")
-  endif()
-
-  set(BASELINE "${Slicer_SOURCE_DIR}/Testing/Data/Baseline/CLI")
-  set(TEST_DATA "${Slicer_SOURCE_DIR}/Testing/Data/Input")
-  set(MRML_TEST_DATA "${Slicer_SOURCE_DIR}/Libs/MRML/Core/Testing/TestData")
-  set(TEMP "${Slicer_BINARY_DIR}/Testing/Temporary")
+  # Set CLI testing directories as cache variable so that it can be used by
+  # remote module SlicerDMRI included from top-level CMakeLists.txt
+  set(BASELINE "${Slicer_SOURCE_DIR}/Testing/Data/Baseline/CLI"
+    CACHE PATH "MRML CLI baseline directory")
+  set(TEST_DATA "${Slicer_SOURCE_DIR}/Testing/Data/Input"
+    CACHE PATH "MRML CLI testing input data directory")
+  set(MRML_TEST_DATA "${Slicer_SOURCE_DIR}/Libs/MRML/Core/Testing/TestData"
+    CACHE PATH "MRML CLI testing common data directory")
+  set(TEMP "${Slicer_BINARY_DIR}/Testing/Temporary"
+    CACHE PATH "MRML CLI testing temp directory")
 
   set(MRML_DATA "${Slicer_HOME}/share/MRML/Testing/TestData")
-  if(ITK_VERSION_MAJOR GREATER 3)
-    include_directories(${Slicer_SOURCE_DIR}/Modules/CLI)
-  endif()
 endif()
+
+include(SlicerCheckModuleEnabled)
 
 foreach(module ${cli_modules})
-  list(FIND Slicer_CLIMODULES_DISABLED ${module} _module_disabled)
-  if(${_module_disabled} STREQUAL "-1")
-    set(${module}_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${module})
+  set(${module}_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${module})
+  slicer_is_cli_builtin_module_enabled(${module} _build_module)
+  if(_build_module)
     add_subdirectory(${module})
   endif()
-endforeach(module)
-
-if(Slicer_BUILD_BRAINSTOOLS)
-  # NOTE: BRAINSTools source code is checkout using "External_BRAINSTools.cmake".
-  set(BRAINSTools_CLI_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR} CACHE PATH "" FORCE)
-  set(BRAINSTools_CLI_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR} CACHE PATH "" FORCE)
-  set(BRAINSTools_CLI_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_BIN_DIR} CACHE PATH "" FORCE)
-  set(BRAINSTools_CLI_INSTALL_LIBRARY_DESTINATION ${Slicer_INSTALL_CLIMODULES_LIB_DIR} CACHE PATH "" FORCE)
-  set(BRAINSTools_CLI_INSTALL_ARCHIVE_DESTINATION ${Slicer_INSTALL_CLIMODULES_LIB_DIR} CACHE PATH "" FORCE)
-  set(BRAINSTools_CLI_INSTALL_RUNTIME_DESTINATION ${Slicer_INSTALL_CLIMODULES_BIN_DIR} CACHE PATH "" FORCE)
-
-  if(BUILD_TESTING)
-    set(LAUNCH_EXE ${Slicer_LAUNCH_COMMAND})
-  endif()
-
-  set(USE_ANTS                            OFF CACHE BOOL "Build with ANTS capabilities" )
-  set(USE_BRAINSFit                       ON CACHE BOOL "Build BRAINSFit"       )
-  set(USE_BRAINSROIAuto                   ON CACHE BOOL "Build BRAINSROIAuto"   )
-  set(USE_BRAINSResample                  ON CACHE BOOL "Build BRAINSResample"  )
-  set(USE_BRAINSDemonWarp                 ON CACHE BOOL "Build BRAINSDemonWarp ")
-  if("${ITK_VERSION_MAJOR}" GREATER 3)
-    set(USE_BRAINSTransformConvert          ON CACHE BOOL "Build BRAINSTransformConvert ")
-  endif("${ITK_VERSION_MAJOR}" GREATER 3)
-
-  ## BRAINSTools comes with some extra tool
-  ## options that should not be compiled by default.
-  set(USE_GTRACT                         OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSABC                      OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSConstellationDetector    OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSMush                     OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSInitializedControlPoints OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSMultiModeSegment         OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSCut                      OFF CACHE BOOL "" FORCE)
-  set(USE_ImageCalculator                OFF CACHE BOOL "" FORCE)
-  set(USE_BRAINSSurfaceTools             OFF CACHE BOOL "" FORCE)
-
-  set(ITK_VERSION_MAJOR ${ITK_VERSION_MAJOR} CACHE STRING "")
-  set(BRAINSTools_SUPERBUILD             OFF CACHE BOOL "" FORCE)
-  add_subdirectory(
-    ${BRAINSTools_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/BRAINSTools
-    )
-endif()
-
-if(Slicer_BUILD_DWIConvert)
-  message("DCMTK_DIR = ${DCMTK_DIR}")
-  add_subdirectory(${DWIConvert_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/DWIConvert)
-endif()
+endforeach()

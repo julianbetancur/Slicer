@@ -15,7 +15,7 @@
 #ifndef __vtkMRMLBSplineTransformNode_h
 #define __vtkMRMLBSplineTransformNode_h
 
-#include "vtkMRMLNonlinearTransformNode.h"
+#include "vtkMRMLTransformNode.h"
 
 class vtkMRMLStorageNode;
 
@@ -24,42 +24,41 @@ class vtkMRMLStorageNode;
 ///
 /// MRML node for representing a nonlinear transformation to the parent
 /// node in the form of a vtkBSplineDeformableTransform.
-class VTK_MRML_EXPORT vtkMRMLBSplineTransformNode : public vtkMRMLNonlinearTransformNode
+class VTK_MRML_EXPORT vtkMRMLBSplineTransformNode : public vtkMRMLTransformNode
 {
   public:
   static vtkMRMLBSplineTransformNode *New();
-  vtkTypeMacro(vtkMRMLBSplineTransformNode,vtkMRMLNonlinearTransformNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLBSplineTransformNode,vtkMRMLTransformNode);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "BSplineTransform";};
+  const char* GetNodeTagName() override {return "BSplineTransform";};
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode()
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override
     {
     return Superclass::CreateDefaultStorageNode();
     };
 
-
 protected:
   vtkMRMLBSplineTransformNode();
-  ~vtkMRMLBSplineTransformNode();
+  ~vtkMRMLBSplineTransformNode() override;
   vtkMRMLBSplineTransformNode(const vtkMRMLBSplineTransformNode&);
   void operator=(const vtkMRMLBSplineTransformNode&);
 

@@ -34,19 +34,25 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerNodeWriterOptionsWidget
 
 public:
   typedef qSlicerFileWriterOptionsWidget Superclass;
-  explicit qSlicerNodeWriterOptionsWidget(QWidget* parent = 0);
-  virtual ~qSlicerNodeWriterOptionsWidget();
+  explicit qSlicerNodeWriterOptionsWidget(QWidget* parent = nullptr);
+  ~qSlicerNodeWriterOptionsWidget() override;
 
-  bool showUseCompression()const;
+  bool showUseCompression() const;
   void setShowUseCompression(bool show);
 
-  virtual bool isValid()const;
+  bool isValid()const override;
 
 public slots:
-  virtual void setObject(vtkObject* object);
+  void setObject(vtkObject* object) override;
 
 protected slots:
   virtual void setUseCompression(bool use);
+  virtual void setCompressionParameter(int index);
+  virtual void setCompressionParameter(QString parameter);
+
+protected:
+  qSlicerNodeWriterOptionsWidget(qSlicerNodeWriterOptionsWidgetPrivate* pimpl,
+    QWidget* parent);
 
 private:
   Q_DECLARE_PRIVATE_D(qGetPtrHelper(qSlicerIOOptions::d_ptr), qSlicerNodeWriterOptionsWidget);

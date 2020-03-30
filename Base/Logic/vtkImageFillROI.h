@@ -7,7 +7,7 @@
 
 =========================================================================auto=*/
 ///  vtkImageFillROI - Paints on top of an image.
-/// 
+///
 /// vtkImageFillROI will draw a polygon, line, or points in an
 /// image.  As opposed to vtkImageDrawROI, which draws only outlines
 /// around these shapes, this filter will also fill the inside of
@@ -22,26 +22,26 @@
 #ifndef __vtkImageFillROI_h
 #define __vtkImageFillROI_h
 
-//#include "vtkImageInPlaceFilter.h"
-#include "vtkImageToImageFilter.h"
+#include "vtkSlicerBaseLogic.h"
+
+// VTK includes
+#include <vtkImageAlgorithm.h>
 
 #define SHAPE_POLYGON 1
 #define SHAPE_LINES   2
 #define SHAPE_POINTS  3
 
-#include "vtkSlicerBaseLogic.h"
-
-
 class vtkPoints;
-class VTK_SLICER_BASE_LOGIC_EXPORT vtkImageFillROI : public vtkImageToImageFilter
+
+class VTK_SLICER_BASE_LOGIC_EXPORT vtkImageFillROI : public vtkImageAlgorithm
 {
 public:
   static vtkImageFillROI *New();
-  vtkTypeRevisionMacro(vtkImageFillROI,vtkImageToImageFilter);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkImageFillROI,vtkImageAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  vtkSetMacro(Value, vtkFloatingPointType);
-  vtkGetMacro(Value, vtkFloatingPointType);
+  vtkSetMacro(Value, double);
+  vtkGetMacro(Value, double);
 
   void SetShapeToPolygon() {this->Shape = SHAPE_POLYGON;};
   void SetShapeToLines() {this->Shape = SHAPE_LINES;};
@@ -81,19 +81,22 @@ public:
 
 protected:
   vtkImageFillROI();
-  ~vtkImageFillROI();
+  ~vtkImageFillROI() override;
 
   vtkPoints *Points;
-  vtkFloatingPointType Value;
+  double Value;
   int Radius;
   int Shape;
 
-  /// not threaded because too simple a filter
-  void ExecuteData(vtkDataObject *);
+  /// Reimplemented.
+  /// Not threaded because too simple a filter
+  int RequestData(vtkInformation* request,
+                          vtkInformationVector** inputVectors,
+                          vtkInformationVector* outputVector) override;
 
 private:
-  vtkImageFillROI(const vtkImageFillROI&);
-  void operator=(const vtkImageFillROI&);
+  vtkImageFillROI(const vtkImageFillROI&) = delete;
+  void operator=(const vtkImageFillROI&) = delete;
 };
 
 #endif

@@ -2,31 +2,58 @@ project(qMRMLWidgets)
 
 
 #-----------------------------------------------------------------------------
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.13.4)
 #-----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
-# See http://cmake.org/cmake/help/cmake-2-8-docs.html#section_Policies for details
-#-----------------------------------------------------------------------------
-if(POLICY CMP0017)
-  cmake_policy(SET CMP0017 OLD)
-endif()
-
-
+# --------------------------------------------------------------------------
+# Options
+# --------------------------------------------------------------------------
 if(NOT DEFINED BUILD_SHARED_LIBS)
   option(BUILD_SHARED_LIBS "Build with shared libraries." ON)
-endif(NOT DEFINED BUILD_SHARED_LIBS)
+endif()
+
+if(NOT DEFINED MRML_BUILD_QT_DESIGNER_PLUGINS)
+  option(MRML_BUILD_QT_DESIGNER_PLUGINS "Build Qt designer plugins." ON)
+endif()
 
 include(CheckIncludeFiles)
 check_include_files("stdint.h" HAVE_STDINT_H)
+
+# CMake module
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MRMLWidgets_SOURCE_DIR}/CMake")
+
+# --------------------------------------------------------------------------
+# Dependencies
+# --------------------------------------------------------------------------
+
+
+#
+# CTK
+#
+set(CTK_LIBRARIES CTKVisualizationVTKWidgets)
+if(Slicer_USE_PYTHONQT)
+  list(APPEND CTK_LIBRARIES
+    CTKScriptingPythonWidgets
+    )
+endif()
+if(Slicer_USE_QtTesting)
+  list(APPEND CTK_LIBRARIES
+    CTKQtTesting
+    )
+endif()
+
+# --------------------------------------------------------------------------
+# Configure headers
+# --------------------------------------------------------------------------
+set(MRML_WIDGETS_HAVE_QT5 1)
+if(NOT DEFINED MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  set(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT 1)
+endif()
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/qMRMLWidgetsConfigure.h.in
   ${CMAKE_CURRENT_BINARY_DIR}/qMRMLWidgetsConfigure.h
   )
-
-# CMake module
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MRMLWidgets_SOURCE_DIR}/CMake")
 
 #-----------------------------------------------------------------------------
 # Sources
@@ -34,14 +61,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MRMLWidgets_SOURCE_DIR}/CMake")
 set(MRMLWidgets_SRCS
   qMRMLCaptureToolBar.cxx
   qMRMLCaptureToolBar.h
-  qMRMLChartView.cxx
-  qMRMLChartView.h
-  qMRMLChartView_p.h
-  qMRMLChartViewControllerWidget.cxx
-  qMRMLChartViewControllerWidget.h
-  qMRMLChartViewControllerWidget_p.h
-  qMRMLChartWidget.cxx
-  qMRMLChartWidget.h
   qMRMLCheckableNodeComboBox.cxx
   qMRMLCheckableNodeComboBox.h
   qMRMLClipNodeWidget.cxx
@@ -60,6 +79,8 @@ set(MRMLWidgets_SRCS
   qMRMLColorTableComboBox.h
   qMRMLColorTableView.cxx
   qMRMLColorTableView.h
+  qMRMLCoordinatesWidget.cxx
+  qMRMLCoordinatesWidget.h
   qMRMLDisplayNodeWidget.cxx
   qMRMLDisplayNodeWidget.h
   qMRMLDisplayNodeViewComboBox.cxx
@@ -79,6 +100,8 @@ set(MRMLWidgets_SRCS
   qMRMLLayoutManager.cxx
   qMRMLLayoutManager.h
   qMRMLLayoutManager_p.h
+  qMRMLLayoutViewFactory.cxx
+  qMRMLLayoutViewFactory.h
   qMRMLLayoutWidget.cxx
   qMRMLLayoutWidget.h
   qMRMLLinearTransformSlider.cxx
@@ -91,6 +114,10 @@ set(MRMLWidgets_SRCS
   qMRMLModelInfoWidget.h
   qMRMLNavigationView.cxx
   qMRMLNavigationView.h
+  qMRMLNodeAttributeTableView.cxx
+  qMRMLNodeAttributeTableView.h
+  qMRMLNodeAttributeTableWidget.cxx
+  qMRMLNodeAttributeTableWidget.h
   qMRMLNodeComboBox.cxx
   qMRMLNodeComboBox.h
   qMRMLNodeComboBoxDelegate.cxx
@@ -100,6 +127,14 @@ set(MRMLWidgets_SRCS
   qMRMLNodeComboBox_p.h
   qMRMLNodeFactory.cxx
   qMRMLNodeFactory.h
+  qMRMLPlotWidget.cxx
+  qMRMLPlotWidget.h
+  qMRMLPlotView.cxx
+  qMRMLPlotView_p.h
+  qMRMLPlotView.h
+  qMRMLPlotViewControllerWidget.cxx
+  qMRMLPlotViewControllerWidget.h
+  qMRMLPlotViewControllerWidget_p.h
   qMRMLRangeWidget.cxx
   qMRMLRangeWidget.h
   qMRMLROIWidget.cxx
@@ -114,8 +149,6 @@ set(MRMLWidgets_SRCS
   qMRMLSceneFactoryWidget.h
   qMRMLSceneModel.cxx
   qMRMLSceneModel.h
-  qMRMLSceneModelHierarchyModel.cxx
-  qMRMLSceneModelHierarchyModel.h
   qMRMLSceneViewMenu.cxx
   qMRMLSceneViewMenu.h
   qMRMLSceneViewMenu_p.h
@@ -127,6 +160,8 @@ set(MRMLWidgets_SRCS
   qMRMLSceneDisplayableModel.h
   qMRMLScreenShotDialog.cxx
   qMRMLScreenShotDialog.h
+  qMRMLSegmentSelectorWidget.cxx
+  qMRMLSegmentSelectorWidget.h
   qMRMLSliceControllerWidget.cxx
   qMRMLSliceControllerWidget.h
   qMRMLSliceControllerWidget_p.h
@@ -139,16 +174,33 @@ set(MRMLWidgets_SRCS
   qMRMLSliceWidget.cxx
   qMRMLSliceWidget.h
   qMRMLSliceWidget_p.h
+  qMRMLSliderWidget.cxx
+  qMRMLSliderWidget.h
   qMRMLSortFilterHierarchyProxyModel.cxx
   qMRMLSortFilterHierarchyProxyModel.h
   qMRMLSortFilterProxyModel.cxx
   qMRMLSortFilterProxyModel.h
+  qMRMLSpinBox.cxx
+  qMRMLSpinBox.h
+  qMRMLTableModel.cxx
+  qMRMLTableModel.h
+  qMRMLTableView.cxx
+  qMRMLTableView.h
+  qMRMLTableView_p.h
+  qMRMLTableViewControllerWidget.cxx
+  qMRMLTableViewControllerWidget.h
+  qMRMLTableViewControllerWidget_p.h
+  qMRMLTableWidget.cxx
+  qMRMLTableWidget.h
   qMRMLThreeDView.cxx
   qMRMLThreeDView.h
   qMRMLThreeDView_p.h
   qMRMLThreeDViewControllerWidget.cxx
   qMRMLThreeDViewControllerWidget.h
   qMRMLThreeDViewControllerWidget_p.h
+  qMRMLThreeDViewInformationWidget.cxx
+  qMRMLThreeDViewInformationWidget.h
+  qMRMLThreeDViewInformationWidget_p.h
   qMRMLThreeDWidget.cxx
   qMRMLThreeDWidget.h
   qMRMLTransformSliders.cxx
@@ -173,14 +225,25 @@ set(MRMLWidgets_SRCS
   qMRMLWindowLevelWidget.h
   )
 
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  list(APPEND MRMLWidgets_SRCS
+    qMRMLChartView.cxx
+    qMRMLChartView.h
+    qMRMLChartView_p.h
+    qMRMLChartViewControllerWidget.cxx
+    qMRMLChartViewControllerWidget.h
+    qMRMLChartViewControllerWidget_p.h
+    qMRMLChartWidget.cxx
+    qMRMLChartWidget.h
+    qMRMLExpandingWebView.cxx
+    qMRMLExpandingWebView.h
+    qMRMLExpandingWebView_p.h
+    )
+endif()
+
 # Headers that should run through moc
 set(MRMLWidgets_MOC_SRCS
   qMRMLCaptureToolBar.h
-  qMRMLChartView.h
-  qMRMLChartView_p.h
-  qMRMLChartViewControllerWidget.h
-  qMRMLChartViewControllerWidget_p.h
-  qMRMLChartWidget.h
   qMRMLCheckableNodeComboBox.h
   qMRMLClipNodeWidget.h
   qMRMLCollapsibleButton.h
@@ -189,6 +252,7 @@ set(MRMLWidgets_MOC_SRCS
   qMRMLColorTableComboBox.h
   qMRMLColorTableView.h
   qMRMLColorModel.h
+  qMRMLCoordinatesWidget.h
   qMRMLDisplayNodeViewComboBox.h
   qMRMLDisplayNodeWidget.h
   qMRMLEventBrokerConnection.h
@@ -199,16 +263,24 @@ set(MRMLWidgets_MOC_SRCS
   qMRMLLabelComboBox.h
   qMRMLLayoutManager.h
   qMRMLLayoutManager_p.h
+  qMRMLLayoutViewFactory.h
   qMRMLLayoutWidget.h
   qMRMLLinearTransformSlider.h
   qMRMLListWidget.h
   qMRMLMatrixWidget.h
   qMRMLModelInfoWidget.h
   qMRMLNavigationView.h
+  qMRMLNodeAttributeTableView.h
+  qMRMLNodeAttributeTableWidget.h
   qMRMLNodeComboBox.h
   qMRMLNodeComboBoxDelegate.h
   qMRMLNodeComboBoxMenuDelegate.h
   qMRMLNodeFactory.h
+  qMRMLPlotWidget.h
+  qMRMLPlotViewControllerWidget.h
+  qMRMLPlotViewControllerWidget_p.h
+  qMRMLPlotView_p.h
+  qMRMLPlotView.h
   qMRMLRangeWidget.h
   qMRMLROIWidget.h
   qMRMLScalarInvariantComboBox.h
@@ -216,13 +288,13 @@ set(MRMLWidgets_MOC_SRCS
   qMRMLSceneColorTableModel.h
   qMRMLSceneFactoryWidget.h
   qMRMLSceneModel.h
-  qMRMLSceneModelHierarchyModel.h
   qMRMLSceneViewMenu.h
   qMRMLSceneViewMenu_p.h
   qMRMLSceneTransformModel.h
   qMRMLSceneHierarchyModel.h
   qMRMLSceneDisplayableModel.h
   qMRMLScreenShotDialog.h
+  qMRMLSegmentSelectorWidget.h
   qMRMLSliceControllerWidget.h
   qMRMLSliceControllerWidget_p.h
   qMRMLSliceInformationWidget.h
@@ -231,14 +303,25 @@ set(MRMLWidgets_MOC_SRCS
   qMRMLSliceView_p.h
   qMRMLSliceWidget.h
   qMRMLSliceWidget_p.h
+  qMRMLSliderWidget.h
   qMRMLSortFilterHierarchyProxyModel.h
   qMRMLSortFilterProxyModel.h
+  qMRMLSpinBox.h
+  qMRMLTableModel.h
+  qMRMLTableView.h
+  qMRMLTableView_p.h
+  qMRMLTableViewControllerWidget.h
+  qMRMLTableViewControllerWidget_p.h
+  qMRMLTableWidget.h
   qMRMLThreeDView.h
   qMRMLThreeDView_p.h
   qMRMLThreeDViewControllerWidget.h
+  qMRMLThreeDViewInformationWidget.h
+  qMRMLThreeDViewInformationWidget_p.h
   qMRMLThreeDWidget.h
   qMRMLTransformSliders.h
   qMRMLTreeView.h
+  qMRMLUtils.h
   qMRMLViewControllerBar.h
   qMRMLViewControllerBar_p.h
   qMRMLVolumeInfoWidget.h
@@ -249,32 +332,60 @@ set(MRMLWidgets_MOC_SRCS
   qMRMLWindowLevelWidget.h
   )
 
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  list(APPEND MRMLWidgets_MOC_SRCS
+    qMRMLChartView.h
+    qMRMLChartView_p.h
+    qMRMLChartViewControllerWidget.h
+    qMRMLChartViewControllerWidget_p.h
+    qMRMLChartWidget.h
+    qMRMLExpandingWebView.h
+    qMRMLExpandingWebView_p.h
+    )
+endif()
+
 # UI files
 set(MRMLWidgets_UI_SRCS
-  Resources/UI/qMRMLChartViewControllerWidget.ui
   Resources/UI/qMRMLClipNodeWidget.ui
   Resources/UI/qMRMLColorPickerWidget.ui
   Resources/UI/qMRMLDisplayNodeWidget.ui
   Resources/UI/qMRMLEventLoggerWidget.ui
   Resources/UI/qMRMLModelInfoWidget.ui
+  Resources/UI/qMRMLNodeAttributeTableView.ui
+  Resources/UI/qMRMLNodeAttributeTableWidget.ui
+  Resources/UI/qMRMLPlotViewControllerWidget.ui
   Resources/UI/qMRMLROIWidget.ui
   Resources/UI/qMRMLSceneFactoryWidget.ui
   Resources/UI/qMRMLScreenShotDialog.ui
+  Resources/UI/qMRMLSegmentSelectorWidget.ui
   Resources/UI/qMRMLSliceControllerWidget.ui
   Resources/UI/qMRMLSliceInformationWidget.ui
   Resources/UI/qMRMLSliceWidget.ui
+  Resources/UI/qMRMLTableViewControllerWidget.ui
   Resources/UI/qMRMLThreeDViewControllerWidget.ui
+  Resources/UI/qMRMLThreeDViewInformationWidget.ui
   Resources/UI/qMRMLTransformSliders.ui
   Resources/UI/qMRMLVolumeInfoWidget.ui
   Resources/UI/qMRMLVolumeThresholdWidget.ui
   Resources/UI/qMRMLWindowLevelWidget.ui
   )
 
-configure_file(Resources/jqPlot.qrc.in ${qMRMLWidgets_BINARY_DIR}/Resources/jqPlot.qrc) 
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  list(APPEND MRMLWidgets_UI_SRCS
+    Resources/UI/qMRMLChartViewControllerWidget.ui
+    )
+endif()
+
 set(MRMLWidgets_QRC_SRCS
   Resources/qMRMLWidgets.qrc
-  ${qMRMLWidgets_BINARY_DIR}/Resources/jqPlot.qrc
   )
+
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  configure_file(Resources/jqPlot.qrc.in ${qMRMLWidgets_BINARY_DIR}/Resources/jqPlot.qrc)
+  list(APPEND MRMLWidgets_QRC_SRCS
+    ${qMRMLWidgets_BINARY_DIR}/Resources/jqPlot.qrc
+    )
+endif()
 
 if(Slicer_USE_QtTesting)
   list(APPEND MRMLWidgets_SRCS
@@ -299,9 +410,13 @@ if(Slicer_USE_QtTesting)
     )
 endif()
 
-QT4_WRAP_CPP(MRMLWidgets_MOC_CXX ${MRMLWidgets_MOC_SRCS})
-QT4_WRAP_UI(MRMLWidgets_UI_CXX ${MRMLWidgets_UI_SRCS})
-QT4_ADD_RESOURCES(MRMLWidgets_QRC_CXX ${MRMLWidgets_QRC_SRCS})
+  set(_moc_options OPTIONS -DMRML_WIDGETS_HAVE_QT5)
+  if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+    list(APPEND _moc_options -DMRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  endif()
+  QT5_WRAP_CPP(MRMLWidgets_MOC_CXX ${MRMLWidgets_MOC_SRCS} ${_moc_options})
+  QT5_WRAP_UI(MRMLWidgets_UI_CXX ${MRMLWidgets_UI_SRCS})
+  QT5_ADD_RESOURCES(MRMLWidgets_QRC_CXX ${MRMLWidgets_QRC_SRCS})
 
 source_group("Resources" FILES
   ${MRMLWidgets_UI_SRCS}
@@ -339,6 +454,31 @@ if(NOT ${PROJECT_NAME}_INSTALL_NO_DEVELOPMENT)
     DESTINATION include/${PROJECT_NAME} COMPONENT Development)
 endif()
 
+  # --------------------------------------------------------------------------
+  # Translation
+  # --------------------------------------------------------------------------
+  if(Slicer_BUILD_I18N_SUPPORT)
+    set(TS_DIR
+      "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Translations/"
+    )
+    get_property(Slicer_LANGUAGES GLOBAL PROPERTY Slicer_LANGUAGES)
+
+    include(SlicerMacroTranslation)
+    SlicerMacroTranslation(
+      SRCS ${MRMLWidgets_SRCS}
+      UI_SRCS ${MRMLWidgets_UI_SRCS}
+      TS_DIR ${TS_DIR}
+      TS_BASEFILENAME ${PROJECT_NAME}
+      TS_LANGUAGES ${Slicer_LANGUAGES}
+      QM_OUTPUT_DIR_VAR QM_OUTPUT_DIR
+      QM_OUTPUT_FILES_VAR QM_OUTPUT_FILES
+      )
+
+    set_property(GLOBAL APPEND PROPERTY Slicer_QM_OUTPUT_DIRS ${QM_OUTPUT_DIR})
+  else()
+    set(QM_OUTPUT_FILES )
+  endif()
+
 # --------------------------------------------------------------------------
 # Build library
 # --------------------------------------------------------------------------
@@ -350,15 +490,19 @@ add_library(${lib_name}
   ${MRMLWidgets_MOC_CXX}
   ${MRMLWidgets_UI_CXX}
   ${MRMLWidgets_QRC_CXX}
+  ${QM_OUTPUT_FILES}
   )
 
 set(MRMLWidgets_LIBRARIES
   ${QT_LIBRARIES}
   ${CTK_LIBRARIES}
-  ${CTK_EXTERNAL_LIBRARIES}
   MRMLLogic
   MRMLDisplayableManager
   )
+list(APPEND MRMLWidgets_LIBRARIES
+  vtkRenderingQt
+  )
+
 
 target_link_libraries(${lib_name} ${MRMLWidgets_LIBRARIES})
 
@@ -367,6 +511,15 @@ if(Slicer_LIBRARY_PROPERTIES)
   set_target_properties(${lib_name} PROPERTIES ${Slicer_LIBRARY_PROPERTIES})
 endif()
 
+# --------------------------------------------------------------------------
+# Folder
+# --------------------------------------------------------------------------
+if(NOT DEFINED ${PROJECT_NAME}_FOLDER)
+  set(${PROJECT_NAME}_FOLDER ${PROJECT_NAME})
+endif()
+if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+  set_target_properties(${lib_name} PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+endif()
 
 # --------------------------------------------------------------------------
 # PythonQt wrapping
@@ -379,6 +532,10 @@ if(MRMLWidgets_WRAP_PYTHON)
     INSTALL_BIN_DIR ${Slicer_INSTALL_BIN_DIR}
     INSTALL_LIB_DIR ${Slicer_INSTALL_LIB_DIR}
     )
+  # Folder
+  if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name}PythonQt PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+  endif()
 endif()
 
 # --------------------------------------------------------------------------
@@ -415,7 +572,9 @@ endif()
 # --------------------------------------------------------------------------
 # Qt Designer Plugins
 # --------------------------------------------------------------------------
-add_subdirectory(DesignerPlugins)
+if(MRML_BUILD_QT_DESIGNER_PLUGINS)
+  add_subdirectory(DesignerPlugins)
+endif()
 
 # --------------------------------------------------------------------------
 # Set INCLUDE_DIRS variable

@@ -28,6 +28,8 @@ set(KIT_SRCS
   qSlicerApplication.h
   qSlicerCommandOptions.cxx
   qSlicerCommandOptions.h
+  qSlicerDarkStyle.cxx
+  qSlicerDarkStyle.h
   qSlicerDataDialog.cxx
   qSlicerDataDialog.h
   qSlicerDirectoryListView.cxx
@@ -69,6 +71,7 @@ set(KIT_SRCS
   qSlicerNodeWriter.h
   qSlicerNodeWriterOptionsWidget.cxx
   qSlicerNodeWriterOptionsWidget.h
+  qSlicerNodeWriterOptionsWidget_p.h
   qSlicerQListQVariantMapMetaType.h
   qSlicerSaveDataDialog.cxx
   qSlicerSaveDataDialog.h
@@ -76,10 +79,16 @@ set(KIT_SRCS
   qSlicerSettingsCachePanel.h
   qSlicerSettingsGeneralPanel.cxx
   qSlicerSettingsGeneralPanel.h
-  qSlicerSettingsInternationalizationPanel.cxx
-  qSlicerSettingsInternationalizationPanel.h
   qSlicerSettingsModulesPanel.cxx
   qSlicerSettingsModulesPanel.h
+  qSlicerSettingsStylesPanel.cxx
+  qSlicerSettingsStylesPanel.h
+  qSlicerSettingsViewsPanel.cxx
+  qSlicerSettingsViewsPanel.h
+  qSlicerSettingsDeveloperPanel.cxx
+  qSlicerSettingsDeveloperPanel.h
+  qSlicerSettingsUserInformationPanel.cxx
+  qSlicerSettingsUserInformationPanel.h
   qSlicerStyle.cxx
   qSlicerStyle.h
   qSlicerViewersToolBar.cxx
@@ -87,12 +96,15 @@ set(KIT_SRCS
   qSlicerViewersToolBar_p.h
   qSlicerWidget.cxx
   qSlicerWidget.h
+
+  qSlicerSingletonViewFactory.cxx
+  qSlicerSingletonViewFactory.h
   )
 
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_SRCS
-    qSlicerExtensionsInstallWidget.cxx
-    qSlicerExtensionsInstallWidget.h
+    qSlicerExtensionsRestoreWidget.cxx
+    qSlicerExtensionsRestoreWidget.h
     qSlicerExtensionsManageWidget.cxx
     qSlicerExtensionsManageWidget.h
     qSlicerExtensionsManagerDialog.cxx
@@ -101,6 +113,32 @@ if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
     qSlicerExtensionsManagerWidget.h
     qSlicerSettingsExtensionsPanel.cxx
     qSlicerSettingsExtensionsPanel.h
+    )
+  if(Slicer_BUILD_WEBENGINE_SUPPORT)
+    list(APPEND KIT_SRCS
+      qSlicerExtensionsInstallWidget.cxx
+      qSlicerExtensionsInstallWidget.h
+      qSlicerExtensionsInstallWidget_p.h
+      )
+  endif()
+endif()
+
+if(Slicer_BUILD_I18N_SUPPORT)
+  list(APPEND KIT_SRCS
+    qSlicerSettingsInternationalizationPanel.cxx
+    qSlicerSettingsInternationalizationPanel.h
+    )
+endif()
+
+if(Slicer_BUILD_WEBENGINE_SUPPORT)
+  list(APPEND KIT_SRCS
+    qSlicerWebPythonProxy.cxx
+    qSlicerWebPythonProxy.h
+    qSlicerWebDownloadWidget.cxx
+    qSlicerWebDownloadWidget.h
+    qSlicerWebWidget.cxx
+    qSlicerWebWidget.h
+    qSlicerWebWidget_p.h
     )
 endif()
 
@@ -112,6 +150,8 @@ if(Slicer_USE_PYTHONQT)
     qSlicerScriptedLoadableModuleWidget.h
     qSlicerScriptedLoadableModule.cxx
     qSlicerScriptedLoadableModule.h
+    qSlicerScriptedFileDialog.cxx
+    qSlicerScriptedFileDialog.h
     )
 endif()
 
@@ -119,13 +159,6 @@ if(Slicer_USE_PYTHONQT)
   list(APPEND KIT_SRCS
     qSlicerSettingsPythonPanel.cxx
     qSlicerSettingsPythonPanel.h
-    )
-endif()
-
-if(Slicer_USE_QtTesting)
-  list(APPEND KIT_SRCS
-    qSlicerSettingsQtTestingPanel.cxx
-    qSlicerSettingsQtTestingPanel.h
     )
 endif()
 
@@ -148,6 +181,7 @@ set(KIT_MOC_SRCS
   qSlicerActionsDialog.h
   qSlicerApplication.h
   qSlicerCommandOptions.h
+  qSlicerDarkStyle.h
   qSlicerDataDialog.h
   qSlicerDataDialog_p.h
   qSlicerDirectoryListView.h
@@ -170,24 +204,52 @@ set(KIT_MOC_SRCS
   qSlicerMouseModeToolBar_p.h
   qSlicerNodeWriter.h
   qSlicerNodeWriterOptionsWidget.h
+  qSlicerNodeWriterOptionsWidget_p.h
   qSlicerSaveDataDialog.h
   qSlicerSaveDataDialog_p.h
   qSlicerSettingsCachePanel.h
   qSlicerSettingsGeneralPanel.h
-  qSlicerSettingsInternationalizationPanel.h
   qSlicerSettingsModulesPanel.h
+  qSlicerSettingsStylesPanel.h
+  qSlicerSettingsViewsPanel.h
+  qSlicerSettingsDeveloperPanel.h
+  qSlicerSettingsUserInformationPanel.h
+  qSlicerStyle.h
   qSlicerViewersToolBar.h
   qSlicerViewersToolBar_p.h
   qSlicerWidget.h
+
+  qSlicerSingletonViewFactory.h
   )
 
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_MOC_SRCS
-    qSlicerExtensionsInstallWidget.h
+    qSlicerExtensionsRestoreWidget.h
     qSlicerExtensionsManageWidget.h
     qSlicerExtensionsManagerDialog.h
     qSlicerExtensionsManagerWidget.h
     qSlicerSettingsExtensionsPanel.h
+    )
+  if(Slicer_BUILD_WEBENGINE_SUPPORT)
+    list(APPEND KIT_MOC_SRCS
+      qSlicerExtensionsInstallWidget.h
+      qSlicerExtensionsInstallWidget_p.h
+      )
+  endif()
+endif()
+
+if(Slicer_BUILD_I18N_SUPPORT)
+  list(APPEND KIT_MOC_SRCS
+    qSlicerSettingsInternationalizationPanel.h
+    )
+endif()
+
+if(Slicer_BUILD_WEBENGINE_SUPPORT)
+  list(APPEND KIT_MOC_SRCS
+    qSlicerWebDownloadWidget.h
+    qSlicerWebPythonProxy.h
+    qSlicerWebWidget.h
+    qSlicerWebWidget_p.h
     )
 endif()
 
@@ -195,6 +257,7 @@ if(Slicer_USE_PYTHONQT)
   list(APPEND KIT_MOC_SRCS
     qSlicerScriptedLoadableModule.h
     qSlicerScriptedLoadableModuleWidget.h
+    qSlicerScriptedFileDialog.h
     )
 endif()
 
@@ -202,12 +265,6 @@ endif()
 if(Slicer_USE_PYTHONQT)
   list(APPEND KIT_MOC_SRCS
     qSlicerSettingsPythonPanel.h
-    )
-endif()
-
-if(Slicer_USE_QtTesting)
-  list(APPEND KIT_MOC_SRCS
-    qSlicerSettingsQtTestingPanel.h
     )
 endif()
 
@@ -223,14 +280,19 @@ set(KIT_UI_SRCS
   Resources/UI/qSlicerSettingsGeneralPanel.ui
   Resources/UI/qSlicerSettingsInternationalizationPanel.ui
   Resources/UI/qSlicerSettingsModulesPanel.ui
+  Resources/UI/qSlicerSettingsStylesPanel.ui
+  Resources/UI/qSlicerSettingsViewsPanel.ui
+  Resources/UI/qSlicerSettingsDeveloperPanel.ui
+  Resources/UI/qSlicerSettingsUserInformationPanel.ui
+  Resources/UI/qSlicerWebWidget.ui
   )
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_UI_SRCS
+    Resources/UI/qSlicerExtensionsActionsWidget.ui
     Resources/UI/qSlicerExtensionsButtonBox.ui
-    Resources/UI/qSlicerExtensionsInstallWidget.ui
-    Resources/UI/qSlicerExtensionsManageWidget.ui
     Resources/UI/qSlicerExtensionsManagerDialog.ui
     Resources/UI/qSlicerExtensionsManagerWidget.ui
+    Resources/UI/qSlicerExtensionsToolsWidget.ui
     Resources/UI/qSlicerSettingsExtensionsPanel.ui
     )
 endif()
@@ -239,12 +301,6 @@ endif()
 if(Slicer_USE_PYTHONQT)
   list(APPEND KIT_UI_SRCS
     Resources/UI/qSlicerSettingsPythonPanel.ui
-  )
-endif()
-
-if(Slicer_USE_QtTesting)
-  list(APPEND KIT_UI_SRCS
-    Resources/UI/qSlicerSettingsQtTestingPanel.ui
   )
 endif()
 
@@ -258,6 +314,13 @@ set(KIT_target_libraries
 if(Slicer_USE_PYTHONQT)
   list(APPEND KIT_target_libraries
     CTKScriptingPythonWidgets
+    )
+endif()
+
+# DICOM
+if(Slicer_BUILD_DICOM_SUPPORT)
+  list(APPEND KIT_target_libraries
+    CTKDICOMWidgets
     )
 endif()
 
@@ -281,7 +344,7 @@ if(Slicer_USE_PYTHONQT)
     qSlicerPythonManager.h
     )
 
-endif(Slicer_USE_PYTHONQT)
+endif()
 
 SlicerMacroBuildBaseQtLibrary(
   NAME ${PROJECT_NAME}
@@ -298,20 +361,29 @@ SlicerMacroBuildBaseQtLibrary(
 #-----------------------------------------------------------------------------
 # Slicer icon engine
 #-----------------------------------------------------------------------------
+
+set(CTK_LIBRARIES CTKWidgets)
 ctkMacroBuildQtIconEnginesPlugin(
   NAME qSlicerIconEnginePlugin
   EXPORT_DIRECTIVE "Q_SLICER_BASE_QTGUI_ICON_ENGINE_EXPORT"
+  FOLDER "Core-Base"
   SRCS qSlicerIconEnginePlugin.cxx qSlicerIconEnginePlugin.h
   MOC_SRCS qSlicerIconEnginePlugin.h
   TARGET_LIBRARIES ${QT_LIBRARIES} ${CTK_LIBRARIES}
   )
 
-# Qt Designer Plugins
-add_subdirectory(DesignerPlugins)
+#-----------------------------------------------------------------------------
+# Qt Plugins
+#-----------------------------------------------------------------------------
+if(Slicer_BUILD_QT_DESIGNER_PLUGINS)
+  add_subdirectory(DesignerPlugins)
+endif()
+add_subdirectory(StylePlugins)
 
+#-----------------------------------------------------------------------------
 # Testing
 # Note: Within both Testing/Cxx and Testing/Python, some code is useful to both Slicer and the
-#       Extensions. For that reason, the Testing directory is added inconditionnally.
+#       Extensions. For that reason, the Testing directory is added unconditionally.
 #       The code specific to Slicer will be excluded directly in either Testing/Python
 #       or Testing/Cxx.
 add_subdirectory(Testing)

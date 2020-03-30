@@ -36,7 +36,7 @@ class qMRMLEventLoggerWidgetPrivate: public Ui_qMRMLEventLoggerWidget
 public:
   void log(const QString& text);
   void log(const char* text);
-  
+
   qMRMLEventLogger* MRMLEventLogger;
 };
 
@@ -46,7 +46,7 @@ public:
 //
 #define QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(_EVENT_NAME)               \
   QObject::connect(d->MRMLEventLogger, SIGNAL(signal##_EVENT_NAME##Event()), \
-    this, SLOT(on##_EVENT_NAME##Event()));                                   
+    this, SLOT(on##_EVENT_NAME##Event()));
 
 //------------------------------------------------------------------------------
 qMRMLEventLoggerWidget::qMRMLEventLoggerWidget(QWidget *_parent):Superclass(_parent)
@@ -67,7 +67,6 @@ qMRMLEventLoggerWidget::qMRMLEventLoggerWidget(QWidget *_parent):Superclass(_par
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(NewScene);
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(SceneClosed);
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(SceneAboutToBeClosed);
-  QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(SceneEdited);
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(MetadataAdded);
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(ImportProgressFeedback);
   QMRMLEVENTLOGGERWIDGET_CONNECT_SLOT_MACRO(SaveProgressFeedback);
@@ -82,8 +81,7 @@ qMRMLEventLoggerWidget::qMRMLEventLoggerWidget(QWidget *_parent):Superclass(_par
 
 //------------------------------------------------------------------------------
 qMRMLEventLoggerWidget::~qMRMLEventLoggerWidget()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void qMRMLEventLoggerWidget::setMRMLScene(vtkMRMLScene* scene)
@@ -136,7 +134,6 @@ void qMRMLEventLoggerWidget::on##_EVENT_NAME##Event()          \
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(NewScene);
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(SceneClosed);
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(SceneAboutToBeClosed);
-QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(SceneEdited);
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(MetadataAdded);
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(ImportProgressFeedback);
 QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(SaveProgressFeedback);
@@ -154,7 +151,7 @@ QMRMLEVENTLOGGERWIDGET_ONEVENT_SLOT_MACRO(SceneRestored);
 //------------------------------------------------------------------------------
 void qMRMLEventLoggerWidgetPrivate::log(const char* text)
 {
-  this->log(QLatin1String(text));
+  this->log(QString::fromUtf8(text));
 }
 
 //------------------------------------------------------------------------------

@@ -37,13 +37,13 @@ protected:
 
 public:
   qMRMLWindowLevelWidgetPrivate(qMRMLWindowLevelWidget& object);
-  virtual ~qMRMLWindowLevelWidgetPrivate();
-  virtual void init();
+  ~qMRMLWindowLevelWidgetPrivate() override;
+  void init() override;
 
-  virtual bool blockSignals(bool block);
-  virtual void setRange(double min, double max);
-  virtual void setDecimals(int decimals);
-  virtual void setSingleStep(double singleStep);
+  bool blockSignals(bool block) override;
+  void setRange(double min, double max) override;
+  void setDecimals(int decimals) override;
+  void setSingleStep(double singleStep) override;
 };
 
 // --------------------------------------------------------------------------
@@ -55,8 +55,7 @@ qMRMLWindowLevelWidgetPrivate
 
 // --------------------------------------------------------------------------
 qMRMLWindowLevelWidgetPrivate::~qMRMLWindowLevelWidgetPrivate()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLWindowLevelWidgetPrivate::init()
@@ -142,8 +141,7 @@ qMRMLWindowLevelWidget::qMRMLWindowLevelWidget(QWidget* parentWidget)
 
 // --------------------------------------------------------------------------
 qMRMLWindowLevelWidget::~qMRMLWindowLevelWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLWindowLevelWidget::setAutoWindowLevel(ControlMode autoWindowLevel)
@@ -190,11 +188,11 @@ void qMRMLWindowLevelWidget::setAutoWindowLevel(ControlMode autoWindowLevel)
     d->PopupWidget->setAutoShow(false);
     d->PopupWidget->hidePopup();
     }
-  
+
   if (autoWindowLevel != oldAuto)
     {
     emit this->autoWindowLevelValueChanged(
-      autoWindowLevel == qMRMLWindowLevelWidget::Auto ? 
+      autoWindowLevel == qMRMLWindowLevelWidget::Auto ?
         qMRMLWindowLevelWidget::Auto : qMRMLWindowLevelWidget::Manual);
     }
 }
@@ -360,7 +358,7 @@ void qMRMLWindowLevelWidget::updateWidgetFromMRMLDisplayNode()
   double min = d->VolumeDisplayNode->GetWindowLevelMin();
   double max = d->VolumeDisplayNode->GetWindowLevelMax();
 
-  // We block here to prevent the widgets to call setWindowLevel wich could
+  // We block here to prevent the widgets to call setWindowLevel which could
   // change the AutoLevel from Auto into Manual.
   bool blocked = d->blockSignals(true);
 

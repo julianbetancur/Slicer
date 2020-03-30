@@ -21,33 +21,41 @@
 #ifndef __qSlicerStyle_h
 #define __qSlicerStyle_h
 
-// Qt includes
-#include <QProxyStyle>
+// CTK includes
+#include <ctkProxyStyle.h>
 
+// Slicer includes
 #include "qSlicerBaseQTGUIExport.h"
 
-
-class Q_SLICER_BASE_QTGUI_EXPORT qSlicerStyle : public QProxyStyle
+class Q_SLICER_BASE_QTGUI_EXPORT qSlicerStyle : public ctkProxyStyle
 {
+  Q_OBJECT
 public:
   /// Superclass typedef
-  typedef QProxyStyle Superclass;
+  typedef ctkProxyStyle Superclass;
 
   /// Constructors
   qSlicerStyle();
-  virtual ~qSlicerStyle();
+  ~qSlicerStyle() override;
 
-  virtual SubControl hitTestComplexControl(ComplexControl cc, const QStyleOptionComplex *opt,
-                                           const QPoint &pt, const QWidget *widget) const;
+  SubControl hitTestComplexControl(ComplexControl cc, const QStyleOptionComplex *opt,
+                                           const QPoint &pt, const QWidget *widget) const override;
 
-  virtual int pixelMetric(PixelMetric metric, const QStyleOption * option = 0,
-                          const QWidget * widget = 0)const;
+  int pixelMetric(PixelMetric metric, const QStyleOption * option = nullptr,
+                          const QWidget * widget = nullptr)const override;
 
-  virtual QRect subControlRect(ComplexControl control, const QStyleOptionComplex *option,
-                               SubControl subControl, const QWidget *widget) const;
-  virtual QPalette standardPalette()const;
-  virtual int styleHint(StyleHint hint, const QStyleOption *opt, const QWidget *widget,
-                        QStyleHintReturn *returnData) const;
+  QRect subControlRect(ComplexControl control, const QStyleOptionComplex *option,
+                               SubControl subControl, const QWidget *widget) const override;
+  QPalette standardPalette()const override;
+  int styleHint(StyleHint hint, const QStyleOption *opt, const QWidget *widget,
+                        QStyleHintReturn *returnData) const override;
+
+  /// Behavior of widgets can be tweaked if an event filter is installed on a
+  /// widget or application.
+  /// If activated, the filter:
+  ///  * prevents widgets to receive wheel events when they are in a scroll area
+  ///    with a visible scrollbar.
+  bool eventFilter(QObject* obj, QEvent* event) override;
 };
 
 #endif

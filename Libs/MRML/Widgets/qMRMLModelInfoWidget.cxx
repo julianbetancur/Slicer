@@ -30,10 +30,13 @@
 
 // VTK includes
 #include <vtkCellData.h>
+#include <vtkGeometryFilter.h>
 #include <vtkMassProperties.h>
 #include <vtkPointData.h>
 #include <vtkSmartPointer.h>
 #include <vtkTriangleFilter.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkVersion.h>
 
 //------------------------------------------------------------------------------
 class qMRMLModelInfoWidgetPrivate: public Ui_qMRMLModelInfoWidget
@@ -49,6 +52,7 @@ public:
 
   vtkMRMLModelNode* MRMLModelNode;
   vtkSmartPointer<vtkTriangleFilter> TriangleFilter;
+  vtkSmartPointer<vtkGeometryFilter> GeometryFilter;
   vtkSmartPointer<vtkMassProperties> MassProperties;
 };
 
@@ -56,11 +60,11 @@ public:
 qMRMLModelInfoWidgetPrivate::qMRMLModelInfoWidgetPrivate(qMRMLModelInfoWidget& object)
   : q_ptr(&object)
 {
-  this->MRMLModelNode = 0;
+  this->MRMLModelNode = nullptr;
+  this->GeometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
   this->TriangleFilter = vtkSmartPointer<vtkTriangleFilter>::New();
   this->TriangleFilter->SetPassLines(0);
   this->MassProperties = vtkSmartPointer<vtkMassProperties>::New();
-  this->MassProperties->SetInput( this->TriangleFilter->GetOutput() );
 }
 
 //------------------------------------------------------------------------------
@@ -70,7 +74,7 @@ void qMRMLModelInfoWidgetPrivate::init()
   this->setupUi(q);
   this->ExpandButton->setOrientation(Qt::Vertical);
   this->ExpandButton->setChecked(false);
-  q->setEnabled(this->MRMLModelNode != 0);
+  q->setEnabled(this->MRMLModelNode != nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -84,8 +88,7 @@ qMRMLModelInfoWidget::qMRMLModelInfoWidget(QWidget *_parent)
 
 //------------------------------------------------------------------------------
 qMRMLModelInfoWidget::~qMRMLModelInfoWidget()
-{
-}
+= default;
 
 
 //------------------------------------------------------------------------------
@@ -114,15 +117,41 @@ void qMRMLModelInfoWidget::setMRMLModelNode(vtkMRMLModelNode* modelNode)
 }
 
 //------------------------------------------------------------------------------
+void qMRMLModelInfoWidget::showEvent(QShowEvent *)
+{
+  // Update the widget, now that it becomes becomes visible
+  // (we might have missed some updates, because widget contents is not updated
+  // if the widget is not visible).
+  updateWidgetFromMRML();
+}
+
+//------------------------------------------------------------------------------
 void qMRMLModelInfoWidget::updateWidgetFromMRML()
 {
   Q_D(qMRMLModelInfoWidget);
-  vtkPolyData *poly = d->MRMLModelNode ? d->MRMLModelNode->GetPolyData() : 0;
-  if (poly)
+  if (!this->isVisible())
+  {
+    // Getting the model information is too expensive,
+    // so if the widget is not visible then do not update
+    return;
+  }
+  vtkPointSet *mesh = d->MRMLModelNode ? d->MRMLModelNode->GetMesh() : nullptr;
+  if (mesh)
     {
-    d->TriangleFilter->SetInput(poly);
-    d->TriangleFilter->Update();
-    if (d->TriangleFilter->GetOutput()->GetNumberOfCells() > 0)
+    vtkPolyDataAlgorithm* filter;
+    vtkPolyData* poly = vtkPolyData::SafeDownCast(mesh);
+    if (poly)
+      {
+      filter = d->TriangleFilter;
+      }
+    else
+      {
+      filter = d->GeometryFilter;
+      }
+    d->MassProperties->SetInputConnection( filter->GetOutputPort() );
+    filter->SetInputData(mesh);
+    filter->Update();
+    if (filter->GetOutput()->GetNumberOfCells() > 0)
       {
       d->SurfaceAreaDoubleSpinBox->setValue(d->MassProperties->GetSurfaceArea());
       d->VolumeAreaDoubleSpinBox->setValue(d->MassProperties->GetVolume());
@@ -133,15 +162,27 @@ void qMRMLModelInfoWidget::updateWidgetFromMRML()
       d->VolumeAreaDoubleSpinBox->setValue(0);
       }
 
-    d->NumberOfPointsSpinBox->setValue(poly->GetNumberOfPoints());
-    d->NumberOfCellsSpinBox->setValue(poly->GetNumberOfCells());
-    d->NumberOfVertsValueLabel->setText(QString::number(poly->GetNumberOfVerts()));
-    d->NumberOfLinesValueLabel->setText(QString::number(poly->GetNumberOfLines()));
-    d->NumberOfPolysValueLabel->setText(QString::number(poly->GetNumberOfPolys()));
-    d->NumberOfStripsValueLabel->setText(QString::number(poly->GetNumberOfStrips()));
-    d->MaxCellSizeValueLabel->setText(QString::number(poly->GetMaxCellSize()));
-    d->NumberOfPointsScalarsSpinBox->setValue(poly->GetPointData()->GetNumberOfComponents());
-    d->NumberOfCellsScalarsSpinBox->setValue(poly->GetCellData()->GetNumberOfComponents());
+    d->NumberOfPointsSpinBox->setValue(mesh->GetNumberOfPoints());
+    d->NumberOfCellsSpinBox->setValue(mesh->GetNumberOfCells());
+    if (poly)
+      {
+      d->MeshTypeLineEdit->setText("Surface Mesh (vtkPolyData)");
+      d->NumberOfVertsValueLabel->setText(QString::number(poly->GetNumberOfVerts()));
+      d->NumberOfLinesValueLabel->setText(QString::number(poly->GetNumberOfLines()));
+      d->NumberOfPolysValueLabel->setText(QString::number(poly->GetNumberOfPolys()));
+      d->NumberOfStripsValueLabel->setText(QString::number(poly->GetNumberOfStrips()));
+      }
+    else
+      {
+      d->MeshTypeLineEdit->setText("Volumetric Mesh (vtkUnstructuredGrid)");
+      d->NumberOfVertsValueLabel->setText("0");
+      d->NumberOfLinesValueLabel->setText("0");
+      d->NumberOfPolysValueLabel->setText("0");
+      d->NumberOfStripsValueLabel->setText("0");
+      }
+    d->MaxCellSizeValueLabel->setText(QString::number(mesh->GetMaxCellSize()));
+    d->NumberOfPointsScalarsSpinBox->setValue(mesh->GetPointData()->GetNumberOfComponents());
+    d->NumberOfCellsScalarsSpinBox->setValue(mesh->GetCellData()->GetNumberOfComponents());
     }
   else
     {
@@ -159,7 +200,7 @@ void qMRMLModelInfoWidget::updateWidgetFromMRML()
     d->NumberOfCellsScalarsSpinBox->setValue(0);
     }
 
-  vtkMRMLStorageNode *storageNode = d->MRMLModelNode ? d->MRMLModelNode->GetStorageNode() : 0;
+  vtkMRMLStorageNode *storageNode = d->MRMLModelNode ? d->MRMLModelNode->GetStorageNode() : nullptr;
   if (storageNode)
     {
     d->FileNameLineEdit->setText(storageNode->GetFileName());
@@ -168,6 +209,6 @@ void qMRMLModelInfoWidget::updateWidgetFromMRML()
     {
     d->FileNameLineEdit->setText("");
     }
-  this->setEnabled(d->MRMLModelNode != 0);
+  this->setEnabled(d->MRMLModelNode != nullptr);
 }
 

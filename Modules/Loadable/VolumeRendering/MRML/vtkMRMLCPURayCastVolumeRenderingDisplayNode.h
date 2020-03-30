@@ -33,44 +33,31 @@ class VTK_SLICER_VOLUMERENDERING_MODULE_MRML_EXPORT vtkMRMLCPURayCastVolumeRende
 public:
   static vtkMRMLCPURayCastVolumeRenderingDisplayNode *New();
   vtkTypeMacro(vtkMRMLCPURayCastVolumeRenderingDisplayNode,vtkMRMLVolumeRenderingDisplayNode);
-  virtual void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   // Description:
   // Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "CPURayCastVolumeRendering";};
-
-  vtkGetMacro (RaycastTechnique, int);
-  vtkSetMacro (RaycastTechnique, int);
+  const char* GetNodeTagName() override {return "CPURayCastVolumeRendering";}
 
 protected:
   vtkMRMLCPURayCastVolumeRenderingDisplayNode();
-  ~vtkMRMLCPURayCastVolumeRenderingDisplayNode();
+  ~vtkMRMLCPURayCastVolumeRenderingDisplayNode() override;
   vtkMRMLCPURayCastVolumeRenderingDisplayNode(const vtkMRMLCPURayCastVolumeRenderingDisplayNode&);
   void operator=(const vtkMRMLCPURayCastVolumeRenderingDisplayNode&);
-
-  /* techniques in GPU ray cast
-   * 0: composite with directional lighting (default)
-   * 1: composite with fake lighting (edge coloring, faster)
-   * 2: MIP
-   * 3: MINIP
-   * 4: Gradient Magnitude Opacity Modulation
-   * 5: Illustrative Context Preserving Exploration
-   * */
-  int RaycastTechnique;
 };
 
 #endif

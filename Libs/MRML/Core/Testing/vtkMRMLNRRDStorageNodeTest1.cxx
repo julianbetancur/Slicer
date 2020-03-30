@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,19 +10,12 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLNRRDStorageNode.h"
-#include "vtkURIHandler.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLNRRDStorageNode.h"
 
-int vtkMRMLNRRDStorageNodeTest1(int , char * [] )
+int vtkMRMLNRRDStorageNodeTest1(int , char * [])
 {
-  vtkSmartPointer< vtkMRMLNRRDStorageNode > node1 = vtkSmartPointer< vtkMRMLNRRDStorageNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_STORAGE_MRML_METHODS(vtkMRMLNRRDStorageNode, node1);
-  
+  vtkNew<vtkMRMLNRRDStorageNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

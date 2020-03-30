@@ -24,7 +24,7 @@
 // QT includes
 #include "QModelIndexList"
 
-// QtTesting inlcudes
+// QtTesting includes
 #include <pqTreeViewEventTranslator.h>
 
 // qMRML includes
@@ -39,16 +39,17 @@ class QMRML_WIDGETS_EXPORT qMRMLTreeViewEventTranslator :
 
 public:
   typedef pqTreeViewEventTranslator Superclass;
-  qMRMLTreeViewEventTranslator(QObject* parent = 0);
+  qMRMLTreeViewEventTranslator(QObject* parent = nullptr);
 
-  virtual bool translateEvent(QObject *Object, QEvent *Event, bool &Error);
+  using Superclass::translateEvent;
+  bool translateEvent(QObject *Object, QEvent *Event, int EventType, bool &Error) override;
 
 private:
   qMRMLTreeViewEventTranslator(const qMRMLTreeViewEventTranslator&); // NOT implemented
   qMRMLTreeViewEventTranslator& operator=(const qMRMLTreeViewEventTranslator&); // NOT implemented
-  
+
   QObject* CurrentObject;
-  
+
 private slots:
   void onDestroyed(QObject*);
   void onCurrentNodeDeleted(const QModelIndex&);

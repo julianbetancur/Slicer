@@ -27,13 +27,13 @@ class vtkMRMLScene;
 /// Class that manages adding and deleting of obserevers with events
 /// This class keeps track of obserevers and events added to each vtk object.
 /// It caches tags returned by AddObserver method so that observers can be removed properly.
-class VTK_MRML_EXPORT vtkMRMLLogic : public vtkObject 
+class VTK_MRML_EXPORT vtkMRMLLogic : public vtkObject
 {
 public:
   /// The Usual vtk class functions
   static vtkMRMLLogic *New();
   vtkTypeMacro(vtkMRMLLogic,vtkObject);
-  void PrintSelf(ostream& os, vtkIndent indent){ this->Superclass::PrintSelf(os, indent); }
+  void PrintSelf(ostream& os, vtkIndent indent) override { this->Superclass::PrintSelf(os, indent); }
 
   vtkMRMLScene* GetScene() {return this->Scene;};
   void SetScene(vtkMRMLScene* scene) {this->Scene = scene;};
@@ -42,9 +42,17 @@ public:
 
   void RemoveUnreferencedDisplayNodes();
 
+  /// Get application home directory.
+  /// The path is retrieved from the environment variable defined by MRML_APPLICATION_HOME_DIR_ENV.
+  static std::string GetApplicationHomeDirectory();
+
+  /// Get application share subdirectory.
+  /// The path is constructed by concatenating application home directory and MRML_APPLICATION_SHARE_SUBDIR.
+  static std::string GetApplicationShareDirectory();
+
 protected:
   vtkMRMLLogic();
-  virtual ~vtkMRMLLogic();
+  ~vtkMRMLLogic() override;
   vtkMRMLLogic(const vtkMRMLLogic&);
   void operator=(const vtkMRMLLogic&);
 

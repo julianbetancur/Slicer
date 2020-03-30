@@ -28,6 +28,7 @@
 // VTK includes
 #include <vtkNew.h>
 #include <vtkPolyData.h>
+#include <vtkTestingOutputWindow.h>
 
 //-----------------------------------------------------------------------------
 bool testAddEmptyFile(const char* filePath);
@@ -37,16 +38,13 @@ bool testAddFile(const char* filePath);
 int vtkSlicerDoubleArraysLogicAddFileTest( int argc, char * argv[] )
 {
   bool res = true;
-  std::cout << ">>>>>>>>>>>>>>>>>> "
-            << "The following can print errors and warnings"
-            << " <<<<<<<<<<<<<<<<<<" << std::endl;
-  res = testAddEmptyFile(0) && res;
+  TESTING_OUTPUT_ASSERT_ERRORS_BEGIN();
+  res = testAddEmptyFile(nullptr) && res;
   res = testAddEmptyFile("") && res;
   res = testAddEmptyFile("non existing file.badextension") && res;
   res = testAddEmptyFile("non existing file.vtk") && res;
-  std::cout << ">>>>>>>>>>>>>>>>>> "
-            << "end of normal errors and warnings"
-            << " <<<<<<<<<<<<<<<<<<" << std::endl;
+  TESTING_OUTPUT_ASSERT_ERRORS_END();
+
   if (argc > 1)
     {
     res = testAddFile(argv[1]) && res;
@@ -59,10 +57,10 @@ bool testAddEmptyFile(const char * filePath)
 {
   vtkNew<vtkSlicerDoubleArraysLogic> doubleArraysLogic;
   vtkMRMLDoubleArrayNode* doubleArray = doubleArraysLogic->AddDoubleArray(filePath);
-  if (doubleArray != 0)
+  if (doubleArray != nullptr)
     {
     std::cerr << "Line " << __LINE__
-              << ": Adding an invalid file (" << (filePath ? filePath : 0)
+              << ": Adding an invalid file (" << (filePath ? filePath : nullptr)
               << ") shall not return a valid doubleArray"
               << std::endl;
     return false;
@@ -74,11 +72,11 @@ bool testAddEmptyFile(const char * filePath)
 
   doubleArray = doubleArraysLogic->AddDoubleArray(filePath);
 
-  if (doubleArray != 0 ||
+  if (doubleArray != nullptr ||
       scene->GetNumberOfNodes() != nodeCount)
     {
     std::cerr << "Line " << __LINE__
-              << ": Adding an invalid file ("<< (filePath ? filePath : 0)
+              << ": Adding an invalid file ("<< (filePath ? filePath : nullptr)
               << ") shall not add nodes in scene. "
               << scene->GetNumberOfNodes() << " vs " << nodeCount
               << std::endl;
@@ -93,7 +91,7 @@ bool testAddFile(const char * filePath)
 {
   vtkNew<vtkSlicerDoubleArraysLogic> doubleArraysLogic;
   vtkMRMLDoubleArrayNode* doubleArray = doubleArraysLogic->AddDoubleArray(filePath);
-  if (doubleArray != 0)
+  if (doubleArray != nullptr)
     {
     std::cerr << "Line " << __LINE__
               << ": File can't be loaded if no scene is set."
@@ -106,10 +104,13 @@ bool testAddFile(const char * filePath)
   int nodeCount = scene->GetNumberOfNodes();
   doubleArray = doubleArraysLogic->AddDoubleArray(filePath);
 
-  if (doubleArray == 0 ||
+  if (doubleArray == nullptr ||
       scene->GetNumberOfNodes() != nodeCount + 2)
     {
-    std::cerr << "Adding an doubleArray should create 2 nodes" << std::endl;
+    std::cerr << "Line " << __LINE__
+              << ": Adding an doubleArray should create 2 nodes. "
+              << scene->GetNumberOfNodes() << " vs " << nodeCount + 2
+              << std::endl;
     return false;
     }
 

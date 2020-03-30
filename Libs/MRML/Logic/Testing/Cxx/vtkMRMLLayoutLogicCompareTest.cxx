@@ -4,6 +4,7 @@
 // MRML includes
 #include "vtkMRMLCoreTestingMacros.h"
 #include <vtkMRMLLayoutNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLSliceNode.h>
 #include <vtkMRMLViewNode.h>
 
@@ -29,6 +30,10 @@ int vtkMRMLLayoutLogicCompareTest(int , char * [] )
 bool TestSetSlicerLayoutCompareGridView()
 {
   vtkNew<vtkMRMLScene> scene;
+
+  // Add default slice orientation presets
+  vtkMRMLSliceNode::AddDefaultSliceOrientationPresets(scene.GetPointer());
+
   vtkNew<vtkMRMLLayoutLogic> layoutLogic;
   layoutLogic->SetMRMLScene(scene.GetPointer());
 
@@ -73,12 +78,16 @@ bool TestSetSlicerLayoutCompareGridView()
 bool TestSetSlicerLayoutCompareGridViewEvents()
 {
   vtkNew<vtkMRMLScene> scene;
+
+  // Add default slice orientation presets
+  vtkMRMLSliceNode::AddDefaultSliceOrientationPresets(scene.GetPointer());
+
   vtkNew<vtkMRMLLayoutLogic> layoutLogic;
   layoutLogic->SetMRMLScene(scene.GetPointer());
 
   vtkMRMLLayoutNode* layoutNode = layoutLogic->GetLayoutNode();
 
-  vtkNew<vtkMRMLNodeCallback> spy;
+  vtkNew<vtkMRMLCoreTestingUtilities::vtkMRMLNodeCallback> spy;
   layoutNode->AddObserver(vtkCommand::AnyEvent, spy.GetPointer());
 
   layoutNode->SetViewArrangement(vtkMRMLLayoutNode::SlicerLayoutCompareGridView);

@@ -2,7 +2,7 @@
 #define __vtkMRMLAnnotationBidimensionalNode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationLinesNode.h" 
+#include "vtkMRMLAnnotationLinesNode.h"
 
 class vtkMatrix4x4;
 class vtkAbstractTransform;
@@ -15,40 +15,40 @@ public:
   static vtkMRMLAnnotationBidimensionalNode *New();
   vtkTypeMacro(vtkMRMLAnnotationBidimensionalNode, vtkMRMLAnnotationLinesNode);
   // Description:
-  // Just prints short summary 
-  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  // Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationBidimensional";};
+  const char* GetNodeTagName() override {return "AnnotationBidimensional";}
 
-  virtual const char* GetIcon() {return ":/Icons/AnnotationBidimensional.png";};
+  const char* GetIcon() override {return ":/Icons/AnnotationBidimensional.png";}
 
   // Description:
   // Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
 
   // Description:
@@ -63,7 +63,7 @@ public:
 
  // Description:
   // transform utility functions
-  void Initialize(vtkMRMLScene* mrmlScene);
+  void Initialize(vtkMRMLScene* mrmlScene) override;
 
   std::vector<double> GetBidimensionalMeasurement();
   void SetBidimensionalMeasurement(double val1, double val2);
@@ -86,7 +86,7 @@ public:
 
 protected:
   vtkMRMLAnnotationBidimensionalNode();
-  ~vtkMRMLAnnotationBidimensionalNode();
+  ~vtkMRMLAnnotationBidimensionalNode() override;
   vtkMRMLAnnotationBidimensionalNode(const vtkMRMLAnnotationBidimensionalNode&);
   void operator=(const vtkMRMLAnnotationBidimensionalNode&);
 
@@ -97,7 +97,7 @@ protected:
 
   double measurement1;
   double measurement2;
- 
+
 };
 
 #endif

@@ -23,14 +23,13 @@
 
 // Slicer includes
 #include <qSlicerApplication.h>
+#include "vtkSlicerConfigure.h"
 
 // Volumes includes
 #include "qSlicerVolumeRenderingModule.h"
 #include "qSlicerVolumeRenderingModuleWidget.h"
 
 // MRML includes
-
-// VTK includes
 
 //-----------------------------------------------------------------------------
 int qSlicerVolumeRenderingModuleWidgetTest1( int argc, char * argv[] )
@@ -39,7 +38,7 @@ int qSlicerVolumeRenderingModuleWidgetTest1( int argc, char * argv[] )
 
   qSlicerVolumeRenderingModule module;
   module.setMRMLScene(app.mrmlScene());
-  module.initialize(0);
+  module.initialize(nullptr);
 
   qSlicerVolumeRenderingModuleWidget* moduleWidget =
     dynamic_cast<qSlicerVolumeRenderingModuleWidget*>(

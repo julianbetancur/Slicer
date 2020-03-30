@@ -32,7 +32,7 @@
 #include "qSlicerAbstractModuleRepresentation.h"
 #include "qSlicerWidget.h"
 class qSlicerAbstractModuleWidgetPrivate;
-
+class vtkMRMLNode;
 ///
 /// Base class of all the Slicer module widgets. The widget is added in the module panels.
 /// Deriving from qSlicerWidget, it inherits the mrmlScene()/setMRMLScene() methods.
@@ -40,11 +40,12 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerAbstractModuleWidget
   :public qSlicerWidget, public qSlicerAbstractModuleRepresentation
 {
   Q_OBJECT
+  Q_PROPERTY(bool isEntered READ isEntered);
 public:
   /// Constructor
   /// \sa QWidget
-  qSlicerAbstractModuleWidget(QWidget *parent=0);
-  virtual ~qSlicerAbstractModuleWidget();
+  qSlicerAbstractModuleWidget(QWidget *parent=nullptr);
+  ~qSlicerAbstractModuleWidget() override;
 
   /// The enter and exit methods are called when the module panel changes.
   /// These give the module a chance to do any setup or shutdown operations
@@ -52,14 +53,18 @@ public:
   /// It is the responsibility of the module's manager to call the methods.
   /// \a enter() and \a exit() must be called when reimplementing these methods
   /// in order to have \a isEntered() valid.
-  virtual void enter();
-  virtual void exit();
+  Q_INVOKABLE virtual void enter();
+  Q_INVOKABLE virtual void exit();
   bool isEntered()const;
+
+  /// Node editing
+  Q_INVOKABLE bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
+  Q_INVOKABLE double nodeEditable(vtkMRMLNode* node) override;
 
 protected:
   QScopedPointer<qSlicerAbstractModuleWidgetPrivate> d_ptr;
 
-  virtual void setup();
+  void setup() override;
 
 private:
   Q_DECLARE_PRIVATE(qSlicerAbstractModuleWidget);

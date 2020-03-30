@@ -1,11 +1,47 @@
 project(SlicerBaseLogic)
 
 # --------------------------------------------------------------------------
-# Third party library
+# Dependencies
 # --------------------------------------------------------------------------
+
+#
+# ModuleDescriptionParser
+#
 if(Slicer_BUILD_CLI_SUPPORT)
   find_package(SlicerExecutionModel REQUIRED ModuleDescriptionParser)
 endif()
+
+#
+# VTK
+#
+if(Slicer_USE_PYTHONQT AND NOT VTK_WRAP_PYTHON)
+  message(FATAL_ERROR "Since Slicer_USE_PYTHONQT is ON, VTK_WRAP_PYTHON is expected to be ON. "
+                      "Re-configure VTK with python wrapping.")
+endif()
+
+#
+# ITK
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ITKCommon
+  ITKIOTransformBase
+  ITKTransform
+  )
+if(Slicer_BUILD_CLI_SUPPORT)
+  list(APPEND ${PROJECT_NAME}_ITK_COMPONENTS ${ModuleDescriptionParser_ITK_COMPONENTS})
+endif()
+find_package(ITK 4.6 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+list(APPEND ITK_LIBRARIES ITKFactoryRegistration)
+list(APPEND ITK_INCLUDE_DIRS
+  ${ITKFactoryRegistration_INCLUDE_DIRS}
+  )
+include(${ITK_USE_FILE})
+
+#
+# LibArchive
+#
+find_package(LibArchive REQUIRED MODULE)
 
 # --------------------------------------------------------------------------
 # Subdirectories
@@ -82,19 +118,11 @@ set(SlicerBaseLogic_SRCS
   vtkSlicerFiducialsLogic.cxx
   vtkDataIOManagerLogic.cxx
   # slicer's vtk extensions (filters)
-  vtkImageSlicePaint.cxx
-  vtkImageFillROI.cxx
   vtkSlicerGlyphSource2D.cxx
-  vtkSlicerROILogic.cxx
-  vtkImageConnectivity.cxx
-  vtkImageLabelChange.cxx
-  vtkImageErode.cxx
-  vtkSlicerTransformLogic.cxx
-  vtkPichonFastMarching.cxx
-  vtkPichonFastMarchingPDF.cxx
+  vtkTransformVisualizerGlyph3D.cxx
   vtkImageRectangularSource.cxx
   vtkSystemInformation.cxx
-  vtkImageStash.cxx
+  vtkImageFillROI.cxx
   )
 
 if(Slicer_USE_PYTHONQT)
@@ -102,21 +130,6 @@ if(Slicer_USE_PYTHONQT)
     vtkSlicerScriptedLoadableModuleLogic.cxx
     )
 endif()
-
-set_source_files_properties(
-  vtkPichonFastMarchingPDF.cxx
-  WRAP_EXCLUDE
-  )
-
-# --------------------------------------------------------------------------
-## Create an instantiator for these classes
-# set(VTK_USE_INSTANTIATOR_NEW 1)
-# VTK_MAKE_INSTANTIATOR3("${lib_name}Instantiator"
-#   Instantiator_SRCS
-#   "${SlicerBaseLogic_SRCS}"
-#   "VTK_SLICER_BASE_LOGIC_EXPORT"
-#   ${Slicer_BINARY_DIR}
-#   "vtkSlicerBaseLogic.h")
 
 # --------------------------------------------------------------------------
 # Build library
@@ -127,16 +140,6 @@ set(lib_name SlicerBaseLogic)
 set(srcs ${SlicerBaseLogic_SRCS})
 
 add_library(${lib_name} ${srcs})
-
-set(VTK_LIBRARIES
-  #vtkCommon # Provided by MRMLLogic
-  #vtkFiltering # Provided by MRMLLogic
-  #vtkGraphics # Provided by MRMLLogic
-  #vtkHybrid # Provided by MRMLLogic
-  #vtkIO # Provided by MRMLLogic
-  "" # Since no direct dependency to VTK libraries are required, let's explicitly set
-     # the variable to an empty string to avoid complaints from vtkMacroKitPythonWraps.cmake.
-  )
 
 set(libs
   MRMLLogic
@@ -155,14 +158,18 @@ if(Slicer_BUILD_CLI_SUPPORT)
 endif()
 
 if(Slicer_USE_PYTHONQT)
+  set(VTK_COMMON_PYTHON_LIBRARY
+    vtkWrappingPythonCore # For vtkPythonUtil
+    )
   list(APPEND libs
-    vtkCommonPythonD # For vtkPythonUtils
+    ${VTK_COMMON_PYTHON_LIBRARY}
     ${PYTHON_LIBRARY} # At some point, VTK should be updated to expose VTK_PYTHON_LIBRARY
     )
 endif()
 
 target_link_libraries(${lib_name} ${libs})
 set_target_properties(${lib_name} PROPERTIES LABELS ${lib_name})
+set_target_properties(${lib_name} PROPERTIES FOLDER "Core-Base")
 
 # Apply user-defined properties to the library target.
 if(Slicer_LIBRARY_PROPERTIES)
@@ -187,6 +194,8 @@ install(TARGETS ${lib_name}
 # Python Wrapping
 # --------------------------------------------------------------------------
 if(VTK_WRAP_PYTHON)
+  include(vtkMacroKitPythonWrap)
+
   vtkMacroKitPythonWrap(
     KIT_NAME ${lib_name}
     KIT_SRCS ${SlicerBaseLogic_SRCS}
@@ -196,6 +205,12 @@ if(VTK_WRAP_PYTHON)
     )
   # Export target
   set_property(GLOBAL APPEND PROPERTY Slicer_TARGETS ${lib_name}Python ${lib_name}PythonD)
+
+  set_target_properties(${lib_name}Python PROPERTIES FOLDER "Core-Base")
+  set_target_properties(${lib_name}PythonD PROPERTIES FOLDER "Core-Base")
+  if(TARGET ${lib_name}Hierarchy)
+    set_target_properties(${lib_name}Hierarchy PROPERTIES FOLDER "Core-Base")
+  endif()
 endif()
 
 # --------------------------------------------------------------------------

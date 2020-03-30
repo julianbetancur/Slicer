@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,96 +10,89 @@
 
 =========================================================================auto=*/
 
+// MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLHierarchyNode.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
 
-#include "vtkMRMLCoreTestingMacros.h"
-
-
+//---------------------------------------------------------------------------
 class vtkMRMLHierarchyNodeTestHelper1 : public vtkMRMLHierarchyNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLHierarchyNodeTestHelper1 *New(){return new vtkMRMLHierarchyNodeTestHelper1;};
+  static vtkMRMLHierarchyNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLHierarchyNodeTestHelper1,vtkMRMLHierarchyNode);
+  vtkTypeMacro(vtkMRMLHierarchyNodeTestHelper1,vtkMRMLHierarchyNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLHierarchyNodeTestHelper1;
+    return vtkMRMLHierarchyNodeTestHelper1::New();
     }
-  virtual const char* GetNodeTagName()
+  const char* GetNodeTagName() override
     {
     return "vtkMRMLHierarchyNodeTestHelper1";
     }
   virtual bool CanApplyNonLinearTransforms() { return false; }
 };
+vtkStandardNewMacro(vtkMRMLHierarchyNodeTestHelper1);
 
+//---------------------------------------------------------------------------
 int vtkMRMLHierarchyNodeTest1(int , char * [] )
 {
+  vtkNew<vtkMRMLHierarchyNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
 
-//  vtkSmartPointer< vtkMRMLHierarchyNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLHierarchyNodeTestHelper1 >::New();
+  TEST_SET_GET_DOUBLE_RANGE(node1.GetPointer(), SortingValue, 0.0, 10.0);
 
-  vtkSmartPointer< vtkMRMLHierarchyNode > node1 = vtkSmartPointer< vtkMRMLHierarchyNode >::New();
-  std::cout << "node1 is " << (node1 == NULL ? "null" : "not null") << std::endl;
-  if (node1 == NULL)
-    {
-    return EXIT_FAILURE;
-    }
-  
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
+  TEST_SET_GET_STRING(node1.GetPointer(), ParentNodeID);
 
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLHierarchyNode, node1);
-
-  TEST_SET_GET_DOUBLE_RANGE(node1, SortingValue, 0.0, 10.0);
-  
-  TEST_SET_GET_STRING(node1, ParentNodeID);
-
-  vtkSmartPointer<vtkMRMLHierarchyNode> pnode = node1->GetParentNode();
-  std::cout << "GetParentNode returned " << (pnode == NULL ? "null" : "not null") << std::endl;
+  vtkMRMLHierarchyNode* pnode = node1->GetParentNode();
+  std::cout << "GetParentNode returned " << (pnode == nullptr ? "null" : "not null") << std::endl;
 
   node1->SetParentNodeID("testingID");
   pnode = node1->GetParentNode();
-  std::cout << "GetParentNode returned " << (pnode == NULL ? "null" : "not null") << std::endl;
+  std::cout << "GetParentNode returned " << (pnode == nullptr ? "null" : "not null") << std::endl;
 
   // test the parent node id
-  node1->SetParentNodeID(NULL);
-  if (node1->GetParentNodeID() != NULL)
+  node1->SetParentNodeID(nullptr);
+  if (node1->GetParentNodeID() != nullptr)
     {
     std::cerr << "Error setting parent node id to null" << std::endl;
     return EXIT_FAILURE;
     }
-  node1->SetParentNodeID(NULL);
-  if (node1->GetParentNodeID() != NULL)
+  node1->SetParentNodeID(nullptr);
+  if (node1->GetParentNodeID() != nullptr)
     {
     std::cerr << "Error setting parent node id to null a second time" << std::endl;
     return EXIT_FAILURE;
     }
   node1->SetParentNodeID("testingValidStringID");
-  if (node1->GetParentNodeID() == NULL ||
+  if (node1->GetParentNodeID() == nullptr ||
       strcmp(node1->GetParentNodeID(), "testingValidStringID") != 0)
     {
     std::cerr << "Error setting parent node id not null" << std::endl;
     return EXIT_FAILURE;
     }
   node1->SetParentNodeID("testingValidStringID");
-  if (node1->GetParentNodeID() == NULL ||
+  if (node1->GetParentNodeID() == nullptr ||
       strcmp(node1->GetParentNodeID(), "testingValidStringID") != 0)
     {
     std::cerr << "Error setting parent node id to a valid string a second time" << std::endl;
     return EXIT_FAILURE;
     }
   node1->SetParentNodeID("anotherID");
-  if (node1->GetParentNodeID() == NULL ||
+  if (node1->GetParentNodeID() == nullptr ||
       strcmp(node1->GetParentNodeID(), "anotherID") != 0)
     {
     std::cerr << "Error setting parent node id to a different valid string" << std::endl;
     return EXIT_FAILURE;
     }
-  
 
 
-  TEST_SET_GET_BOOLEAN(node1, AllowMultipleChildren);
+
+  TEST_SET_GET_BOOLEAN(node1.GetPointer(), AllowMultipleChildren);
 
   return EXIT_SUCCESS;
 }

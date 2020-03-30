@@ -12,7 +12,7 @@
 
 =========================================================================auto=*/
 ///  vtkMRMLVolumePropertyStorageNode - MRML node for transform storage on disk
-/// 
+///
 /// Storage nodes has methods to read/write transforms to/from disk
 
 #ifndef __vtkMRMLVolumePropertyStorageNode_h
@@ -32,40 +32,35 @@ class VTK_SLICER_VOLUMERENDERING_MODULE_MRML_EXPORT vtkMRMLVolumePropertyStorage
   public:
   static vtkMRMLVolumePropertyStorageNode *New();
   vtkTypeMacro(vtkMRMLVolumePropertyStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Transform)
-  virtual const char* GetNodeTagName()  {return "VolumePropertyStorage";};
-
-  /// 
-  /// Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
+  const char* GetNodeTagName() override {return "VolumePropertyStorage";}
 
   /// Return true if the node can be read in
-  virtual bool CanReadInReferenceNode(vtkMRMLNode *refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode *refNode) override;
 
 protected:
   vtkMRMLVolumePropertyStorageNode();
-  ~vtkMRMLVolumePropertyStorageNode();
+  ~vtkMRMLVolumePropertyStorageNode() override;
   vtkMRMLVolumePropertyStorageNode(const vtkMRMLVolumePropertyStorageNode&);
   void operator=(const vtkMRMLVolumePropertyStorageNode&);
 
-  /// 
+  /// Initialize all the supported read file types
+  void InitializeSupportedReadFileTypes() override;
+
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 
 };
 
 #endif
-
-
-

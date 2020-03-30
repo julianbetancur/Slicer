@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __OptimizedImageToImageRegistrationMethod_h
-#define __OptimizedImageToImageRegistrationMethod_h
+#ifndef itkOptimizedImageToImageRegistrationMethod_h
+#define itkOptimizedImageToImageRegistrationMethod_h
 
 #include "itkImage.h"
 
@@ -77,7 +77,7 @@ public:
   //
   // Methods from Superclass
   //
-  virtual void GenerateData( void );
+  void GenerateData() override;
 
   //
   // Custom Methods
@@ -131,9 +131,8 @@ public:
 
   itkGetMacro( FinalMetricValue, double );
 protected:
-
-  OptimizedImageToImageRegistrationMethod( void );
-  virtual ~OptimizedImageToImageRegistrationMethod( void );
+  OptimizedImageToImageRegistrationMethod();
+  ~OptimizedImageToImageRegistrationMethod() override;
 
   itkSetMacro( FinalMetricValue, double );
 
@@ -144,7 +143,7 @@ protected:
 
   virtual void Optimize( MetricType * metric, InterpolatorType * interpolator );
 
-  virtual void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
 private:
 

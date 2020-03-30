@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>741</width>
-    <height>418</height>
+    <height>486</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,0,1,0,0">
+    <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,0,0,0,0">
      <item row="0" column="0">
       <widget class="QLabel" name="typeLabel">
        <property name="sizePolicy">
@@ -57,7 +57,7 @@
        <item>
         <widget class="QCheckBox" name="hierarchyPushCheckBox">
          <property name="toolTip">
-          <string>Propagate changes to all nodes in this list. If not checked, only when the hiearchy is collapsed will the nodes below it use these display properties.</string>
+          <string>Propagate changes to all nodes in this list. If not checked, only when the hierarchy is collapsed will the nodes below it use these display properties.</string>
          </property>
          <property name="layoutDirection">
           <enum>Qt::RightToLeft</enum>
@@ -234,7 +234,14 @@
       </widget>
      </item>
      <item row="2" column="4">
-      <widget class="ctkCoordinatesWidget" name="RASCoordinatesWidget"/>
+      <widget class="qMRMLCoordinatesWidget" name="RASCoordinatesWidget">
+       <property name="quantity">
+        <string>length</string>
+       </property>
+       <property name="unitAwareProperties">
+        <set>qMRMLCoordinatesWidget::MaximumValue|qMRMLCoordinatesWidget::MinimumValue|qMRMLCoordinatesWidget::Precision|qMRMLCoordinatesWidget::Prefix|qMRMLCoordinatesWidget::Scaling|qMRMLCoordinatesWidget::Suffix</set>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -254,9 +261,9 @@
        </item>
        <item row="0" column="1">
         <widget class="ctkSliderWidget" name="hierarchyTextScaleSlider">
-          <property name="toolTip">
-            <string>Apply text scale to all annotations in this hierarchy (current setting may not reflect text scales, this is a push to list only setting, use default button to get back to standard size)</string>
-          </property>
+         <property name="toolTip">
+          <string>Apply text scale to all annotations in this hierarchy (current setting may not reflect text scales, this is a push to list only setting, use default button to get back to standard size)</string>
+         </property>
          <property name="singleStep">
           <double>0.100000000000000</double>
          </property>
@@ -291,9 +298,9 @@
        </item>
        <item row="0" column="1">
         <widget class="ctkSliderWidget" name="hierarchyPointSizeSlider">
-          <property name="toolTip">
-            <string>Apply glyph scale to all annotations in this hierarchy (current setting may not reflect glyph scales, this is a push to list only setting, use default button to get back to standard size)</string>
-          </property>
+         <property name="toolTip">
+          <string>Apply glyph scale to all annotations in this hierarchy (current setting may not reflect glyph scales, this is a push to list only setting, use default button to get back to standard size)</string>
+         </property>
          <property name="singleStep">
           <double>0.100000000000000</double>
          </property>
@@ -328,12 +335,12 @@
        </item>
        <item row="0" column="1">
         <widget class="QComboBox" name="hierarchyPointGlyphTypeComboBox">
-          <property name="toolTip">
-            <string>Apply glyph type to all annotations in this hierarchy (current setting may not reflect glyph types, this is a push to list only setting, use default button to get back to standard glyph)</string>
-          </property>
-          <property name="accessibleDescription">
-            <string>Glyph type combo box</string>
-          </property>
+         <property name="toolTip">
+          <string>Apply glyph type to all annotations in this hierarchy (current setting may not reflect glyph types, this is a push to list only setting, use default button to get back to standard glyph)</string>
+         </property>
+         <property name="accessibleDescription">
+          <string>Glyph type combo box</string>
+         </property>
          <property name="layoutDirection">
           <enum>Qt::LeftToRight</enum>
          </property>
@@ -436,6 +443,19 @@
               </property>
              </widget>
             </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="textVisibilityLabel">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Visibility:</string>
+              </property>
+             </widget>
+            </item>
             <item row="1" column="1">
              <widget class="ctkSliderWidget" name="textScaleSliderSpinBoxWidget">
               <property name="sizePolicy">
@@ -462,7 +482,25 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
+            <item row="3" column="1">
+             <widget class="ctkCheckBox" name="textVisibilityCheckBox">
+               <property name="toolTip">
+                 <string>Turn on/off visualization of text (when off, overrides ruler label visibility)</string>
+               </property>
+               <property name="indicatorIcon">
+                 <iconset resource="../../../../../../Base/QTGUI/Resources/qSlicerBaseQTGUI.qrc">
+                   <normaloff>:/Icons/XLarge/SlicerVisible.png</normaloff>
+                 <normalon>:/Icons/XLarge/SlicerInvisible.png</normalon>:/Icons/XLarge/SlicerVisible.png</iconset>
+               </property>
+               <property name="indicatorIconSize">
+                 <size>
+                   <width>23</width>
+                   <height>23</height>
+                 </size>
+               </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
              <spacer name="verticalSpacer">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -596,7 +634,7 @@
             <item row="0" column="0">
              <widget class="QLabel" name="pointGlyphScaleLabel">
               <property name="text">
-               <string>Size: (mm)</string>
+               <string>Size:</string>
               </property>
              </widget>
             </item>
@@ -695,20 +733,35 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="0">
-             <spacer name="verticalSpacer_2">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
            </layout>
+          </item>
+          <item row="3" column="2">
+           <widget class="ctkCollapsibleGroupBox" name="pointFiducialProjectionPropertiesGroupBox">
+            <property name="title">
+             <string>Fiducial Projection</string>
+            </property>
+            <property name="collapsed">
+             <bool>true</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_3">
+             <item>
+              <widget class="qMRMLAnnotationFiducialProjectionPropertyWidget" name="pointFiducialProjectionWidget"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <spacer name="verticalSpacer_8">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </widget>
@@ -742,8 +795,8 @@
             </item>
             <item row="0" column="2">
              <widget class="ctkSliderWidget" name="lineWidthSliderSpinBoxWidget_2">
-              <property name="singleStep">
-               <double>0.100000000000000</double>
+              <property name="decimals">
+               <number>0</number>
               </property>
               <property name="maximum">
                <double>20.000000000000000</double>
@@ -818,19 +871,6 @@
               </property>
              </widget>
             </item>
-            <item row="9" column="0">
-             <spacer name="verticalSpacer_3">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
             <item row="2" column="0">
              <widget class="QLabel" name="label_4">
               <property name="text">
@@ -853,6 +893,9 @@
             </item>
             <item row="1" column="0" colspan="3">
              <widget class="QCheckBox" name="lineLabelVisibilityCheckBox">
+              <property name="toolTip">
+               <string>Show or hide the tick mark labels in 2D</string>
+              </property>
               <property name="layoutDirection">
                <enum>Qt::RightToLeft</enum>
               </property>
@@ -867,15 +910,22 @@
             <item row="3" column="0">
              <widget class="QLabel" name="label_5">
               <property name="toolTip">
-               <string>Distance in mm between major ticks</string>
+               <string>Distance between major ticks</string>
               </property>
               <property name="text">
-               <string>Tick Spacing (mm):</string>
+               <string>Tick Spacing:</string>
               </property>
              </widget>
             </item>
             <item row="3" column="2">
-             <widget class="QLineEdit" name="lineTickSpacingLineEdit"/>
+             <widget class="qMRMLSliderWidget" name="lineTickSpacingSlider">
+              <property name="quantity">
+               <string>length</string>
+              </property>
+              <property name="unitAwareProperties">
+               <set>qMRMLSliderWidget::Prefix|qMRMLSliderWidget::Suffix|qMRMLSliderWidget::Scaling</set>
+              </property>
+             </widget>
             </item>
             <item row="4" column="0">
              <widget class="QLabel" name="label_6">
@@ -902,6 +952,47 @@
              <size>
               <width>40</width>
               <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="3" column="1">
+           <widget class="ctkCollapsibleGroupBox" name="lineRulerProjectionPropertiesGroupBox">
+            <property name="title">
+             <string>Ruler Projection</string>
+            </property>
+            <property name="collapsed">
+             <bool>true</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <item>
+              <widget class="qMRMLAnnotationRulerProjectionPropertyWidget" name="lineRulerProjectionWidget"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <spacer name="verticalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="4" column="1">
+           <spacer name="verticalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
              </size>
             </property>
            </spacer>
@@ -953,15 +1044,52 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>qMRMLCoordinatesWidget</class>
+   <extends>ctkCoordinatesWidget</extends>
+   <header>qMRMLCoordinatesWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSliderWidget</class>
+   <extends>ctkSliderWidget</extends>
+   <header>qMRMLSliderWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLAnnotationFiducialProjectionPropertyWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLAnnotationFiducialProjectionPropertyWidget.h</header>
+  </customwidget>
+  <customwidget>
    <class>qMRMLAnnotationROIWidget</class>
    <extends>QWidget</extends>
    <header>qMRMLAnnotationROIWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>qMRMLAnnotationRulerProjectionPropertyWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLAnnotationRulerProjectionPropertyWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>ctkCheckBox.h</header>
+  </customwidget>
+  <customwidget>
    <class>ctkCollapsibleButton</class>
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -981,6 +1109,7 @@
   </customwidget>
  </customwidgets>
  <resources>
+  <include location="../qSlicerAnnotationModule.qrc"/>
   <include location="../qSlicerAnnotationModule.qrc"/>
   <include location="../qSlicerAnnotationModule.qrc"/>
   <include location="../qSlicerAnnotationModule.qrc"/>

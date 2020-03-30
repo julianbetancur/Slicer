@@ -35,7 +35,7 @@ set(MODULE_MOC_SRCS
   )
 
 set(MODULE_UI_SRCS
-  Resources/UI/qSlicer${MODULE_NAME}Module.ui
+  Resources/UI/qSlicer${MODULE_NAME}ModuleWidget.ui
   )
 
 set(MODULE_TARGET_LIBRARIES
@@ -49,7 +49,7 @@ set(MODULE_RESOURCES
   )
 
 #-----------------------------------------------------------------------------
-slicerMacroBuildQtModule(
+slicerMacroBuildLoadableModule(
   NAME ${MODULE_NAME}
   TITLE ${MODULE_TITLE}
   EXPORT_DIRECTIVE ${MODULE_EXPORT_DIRECTIVE}
@@ -59,6 +59,7 @@ slicerMacroBuildQtModule(
   UI_SRCS ${MODULE_UI_SRCS}
   TARGET_LIBRARIES ${MODULE_TARGET_LIBRARIES}
   RESOURCES ${MODULE_RESOURCES}
+  WITH_GENERIC_TESTS
   )
 
 #-----------------------------------------------------------------------------

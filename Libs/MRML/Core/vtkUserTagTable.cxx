@@ -10,7 +10,6 @@
 #include <vtksys/SystemTools.hxx>
 
 vtkStandardNewMacro ( vtkUserTagTable );
-vtkCxxRevisionMacro ( vtkUserTagTable, "$Revision: 1.0 $" );
 
 //----------------------------------------------------------------------------
 vtkUserTagTable::vtkUserTagTable()
@@ -37,9 +36,9 @@ vtkUserTagTable::~vtkUserTagTable()
       {
       this->TagTable->RemoveColumn ( i );
       }
-    
+
     this->TagTable->Delete();
-    this->TagTable = NULL;
+    this->TagTable = nullptr;
     }
 }
 
@@ -56,9 +55,9 @@ void vtkUserTagTable::PrintSelf(ostream& os, vtkIndent indent)
 int vtkUserTagTable::AddKeywordValuePair ( const char *keyword, const char *value)
 {
 
-  if ( this->TagTable && keyword != NULL )
+  if ( this->TagTable && keyword != nullptr )
     {
-    if ( value == NULL )
+    if ( value == nullptr )
       {
       value = "NULL";
       }
@@ -86,10 +85,10 @@ int vtkUserTagTable::AddKeywordValuePair ( const char *keyword, const char *valu
 int vtkUserTagTable::AddKeywordValuePair ( const char *keyword, void *value)
 {
 
-  if ( this->TagTable && keyword != NULL )
+  if ( this->TagTable && keyword != nullptr )
     {
       std::stringstream ss;
-    if ( value != NULL )
+    if ( value != nullptr )
       {
       ss << value;
       }
@@ -132,7 +131,7 @@ const char * vtkUserTagTable::GetUserTagKeyword ( int index)
       return ( this->TagTable->GetColumnName( index ) );
       }
     }
-  return ( NULL );
+  return ( nullptr );
 }
 
 
@@ -159,7 +158,7 @@ int vtkUserTagTable::GetKeywordColumn ( const char* keyword )
 //----------------------------------------------------------------------------
  const char * vtkUserTagTable::GetUserTagValue ( int index)
 {
-  char * returnString = NULL;
+  char * returnString = nullptr;
   const char *val;
   vtkVariant d;
   std::string s;
@@ -179,14 +178,14 @@ int vtkUserTagTable::GetKeywordColumn ( const char* keyword )
       do { *cptr++ = *val++; } while ( --n );
       }
     }
-  return (returnString);      
+  return (returnString);
 }
 
 
 //----------------------------------------------------------------------------
 const char * vtkUserTagTable::GetUserTagValue ( const char* keyword)
 {
-  char * returnString = NULL;
+  char * returnString = nullptr;
   const char *val;
   vtkVariant d;
   std::string ss;
@@ -204,7 +203,7 @@ const char * vtkUserTagTable::GetUserTagValue ( const char* keyword)
         //--- if we have a match, return the keyword's value
         d = this->TagTable->GetValue ( 0, i);
         ss = d.ToString();
-        val = ss.c_str();      
+        val = ss.c_str();
         size_t n = strlen(ss.c_str()) + 1;
         val = ss.c_str();
         char *cptr = new char[n];

@@ -26,36 +26,33 @@ class VTK_MRML_EXPORT vtkMRMLColorTableStorageNode : public vtkMRMLStorageNode
   public:
   static vtkMRMLColorTableStorageNode *New();
   vtkTypeMacro(vtkMRMLColorTableStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "ColorTableStorage";};
-
-  /// Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
+  const char* GetNodeTagName() override  {return "ColorTableStorage";};
 
   /// Return true if the node can be read in
-  virtual bool CanReadInReferenceNode(vtkMRMLNode* refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode* refNode) override;
 
 protected:
   vtkMRMLColorTableStorageNode();
-  ~vtkMRMLColorTableStorageNode();
+  ~vtkMRMLColorTableStorageNode() override;
   vtkMRMLColorTableStorageNode(const vtkMRMLColorTableStorageNode&);
   void operator=(const vtkMRMLColorTableStorageNode&);
 
   /// Initialize all the supported read file types
-  virtual void InitializeSupportedReadFileTypes();
+  void InitializeSupportedReadFileTypes() override;
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 
   /// maximum valid number of colours to read in
   int MaximumColorID;

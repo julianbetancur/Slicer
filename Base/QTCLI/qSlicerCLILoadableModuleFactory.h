@@ -30,20 +30,35 @@
 #include "qSlicerAbstractModule.h"
 #include "qSlicerBaseQTCLIExport.h"
 
+class ModuleDescription;
 class ModuleLogo;
+class qSlicerCLIModule;
 
 //-----------------------------------------------------------------------------
 class qSlicerCLILoadableModuleFactoryItem
   : public ctkFactoryLibraryItem<qSlicerAbstractCoreModule>
 {
 public:
+  typedef ctkFactoryLibraryItem<qSlicerAbstractCoreModule> Superclass;
   qSlicerCLILoadableModuleFactoryItem(const QString& newTempDirectory);
+  bool load() override;
+
+  static void loadLibraryAndResolveSymbols(
+      void* libraryLoader,  ModuleDescription& desc);
+
 protected:
-  virtual qSlicerAbstractCoreModule* instanciator();
+  /// Return path of the expected XML file.
+  QString xmlModuleDescriptionFilePath()const;
+
+  qSlicerAbstractCoreModule* instanciator() override;
+  QString resolveXMLModuleDescriptionSymbol();
+  bool resolveSymbols(ModuleDescription& desc);
   static bool updateLogo(qSlicerCLILoadableModuleFactoryItem* item, ModuleLogo& logo);
 private:
   QString TempDirectory;
 };
+
+class qSlicerCLILoadableModuleFactoryPrivate;
 
 //-----------------------------------------------------------------------------
 class Q_SLICER_BASE_QTCLI_EXPORT qSlicerCLILoadableModuleFactory :
@@ -52,10 +67,10 @@ class Q_SLICER_BASE_QTCLI_EXPORT qSlicerCLILoadableModuleFactory :
 public:
   typedef ctkAbstractLibraryFactory<qSlicerAbstractCoreModule> Superclass;
   qSlicerCLILoadableModuleFactory();
-  qSlicerCLILoadableModuleFactory(const QString& tempDirectory);
+  ~qSlicerCLILoadableModuleFactory() override;
 
   /// Reimplemented to scan the directory of the command line modules
-  virtual void registerItems();
+  void registerItems() override;
 
   /// Extract module name given \a libraryName
   /// For example:
@@ -63,18 +78,23 @@ public:
   ///  libThresholdLib.{dylib, bundle, so} -> threshold
   ///  ThresholdLib.dll -> threshold
   /// \sa qSlicerUtils::extractModuleNameFromLibraryName
-  QString fileNameToKey(const QString& fileName)const;
+  QString fileNameToKey(const QString& fileName)const override;
 
   void setTempDirectory(const QString& newTempDirectory);
 
 protected:
-  virtual ctkAbstractFactoryItem<qSlicerAbstractCoreModule>*
-    createFactoryFileBasedItem();
+  ctkAbstractFactoryItem<qSlicerAbstractCoreModule>*
+    createFactoryFileBasedItem() override;
 
-  virtual bool isValidFile(const QFileInfo& file)const;
+  bool isValidFile(const QFileInfo& file)const override;
+
+protected:
+
+  QScopedPointer<qSlicerCLILoadableModuleFactoryPrivate> d_ptr;
 
 private:
-  QString TempDirectory;
+  Q_DECLARE_PRIVATE(qSlicerCLILoadableModuleFactory);
+  Q_DISABLE_COPY(qSlicerCLILoadableModuleFactory);
 };
 
 #endif

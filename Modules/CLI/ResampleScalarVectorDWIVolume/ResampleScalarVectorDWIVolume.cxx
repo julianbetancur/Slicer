@@ -14,6 +14,7 @@
 
 // ITK includes
 #include <itkBSplineDeformableTransform.h>
+#include <itkCompositeTransform.h>
 #include <itkImageFileReader.h>
 #include <itkImageFileWriter.h>
 #include <itkMetaDataObject.h>
@@ -21,9 +22,11 @@
 #include <itkResampleImageFilter.h>
 #include <itkBSplineInterpolateImageFunction.h>
 #include <itkRigid3DTransform.h>
+#include <itkThinPlateSplineKernelTransform.h>
 #include <itkTransformFileReader.h>
 #include <itkVectorResampleImageFilter.h>
 #include <itkWindowedSincInterpolateImageFunction.h>
+#include <itkConstantBoundaryCondition.h>
 
 // ResampleScalarVectorDWIVolume includes
 #include "ResampleScalarVectorDWIVolumeCLP.h"
@@ -234,7 +237,7 @@ SetUpTransform( parameters & list,
         rotation->SetTranslation( vec );
         transform = rotation;
         }
-      catch( itk::ExceptionObject exp )
+      catch( itk::ExceptionObject &exp )
         {
         std::string exception = exp.GetDescription();
         if( exception.find( "Attempting to set a non-orthogonal rotation matrix" ) != std::string::npos )
@@ -244,7 +247,7 @@ SetUpTransform( parameters & list,
           }
         else
           {
-          return NULL;
+          return nullptr;
           }
         }
       }
@@ -259,6 +262,29 @@ SetUpTransform( parameters & list,
   return transform;
 }
 
+// ITK does not initialize TPS transforms properly when they are read from file.
+// tpsTransform->ComputeWMatrix() has to be called after the transform is read but
+//  before the transform is used, otherwise the application crashes.
+void InitializeThinPlateSplineTransform(itk::Transform<double, 3, 3>::Pointer transform)
+{
+  std::string transformClassName = transform->GetNameOfClass();
+  if (transformClassName == "ThinPlateSplineKernelTransform")
+    {
+    typedef itk::ThinPlateSplineKernelTransform< double, 3 > ThinPlateSplineTransformType;
+    ThinPlateSplineTransformType* tpsTransform = static_cast<ThinPlateSplineTransformType*>(transform.GetPointer());
+    tpsTransform->ComputeWMatrix();
+    }
+  else if (transformClassName == "CompositeTransform")
+    {
+    typedef itk::CompositeTransform< double, 3 > CompositeTransformType;
+    CompositeTransformType* compositeTransform = static_cast<CompositeTransformType*>(transform.GetPointer());
+    for (unsigned int i = 0; i < compositeTransform->GetNumberOfTransforms(); ++i)
+      {
+      InitializeThinPlateSplineTransform(compositeTransform->GetNthTransform(i));
+      }
+    }
+}
+
 // Set the transformation
 template <class ImageType>
 typename itk::Transform<double, 3, 3>::Pointer
@@ -269,71 +295,54 @@ SetTransformAndOrder( parameters & list,
                       )
 {
   typedef itk::AffineTransform<double, 3>        AffineTransformType;
-  typedef itk::MatrixOffsetTransformBase<double> RotationType;
-  typedef itk::Transform<double, 3, 3>           TransformType;
   if( list.transformationFile.compare( "" ) ) // Get transformation matrix from command line if no file given
     {
+    std::string transformClassName = transform->GetNameOfClass();
     list.transformMatrix.resize( 0 );
     list.rotationPoint.resize( 0 );
     typename itk::MatrixOffsetTransformBase<double, 3, 3>
-    ::Pointer doubleMatrixOffsetTransform;
-    typename itk::MatrixOffsetTransformBase<float, 3, 3>
-    ::Pointer floatMatrixOffsetTransform;
-    // size = transformFile->GetTransformList()->front()->GetParameters().GetSize() ;
-    AffineTransformType::Pointer doubleAffineTransform
-      = dynamic_cast<AffineTransformType *>( transform.GetPointer() );
-    if( doubleAffineTransform )     // affine transform in double
+    ::Pointer matrixOffsetTransform;
+    if( transformClassName.find("AffineTransform") != std::string::npos ) // if affine transform
       {
+      matrixOffsetTransform = static_cast<AffineTransformType *>( transform.GetPointer() );
       list.transformType.assign( "a" );
-      doubleMatrixOffsetTransform = doubleAffineTransform;
-      SetListFromTransform<double>( doubleMatrixOffsetTransform, list );
+      SetListFromTransform<double>( matrixOffsetTransform, list );
       }
     else
       {
-      itk::AffineTransform<float, 3>::Pointer floatAffineTransform
-        = dynamic_cast<itk::AffineTransform<float, 3> *>( transform.GetPointer() );
-      if( floatAffineTransform )            // if affine transform in float
-        {
-        list.transformType.assign( "a" );
-        floatMatrixOffsetTransform = floatAffineTransform;
-        SetListFromTransform<float>( floatMatrixOffsetTransform, list );
-        }
-      else
-        {
-        RotationType::Pointer doubleRigid3DTransform
-          = dynamic_cast<itk::Rigid3DTransform<double> *>( transform.GetPointer() );
-        if( doubleRigid3DTransform )             // if rigid3D transform in double
+        // Check if transform is not of type "Rigid3DTransform"
+        if( transformClassName == "Rigid3DTransform" ||
+            transformClassName == "Euler3DTransform" ||
+            transformClassName == "CenteredEuler3DTransform" ||
+            transformClassName == "QuaternionRigidTransform" ||
+            transformClassName == "VersorTransform" ||
+            transformClassName == "ScaleSkewVersor3DTransform" ||
+            transformClassName == "ScaleVersor3DTransform" ||
+            transformClassName == "Similarity3DTransform"
+            ) // if rigid3D transform
           {
           list.transformType.assign( "rt" );
-          doubleMatrixOffsetTransform = doubleRigid3DTransform;
-          SetListFromTransform<double>( doubleMatrixOffsetTransform, list );
+          matrixOffsetTransform = static_cast<itk::Rigid3DTransform<double> *>
+            ( transform.GetPointer() );
+          SetListFromTransform<double>( matrixOffsetTransform, list );
           }
-        else
+        else // if non-rigid
           {
-          itk::MatrixOffsetTransformBase<float>::Pointer floatRigid3DTransform
-            = dynamic_cast<itk::Rigid3DTransform<float> *>( transform.GetPointer() );
-          if( floatRigid3DTransform )              // if rigid3D transform in float
-            {
-            list.transformType.assign( "rt" );
-            floatMatrixOffsetTransform = floatRigid3DTransform;
-            SetListFromTransform<float>( floatMatrixOffsetTransform, list );
+
+          // Workaround: prevent ITK from crashing when the transform contains TPS transform
+          InitializeThinPlateSplineTransform(transform.GetPointer());
+
+          if ( transformClassName.find("Transform") != std::string::npos )
+            { // if non rigid Transform loaded
+            list.transformType.assign( "nr" );
             }
-          else              // if non-rigid
+          else               // something else
             {
-            if( transform )               // if non rigid Transform loaded
-              {
-              list.transformType.assign( "nr" );
-              //             transform = nonRigidFile ;
-              }
-            else               // something else
-              {
-              std::cerr << "Transformation type not yet implemented"
-                        << std::endl;
-              return NULL;
-              }
+            std::cerr << "Transformation type not yet implemented"
+                      << std::endl;
+            return nullptr;
             }
           }
-        }
       }
     if( list.transformType.compare( "nr" ) )      // if rigid or affine transform
       {
@@ -342,7 +351,7 @@ SetTransformAndOrder( parameters & list,
         {
         std::cerr << "Error in the file containing the matrix transformation"
                   << std::endl;
-        return NULL;
+        return nullptr;
         }
       }
     }
@@ -359,17 +368,17 @@ SetTransform( parameters & list,
               )
 {
   typedef itk::Transform<double, 3, 3> TransformType;
-  typename TransformType::Pointer transform = 0;
+  typename TransformType::Pointer transform = nullptr;
   if( list.transformationFile.compare( "" ) ) // Get transformation matrix from command line if no file given
     {
     if( !list.transformsOrder.compare( "input-to-output" ) )
       {
-      transform = dynamic_cast<TransformType *>
+      transform = static_cast<TransformType *>
         ( transformFile->GetTransformList()->back().GetPointer() );
       }
     else
       {
-      transform = dynamic_cast<TransformType *>
+      transform = static_cast<TransformType *>
         ( transformFile->GetTransformList()->front().GetPointer() );
       }
     }
@@ -491,7 +500,7 @@ SetAllTransform( parameters & list,
   if( nonRigidTransforms < 0 ) // The transform file contains a transform that is not handled by ResampleVolume2, it
                                // exits.
     {
-    return NULL;
+    return nullptr;
     }
   if( list.deffield.compare( "" ) )
     {
@@ -572,13 +581,10 @@ SetAllTransform( parameters & list,
         // order=3 for the BSpline seems to be standard among tools in Slicer3 and BRAINTools
         typedef itk::BSplineDeformableTransform<double, 3, 3> BSplineDeformableTransformType;
         BSplineDeformableTransformType::Pointer BSplineTransform;
-        BSplineTransform = dynamic_cast<BSplineDeformableTransformType *>(transform.GetPointer() );
-        if( BSplineTransform )
-          {
-          typename TransformType::Pointer bulkTransform;
-          bulkTransform = SetTransform<ImageType>( list, image, transformFile, outputImageCenter );
-          BSplineTransform->SetBulkTransform( bulkTransform );
-          }
+        BSplineTransform = static_cast<BSplineDeformableTransformType *>(transform.GetPointer() );
+        typename TransformType::Pointer bulkTransform;
+        bulkTransform = SetTransform<ImageType>( list, image, transformFile, outputImageCenter );
+        BSplineTransform->SetBulkTransform( bulkTransform );
         }
       if( list.numberOfThread )
         {
@@ -609,15 +615,37 @@ SetAllTransform( parameters & list,
     do
       {
       transform = SetTransform<ImageType>( list, image, transformFile, outputImageCenter );
-      typename MatrixTransformType::Pointer localTransform;
-      localTransform = dynamic_cast<MatrixTransformType *>(transform.GetPointer() );
-      if( !localTransform )   // should never happen, just for security
+      std::string transformClassName;
+      if ( transform.IsNotNull() )
+        {
+        transformClassName = transform->GetNameOfClass();
+        }
+      // Check if transform is NOT of type "MatrixOffsetTransformBase<double, 3, 3>"
+      // (itself typedef as "MatrixTransformType")
+      if( !(
+            transformClassName.find( "AffineTransform" ) != std::string::npos ||
+            transformClassName == "MatrixOffsetTransformBase" ||
+            transformClassName == "Rigid3DTransform" ||
+            transformClassName == "Euler3DTransform" ||
+            transformClassName == "CenteredEuler3DTransform" ||
+            transformClassName == "QuaternionRigidTransform" ||
+            transformClassName == "VersorTransform" ||
+            transformClassName == "VersorRigid3DTransform" ||
+            transformClassName == "ScaleSkewVersor3DTransform" ||
+            transformClassName == "ScaleVersor3DTransform" ||
+            transformClassName == "Similarity3DTransform" ||
+            transformClassName == "ScaleTransform" ||
+            transformClassName == "ScaleLogarithmicTransform"
+            )
+          )   // should never happen, just for security
         {
         std::cerr
         << "An affine or rigid transform was not convertible to itk::MatrixOffsetTransformBase< double , 3 , 3 >"
         << std::endl;
-        return NULL;
+        return nullptr;
         }
+      typename MatrixTransformType::Pointer localTransform;
+      localTransform = static_cast<MatrixTransformType *>(transform.GetPointer() );
       matrix = localTransform->GetMatrix();
       vector = localTransform->GetTranslation();
       tempMatrix.SetIdentity();
@@ -889,37 +917,54 @@ Transform3DPointer InverseTransform( const Transform3DPointer & transform )
   typedef itk::MatrixOffsetTransformBase<double> RotationType;
   try
     {
-    AffineTransformType::Pointer affine = dynamic_cast<AffineTransformType *>( transform.GetPointer() );
-    if( affine )  // Rotation around a selected point
+    std::string transformClassName;
+    if ( transform.IsNotNull() )
       {
+      transformClassName = transform->GetNameOfClass();
+      }
+    if( transformClassName.find( "AffineTransform" ) != std::string::npos )  // Rotation around a selected point
+      {
+      AffineTransformType::Pointer affine = static_cast<AffineTransformType *>( transform.GetPointer() );
       AffineTransformType::Pointer affinetemp = AffineTransformType::New();
       affine->GetInverse( affinetemp );
       inverseTransform = affinetemp;
       }
     else
       {
-      RotationType::Pointer rigid = dynamic_cast<RotationType *>( transform.GetPointer() );
-      if( rigid )
+      if( transformClassName == "MatrixOffsetTransformBase" ||
+          transformClassName == "Rigid3DTransform" ||
+          transformClassName == "Euler3DTransform" ||
+          transformClassName == "CenteredEuler3DTransform" ||
+          transformClassName == "QuaternionRigidTransform" ||
+          transformClassName == "VersorTransform" ||
+          transformClassName == "VersorRigid3DTransform" ||
+          transformClassName == "ScaleSkewVersor3DTransform" ||
+          transformClassName == "ScaleVersor3DTransform" ||
+          transformClassName == "Similarity3DTransform" ||
+          transformClassName == "ScaleTransform" ||
+          transformClassName == "ScaleLogarithmicTransform"
+          ) // if rotation transform
         {
+        RotationType::Pointer rigid = static_cast<RotationType *>( transform.GetPointer() );
         RotationType::Pointer rigidtemp = RotationType::New();
         rigid->GetInverse( rigidtemp );
         inverseTransform = rigidtemp;
         }
       else
         {
-        inverseTransform = NULL;
+        inverseTransform = nullptr;
         }
       }
     }
   catch( ... )
     {
     std::cerr << "Exception Detected" << std::endl;
-    inverseTransform = NULL;
+    inverseTransform = nullptr;
     }
   return inverseTransform;
 }
 
-// Read Measurement Frame and set it to identity if inverseTransform is not NULL
+// Read Measurement Frame and set it to identity if inverseTransform is not nullptr
 itk::Matrix<double, 3, 3>
 ReadMeasurementFrame( itk::MetaDataDictionary & dico, const Transform3DPointer & inverseTransform )
 {
@@ -1172,7 +1217,6 @@ template <class PixelType>
 int Rotate( parameters & list )
 {
   typedef itk::Image<PixelType, 3>                         ImageType;
-  typedef itk::ImageFileReader<ImageType>                  FileReaderType;
   typedef itk::InterpolateImageFunction<ImageType, double> InterpolatorType;
   typedef itk::ResampleImageFilter<ImageType, ImageType>   ResampleType;
   typedef itk::Transform<double, 3, 3>                     TransformType;
@@ -1196,7 +1240,7 @@ int Rotate( parameters & list )
     // Separate the vector image into a vector of images
     SeparateImages<PixelType>( reader->GetOutput(), vectorOfImage );
     }
-  catch( itk::ExceptionObject exception )
+  catch( itk::ExceptionObject &exception )
     {
     std::cerr << exception << std::endl;
     return EXIT_FAILURE;
@@ -1246,7 +1290,7 @@ int Rotate( parameters & list )
     writer->UseCompressionOn();
     writer->Update();
     }
-  catch( itk::ExceptionObject exception )
+  catch( itk::ExceptionObject &exception )
     {
     std::cerr << exception << std::endl;
     return EXIT_FAILURE;

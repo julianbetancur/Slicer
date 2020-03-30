@@ -37,16 +37,21 @@ class QMRML_WIDGETS_EXPORT qMRMLWidget : public QWidget
   Q_OBJECT
 
 public:
-
   typedef QWidget Superclass;
-  explicit qMRMLWidget(QWidget *parent=0, Qt::WindowFlags f=0);
-  virtual ~qMRMLWidget();
+  explicit qMRMLWidget(QWidget *parent=nullptr, Qt::WindowFlags f=nullptr);
+  ~qMRMLWidget() override;
 
   /// Return a pointer on the current MRML scene
-  vtkMRMLScene* mrmlScene() const;
+  Q_INVOKABLE vtkMRMLScene* mrmlScene() const;
+
+  /// Initialization that needs to be performed before creating the Qt application object.
+  /// Sets default application attributes related to hi-DPI, OpenGL surface format initialization, etc.
+  Q_INVOKABLE static void preInitializeApplication();
+
+  /// Initialization that needs to be performed after application object is created.
+  Q_INVOKABLE static void postInitializeApplication();
 
 public slots:
-
   /// Set the MRML \a scene associated with the widget
   virtual void setMRMLScene(vtkMRMLScene* newScene);
 

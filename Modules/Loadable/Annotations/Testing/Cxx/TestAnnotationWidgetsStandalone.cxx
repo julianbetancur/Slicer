@@ -26,7 +26,7 @@ int TestAnnotationWidgetsStandalone( int argc, char *argv[] )
   vtkSphereSource *ss = vtkSphereSource::New();
 
   vtkPolyDataMapper *mapper = vtkPolyDataMapper::New();
-  mapper->SetInput(ss->GetOutput());
+  mapper->SetInputConnection(ss->GetOutputPort());
   vtkActor *actor = vtkActor::New();
   actor->SetMapper(mapper);
 
@@ -284,7 +284,7 @@ int TestAnnotationWidgetsStandalone( int argc, char *argv[] )
   renderInteractor->Delete();
   renderWindow->Delete();
   renderer->Delete();
-  
+
   return !retVal;
 }
 

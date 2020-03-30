@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -17,17 +17,14 @@
 
 int vtkMRMLInteractionNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLInteractionNode > node1 = vtkSmartPointer< vtkMRMLInteractionNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLInteractionNode, node1);
+  vtkNew< vtkMRMLInteractionNode > node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
 
   TEST_SET_GET_INT( node1, CurrentInteractionMode, vtkMRMLInteractionNode::Place);
   TEST_SET_GET_INT( node1, CurrentInteractionMode, vtkMRMLInteractionNode::ViewTransform);
   // test re-setting with same value
   TEST_SET_GET_INT( node1, CurrentInteractionMode, vtkMRMLInteractionNode::ViewTransform);
-  
+
   TEST_SET_GET_INT( node1, LastInteractionMode, vtkMRMLInteractionNode::Place);
   TEST_SET_GET_INT( node1, LastInteractionMode, vtkMRMLInteractionNode::ViewTransform);
   // test re-setting with same value
@@ -35,7 +32,7 @@ int vtkMRMLInteractionNodeTest1(int , char * [] )
 
   TEST_SET_GET_INT_RANGE( node1, PlaceModePersistence, 0, 1);
   TEST_SET_GET_INT_RANGE( node1, TransformModePersistence, 0, 1);
-  
+
   node1->NormalizeAllMouseModes();
 
   const char *modeStr = node1->GetInteractionModeAsString();
@@ -45,11 +42,11 @@ int vtkMRMLInteractionNodeTest1(int , char * [] )
     modeStr = node1->GetInteractionModeAsString(m);
     std::cout << "Interaction mode " << m << " = " << (modeStr ? modeStr : "null") << std::endl;
     }
-  int mode = node1->GetInteractionModeByString(NULL);
+  int mode = node1->GetInteractionModeByString(nullptr);
   std::cout << "For null string, interaction mode = " << mode << std::endl;
   mode = node1->GetInteractionModeByString("invalid");
   std::cout << "For 'invalid' string, interaction mode = " << mode << std::endl;
-  
+
   node1->SwitchToPersistentPlaceMode();
   if (!node1->GetPlaceModePersistence())
     {

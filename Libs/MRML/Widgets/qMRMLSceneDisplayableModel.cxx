@@ -26,6 +26,7 @@
 #include <vtkMRMLDisplayableNode.h>
 #include <vtkMRMLDisplayableHierarchyNode.h>
 #include <vtkMRMLDisplayNode.h>
+#include <vtkMRMLSelectionNode.h>
 
 //------------------------------------------------------------------------------
 qMRMLSceneDisplayableModelPrivate
@@ -65,12 +66,12 @@ vtkMRMLDisplayNode* qMRMLSceneDisplayableModelPrivate
     }
 
   vtkMRMLDisplayableHierarchyNode* displayableHierarchyNode
-    = vtkMRMLDisplayableHierarchyNode::SafeDownCast(node);
+      = vtkMRMLDisplayableHierarchyNode::SafeDownCast(node);
   if (displayableHierarchyNode)
     {
     return displayableHierarchyNode->GetDisplayNode();
     }
-  return 0;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -92,8 +93,7 @@ qMRMLSceneDisplayableModel::qMRMLSceneDisplayableModel(
 
 //------------------------------------------------------------------------------
 qMRMLSceneDisplayableModel::~qMRMLSceneDisplayableModel()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 vtkMRMLNode* qMRMLSceneDisplayableModel::parentNode(vtkMRMLNode* node)const
@@ -109,33 +109,14 @@ bool qMRMLSceneDisplayableModel::canBeAChild(vtkMRMLNode* node)const
     {
     return false;
     }
-  if (node->IsA("vtkMRMLDisplayableNode"))
-    {
-    return true;
-    }
-  if (node->IsA("vtkMRMLDisplayableHierarchyNode"))
-    {
-    return true;
-    }
-  return false;
+  return node->IsA("vtkMRMLDisplayableNode") ||
+         node->IsA("vtkMRMLDisplayableHierarchyNode");
 }
 
 //------------------------------------------------------------------------------
 bool qMRMLSceneDisplayableModel::canBeAParent(vtkMRMLNode* node)const
 {
-  if (!node)
-    {
-    return false;
-    }
-  if (node->IsA("vtkMRMLDisplayableNode"))
-    {
-    return true;
-    }
-  if (node->IsA("vtkMRMLDisplayableHierarchyNode"))
-    {
-    return true;
-    }
-  return false;
+  return this->canBeAChild(node);
 }
 
 //------------------------------------------------------------------------------
@@ -154,18 +135,19 @@ QFlags<Qt::ItemFlag> qMRMLSceneDisplayableModel::nodeFlags(vtkMRMLNode* node, in
 {
   Q_D(const qMRMLSceneDisplayableModel);
   QFlags<Qt::ItemFlag> flags = this->Superclass::nodeFlags(node, column);
+  vtkMRMLNode *displayNode = d->displayNode(node);
   if (column == this->visibilityColumn() &&
-      d->displayNode(node) != 0)
+      displayNode != nullptr)
     {
     flags |= Qt::ItemIsEditable;
     }
   if (column == this->colorColumn() &&
-      d->displayNode(node) != 0)
+      displayNode != nullptr)
     {
     flags |= Qt::ItemIsEditable;
     }
   if (column == this->opacityColumn() &&
-      d->displayNode(node) != 0)
+      displayNode != nullptr)
     {
     flags |= Qt::ItemIsEditable;
     }
@@ -177,9 +159,9 @@ void qMRMLSceneDisplayableModel
 ::updateItemDataFromNode(QStandardItem* item, vtkMRMLNode* node, int column)
 {
   Q_D(qMRMLSceneDisplayableModel);
+  vtkMRMLDisplayNode* displayNode = d->displayNode(node);
   if (column == this->colorColumn())
     {
-    vtkMRMLDisplayNode* displayNode = d->displayNode(node);
     if (displayNode)
       {
       double* rgbF = displayNode->GetColor();
@@ -191,7 +173,6 @@ void qMRMLSceneDisplayableModel
     }
   if (column == this->opacityColumn())
     {
-    vtkMRMLDisplayNode* displayNode = d->displayNode(node);
     if (displayNode)
       {
       QString displayedOpacity

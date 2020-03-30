@@ -13,47 +13,111 @@ Version:   $Revision: 1.2 $
 =========================================================================auto=*/
 
 
-#include "vtkObjectFactory.h"
 #include "vtkMRMLTransformStorageNode.h"
 #include "vtkMRMLScene.h"
-#include "vtkMRMLLinearTransformNode.h"
-#include "vtkMRMLGridTransformNode.h"
-#include "vtkMRMLBSplineTransformNode.h"
+#include "vtkOrientedBSplineTransform.h"
+#include "vtkOrientedGridTransform.h"
 
-#include "vtkGeneralTransform.h"
-#include "vtkGridTransform.h"
-#include "vtkImageData.h"
-#include "vtkSmartPointer.h"
-#include "vtkStringArray.h"
+// VTK includes
+#include <vtkCollection.h>
+#include <vtkGeneralTransform.h>
+#include <vtkNew.h>
+#include <vtkObjectFactory.h>
+#include <vtkSmartPointer.h>
+#include <vtkStringArray.h>
+#include <vtkVersion.h>
+#include "vtksys/SystemTools.hxx"
 
-#include "vtkITKBSplineTransform.h"
-
-
-#include "itkTransformFileWriter.h"
-#include "itkTransformFileReader.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkTranslationTransform.h"
-#include "itkScaleTransform.h"
-
-
+#include "vtkITKTransformConverter.h"
 
 //----------------------------------------------------------------------------
 vtkMRMLNodeNewMacro(vtkMRMLTransformStorageNode);
 
+bool vtkMRMLTransformStorageNode::RegisterInverseTransformTypesCompleted = false;
+
 //----------------------------------------------------------------------------
 vtkMRMLTransformStorageNode::vtkMRMLTransformStorageNode()
 {
+  this->PreferITKv3CompatibleTransforms = 0;
+  this->DefaultWriteFileExtension = "h5";
+
+  // Ensure custom ITK inverse transform classes are registered.
+  // Register them only once to improve performance when many transform nodes
+  // are instantiated.
+  if (!vtkMRMLTransformStorageNode::RegisterInverseTransformTypesCompleted)
+    {
+    vtkITKTransformConverter::RegisterInverseTransformTypes();
+    vtkMRMLTransformStorageNode::RegisterInverseTransformTypesCompleted = true;
+    }
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLTransformStorageNode::~vtkMRMLTransformStorageNode()
+= default;
+
+//----------------------------------------------------------------------------
+void vtkMRMLTransformStorageNode::WriteXML(ostream& of, int nIndent)
 {
+  Superclass::WriteXML(of, nIndent);
+
+  of << " preferITKv3CompatibleTransforms=\"" << (this->PreferITKv3CompatibleTransforms ? "true" : "false") << "\"";
 }
+
+//----------------------------------------------------------------------------
+void vtkMRMLTransformStorageNode::ReadXMLAttributes(const char** atts)
+{
+  int disabledModify = this->StartModify();
+
+  Superclass::ReadXMLAttributes(atts);
+
+  const char* attName;
+  const char* attValue;
+  while (*atts != nullptr)
+    {
+    attName = *(atts++);
+    attValue = *(atts++);
+    if (!strcmp(attName, "preferITKv3CompatibleTransforms"))
+      {
+      if (!strcmp(attValue,"true"))
+        {
+        this->PreferITKv3CompatibleTransforms = 1;
+        }
+      else
+        {
+        this->PreferITKv3CompatibleTransforms = 0;
+        }
+      }
+    }
+
+  this->EndModify(disabledModify);
+}
+
+//----------------------------------------------------------------------------
+// Copy the node\"s attributes to this object.
+// Does NOT copy: ID, FilePrefix, Name, SliceID
+void vtkMRMLTransformStorageNode::Copy(vtkMRMLNode *anode)
+{
+  if (!anode)
+    {
+    return;
+    }
+  int disabledModify = this->StartModify();
+
+  Superclass::Copy(anode);
+  vtkMRMLTransformStorageNode *node = vtkMRMLTransformStorageNode::SafeDownCast(anode);
+
+  this->SetPreferITKv3CompatibleTransforms(node->GetPreferITKv3CompatibleTransforms());
+
+  this->EndModify(disabledModify);
+
+}
+
 //----------------------------------------------------------------------------
 void vtkMRMLTransformStorageNode::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
+  os << indent << "PreferITKv3CompatibleTransforms: " <<
+    (this->PreferITKv3CompatibleTransforms ? "true" : "false") << "\n";
 }
 
 //----------------------------------------------------------------------------
@@ -63,720 +127,568 @@ bool vtkMRMLTransformStorageNode::CanReadInReferenceNode(vtkMRMLNode *refNode)
 }
 
 //----------------------------------------------------------------------------
+int vtkMRMLTransformStorageNode::ReadFromITKv3BSplineTransformFile(vtkMRMLNode *refNode)
+{
+  typedef itk::TransformFileReaderTemplate<double> TransformReaderType;
+  typedef TransformReaderType::TransformListType TransformListType;
+  typedef TransformReaderType::TransformType TransformType;
+
+  vtkMRMLTransformNode *transformNode = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (transformNode==nullptr)
+    {
+    vtkErrorMacro("vtkMRMLTransformStorageNode::ReadFromITKv3BSplineTransformFile failed: expected a transform node as input");
+    return 0;
+    }
+
+  // Note: this method is hard coded to only be used with legacy ITKv3
+  // BSpline files.  It creates a vtkOrientedBSpline with unfortunate
+  // mathematical properties as described in the vtkOrientedBSpline
+  // class description.
+  TransformReaderType::Pointer reader = itk::TransformFileReader::New();
+  std::string fullName =  this->GetFullNameFromFileName();
+  reader->SetFileName( fullName );
+  try
+    {
+    reader->Update();
+    }
+  catch (itk::ExceptionObject &exc)
+    {
+    vtkErrorMacro("ITK exception caught reading transform file: "<< fullName.c_str() << "\n" << exc);
+    return 0;
+    }
+  catch (...)
+    {
+    vtkErrorMacro("Unknown exception caught while reading transform file: "<< fullName.c_str());
+    return 0;
+    }
+
+  // For now, grab the first two transforms from the file.
+  TransformListType *transforms = reader->GetTransformList();
+  if (transforms->size() == 0)
+    {
+    vtkErrorMacro("Could not find a transform in file: " << fullName.c_str());
+    return 0;
+    }
+  if (transforms->size() > 2)
+    {
+    vtkWarningMacro(<< "More than two transform in the file: "<< fullName.c_str()<< ". Using only the first two transforms.");
+    }
+  TransformListType::iterator it = (*transforms).begin();
+  TransformType::Pointer transform = (*it);
+  if (!transform)
+    {
+    vtkErrorMacro(<< "Invalid transform in the file: "<< fullName.c_str()<< ", (" << transforms->size() << ")");
+    return 0;
+    }
+  ++it;
+  TransformType::Pointer transform2=nullptr;
+  if( it != (*transforms).end() )
+    {
+    transform2 = (*it);
+    if (!transform2)
+      {
+      vtkErrorMacro(<< "Invalid transform (2) in the file: "<< fullName.c_str()<< ", (" << transforms->size() << ")");
+      return 0;
+      }
+    }
+
+  vtkNew<vtkOrientedBSplineTransform> bsplineVtk;
+  if (!vtkITKTransformConverter::SetVTKBSplineFromITKv3Generic<double>(this, bsplineVtk.GetPointer(), transform, transform2))
+    {
+    // Log only at debug level because trial-and-error method is used for finding out what node can be retrieved
+    // from a transform file
+    vtkDebugMacro("Failed to retrieve BSpline transform from file: "<< fullName.c_str());
+    return 0;
+    }
+
+  // Backward compatibility
+  if (transformNode->GetReadAsTransformToParent())
+    {
+    // For backward compatibility only (now all the transforms are saved as TransformFromParent)
+    // Convert the sense of the transform (from an ITK resampling
+    // transform to a Slicer modeling transform)
+    bsplineVtk->Inverse();
+    transformNode->SetReadAsTransformToParent(0);
+    }
+
+  SetAndObserveTransformFromParentAutoInvert(transformNode, bsplineVtk.GetPointer());
+  return 1;
+}
+
+//----------------------------------------------------------------------------
+int vtkMRMLTransformStorageNode::ReadFromImageFile(vtkMRMLNode *refNode)
+{
+  vtkMRMLTransformNode *tn = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (tn==nullptr)
+    {
+    vtkErrorMacro("vtkMRMLTransformStorageNode::ReadGridTransform failed: expected a transform node as input");
+    return 0;
+    }
+
+  GridImageDoubleType::Pointer gridImage_Lps = nullptr;
+
+  typedef itk::ImageFileReader< GridImageDoubleType >  ReaderType;
+  std::string fullName =  this->GetFullNameFromFileName();
+  ReaderType::Pointer reader = ReaderType::New();
+  reader->SetFileName( fullName );
+  try
+    {
+    reader->Update();
+    gridImage_Lps = reader->GetOutput();
+    }
+  catch (itk::ExceptionObject &
+#ifndef NDEBUG
+         exc
+#endif
+        )
+    {
+    // File specified may not contain a grid image. Can we safely
+    // error out quietely?
+    vtkDebugMacro("ITK exception caught reading grid transform image file: " << fullName.c_str() << "\n" << exc);
+    return 0;
+    }
+  catch (...)
+    {
+    vtkErrorMacro("Unknown exception caught while reading grid transform image file: " << fullName.c_str());
+    return 0;
+    }
+
+  if (!gridImage_Lps)
+    {
+      vtkErrorMacro("Failed to read image as a grid transform from file: " << fullName.c_str());
+      return 0;
+    }
+
+  vtkNew<vtkOrientedGridTransform> gridTransform_Ras;
+  vtkITKTransformConverter::SetVTKOrientedGridTransformFromITKImage<double>(
+        this, gridTransform_Ras.GetPointer(), gridImage_Lps);
+
+  // Backward compatibility
+  if (tn->GetReadAsTransformToParent())
+    {
+    // For backward compatibility only (now all the transforms are saved as TransformFromParent)
+    // Convert the sense of the transform (from an ITK resampling
+    // transform to a Slicer modeling transform)
+    gridTransform_Ras->Inverse();
+    tn->SetReadAsTransformToParent(0);
+    }
+
+  SetAndObserveTransformFromParentAutoInvert(tn, gridTransform_Ras.GetPointer());
+  return 1;
+}
+
+//----------------------------------------------------------------------------
+template<typename T>
+vtkAbstractTransform* ReadFromTransformFile(vtkObject* loggerObject, const std::string& fullName)
+{
+  typedef itk::TransformFileReaderTemplate<T> TransformReaderType;
+  typedef typename TransformReaderType::TransformListType TransformListType;
+  typedef typename TransformReaderType::TransformType TransformType;
+
+  typename TransformReaderType::Pointer reader = TransformReaderType::New();
+  reader->SetFileName( fullName );
+  try
+    {
+    reader->Update();
+    }
+  catch (itk::ExceptionObject &exc)
+    {
+    vtkErrorWithObjectMacro(loggerObject, "ITK exception caught reading transform file: "<< fullName.c_str() << "\n" << exc);
+    return nullptr;
+    }
+  catch (...)
+    {
+    vtkErrorWithObjectMacro(loggerObject, "Unknown exception caught while reading transform file: "<< fullName.c_str());
+    return nullptr;
+    }
+
+  TransformListType *transforms = reader->GetTransformList();
+  if (transforms==nullptr || transforms->empty())
+    {
+    vtkErrorWithObjectMacro(loggerObject, "Transforms not found in transform file: "<< fullName.c_str());
+    return nullptr;
+    }
+  if (transforms->size()>1)
+    {
+    // When a list of transforms is stored in a file then there is no rule how to interpret them.
+    // It is not necessarily a compositing, for example: in ITKv3 the list was used to store additive
+    // bulk transform for BSpline deformable transform. Therefore, if the file contains a transform list
+    // then we do not interpret it as a composite/ transform.
+    vtkErrorWithObjectMacro(loggerObject, "Multiple transforms are defined in the transform file but only one is allowed (composite transforms has to be stored as a single CompositeTransform). In file: "<< fullName.c_str());
+    return nullptr;
+    }
+  TransformType *firstTransform = transforms->front();
+  if (firstTransform==nullptr)
+    {
+    vtkErrorWithObjectMacro(loggerObject, "Transforms not found in transform file: "<< fullName.c_str());
+    return nullptr;
+    }
+
+  vtkSmartPointer<vtkAbstractTransform> transformVtk;
+  std::string firstTransformType = firstTransform->GetTransformTypeAsString();
+  if( firstTransformType.find("CompositeTransform") == std::string::npos )
+    {
+    // just a single transform
+    transformVtk = vtkSmartPointer<vtkAbstractTransform>::Take(
+          vtkITKTransformConverter::CreateVTKTransformFromITK<T>(loggerObject, firstTransform));
+    }
+  else
+    {
+    typedef itk::CompositeTransformIOHelperTemplate<T> CompositeTransformIOHelper;
+
+    // The composite transform is itself a list of transforms.  There is a
+    // helper class in ITK to convert the internal transform list into a
+    // list that is possible to iterate over.  So we get this transformList.
+    CompositeTransformIOHelper compositeTransformIOHelper;
+
+    // if the first transform in the list is a
+    // composite transform, use its internal list
+    // instead of the IO
+    typedef typename CompositeTransformIOHelper::ConstTransformListType ConstTransformListType;
+    ConstTransformListType transformList =
+      compositeTransformIOHelper.GetTransformList(firstTransform);
+
+    if (transformList.empty())
+      {
+      // Log only at debug level because trial-and-error method is used for finding out
+      // what node can be retrieved from a transform file
+      vtkDebugWithObjectMacro(loggerObject, "Failed to retrieve any transform transform from file: "<< fullName.c_str());
+      return nullptr;
+      }
+
+    typename ConstTransformListType::const_iterator end = transformList.end();
+    if (transformList.size()==1)
+      {
+      // there is only one single transform, so we create a specific VTK transform type instead of a general transform
+      typename TransformType::Pointer transformComponentItk = const_cast< TransformType* >(transformList.front().GetPointer());
+      transformVtk = vtkSmartPointer<vtkAbstractTransform>::Take(
+            vtkITKTransformConverter::CreateVTKTransformFromITK<T>(loggerObject, transformComponentItk));
+      }
+    else
+      {
+      // we have multiple transforms, so we create a general transform that can hold a list of transforms
+      vtkNew<vtkGeneralTransform> generalTransform;
+      //generalTransform->PostMultiply();
+      for( typename ConstTransformListType::const_iterator it = transformList.begin();
+        it != end; ++it )
+        {
+        typename TransformType::Pointer transformComponentItk = const_cast< TransformType* >((*it).GetPointer());
+        vtkAbstractTransform* transformComponent = vtkITKTransformConverter::CreateVTKTransformFromITK<T>(loggerObject, transformComponentItk);
+        if (transformComponent!=nullptr)
+          {
+          generalTransform->Concatenate(transformComponent);
+          transformComponent->Delete();
+          }
+        }
+      transformVtk = generalTransform.GetPointer();
+      }
+    }
+
+  if (transformVtk)
+    {
+    transformVtk->Register(nullptr);
+    }
+  return transformVtk;
+}
+
+//----------------------------------------------------------------------------
+int vtkMRMLTransformStorageNode::ReadFromTransformFile(vtkMRMLNode *refNode)
+{
+  vtkMRMLTransformNode *transformNode = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (transformNode == nullptr)
+    {
+    vtkErrorMacro("Unexpected node type, cannot read transform from file");
+    return 0;
+    }
+
+  std::string fullName = this->GetFullNameFromFileName();
+
+  vtkSmartPointer<vtkAbstractTransform> transformVtk;
+
+  transformVtk = vtkSmartPointer<vtkAbstractTransform>::Take(
+        ::ReadFromTransformFile<double>(this, fullName));
+
+  if (transformVtk.GetPointer()==nullptr)
+    {
+    transformVtk = vtkSmartPointer<vtkAbstractTransform>::Take(
+          ::ReadFromTransformFile<float>(this, fullName));
+    }
+
+  if (transformVtk.GetPointer()==nullptr)
+      {
+      vtkErrorMacro("Failed to read transform from file: "<< fullName.c_str());
+      return 0;
+      }
+
+  // Backward compatibility
+  if (transformNode->GetReadAsTransformToParent())
+    {
+    // For backward compatibility only (now all the transforms are saved as TransformFromParent)
+    // Convert the sense of the transform (from an ITK resampling
+    // transform to a Slicer modeling transform)
+    transformVtk->Inverse();
+    transformNode->SetReadAsTransformToParent(0);
+    }
+
+  SetAndObserveTransformFromParentAutoInvert(transformNode, transformVtk.GetPointer());
+
+  return 1;
+}
+
+//----------------------------------------------------------------------------
 int vtkMRMLTransformStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 {
-  vtkMRMLTransformNode *transformNode = dynamic_cast <vtkMRMLTransformNode *> (refNode);
-
-  std::string fullName = this->GetFullNameFromFileName(); 
-  if (fullName == std::string("")) 
+  std::string fullName =  this->GetFullNameFromFileName();
+  if (fullName.empty())
     {
     vtkErrorMacro("ReadData: File name not specified");
     return 0;
     }
 
-  int result = 1;
-
-  vtkSmartPointer<vtkMatrix4x4> lps2ras = vtkSmartPointer<vtkMatrix4x4>::New();
-  lps2ras->Identity();
-  (*lps2ras)[0][0] = (*lps2ras)[1][1] = -1.0;
-  
-  vtkSmartPointer<vtkMatrix4x4> ras2lps = vtkSmartPointer<vtkMatrix4x4>::New();
-  ras2lps->Identity();
-  (*ras2lps)[0][0] = (*ras2lps)[1][1] = -1.0;
-
-  typedef itk::TransformFileReader TransformReader;
-  typedef TransformReader::TransformListType TransformListType;
-  typedef TransformReader::TransformType TransformType;
-  TransformType::Pointer transform = 0;
-  TransformType::Pointer transform2 = 0;
-
-  typedef itk::VectorImage< double, 3 >   GridImageType;
-  GridImageType::Pointer gridImage = 0;
-
-  // A grid transform is not a itk::Transform.  It is instead
-  // transferred as an itk::VectorImage.  As such, we need special
-  // logic to parse it.  If we have something other than a grid
-  // transform, we read it through the itk::TransformFileReader (in
-  // the else part of this block).
-  //
-  if (refNode->IsA("vtkMRMLGridTransformNode"))
+  // Skip reading if write state indicates that no file has been saved due to empty dataset
+  if (this->GetWriteState() == SkippedNoData)
     {
-    typedef itk::ImageFileReader< GridImageType >  ReaderType;
-
-    ReaderType::Pointer reader = ReaderType::New();
-
-    reader->SetFileName( fullName );
-
-    try
-      {
-      reader->Update();
-      gridImage = reader->GetOutput();
-
-      if( gridImage->GetVectorLength() != 3 )
-        {
-        vtkErrorMacro( "The deformable vector field must contain 3-D vectors;"
-                       " instead, it contains " << gridImage->GetVectorLength()
-                       << "-D vectors\n" );
-        gridImage = 0;
-        result = 0;
-        }
-      }
-    catch (itk::ExceptionObject &
-#ifndef NDEBUG
-           exc
-#endif
-          )
-      {
-      // File specified may not contain a grid image. Can we safely
-      // error out quitely?
-      vtkDebugMacro("ITK exception caught reading grid transform image file: "
-                    << fullName.c_str() << "\n" << exc);
-
-      result = 0;
-      }
-    catch (...)
-      {
-      vtkErrorMacro("Unknown exception caught while reading grid transform image file: "
-                    << fullName.c_str());
-      result = 0;
-      }
-    }
-  else
-    {
-    TransformReader::Pointer reader = itk::TransformFileReader::New();
-    reader->SetFileName( fullName );
-    try
-      {
-      reader->Update();
-      }
-    catch (itk::ExceptionObject &exc)
-      {
-      vtkErrorMacro("ITK exception caught reading transform file: "
-                    << fullName.c_str() << "\n" << exc);
-
-      result = 0;
-      }
-    catch (...)
-      {
-      vtkErrorMacro("Unknown exception caught while writing transform file: "
-                    << fullName.c_str());
-      result = 0;
-      }
-
-    // For now, grab the first transform from the file.
-    TransformListType *transforms = reader->GetTransformList();
-    if (transforms->size() != 0)
-      {
-      // If the transform is a BSplineTransform, it can have a second
-      // transform for the corresponding bulk transform
-      if (! (transforms->size() == 1 || 
-             (transforms->size() <= 2 && 
-              refNode->IsA("vtkMRMLBSplineTransformNode"))))
-        {
-        vtkWarningMacro(<< "More than one transform in the file: "
-                        << fullName.c_str()
-                        << ". Using only the first transform.");
-        }
-    
-      TransformListType::iterator it = (*transforms).begin();
-      transform = (*it);
-      ++it;
-      if( it != (*transforms).end() )
-        {
-        transform2 = (*it);
-        }
-      }
-
-    if (!transform)
-      {
-      vtkErrorMacro(<< "No transforms in the file: "
-                    << fullName.c_str()
-                    << ", (" << transforms->size() << ")");
-      result = 0;
-      }
-    }  
-
-  // Convert the ITK transform to the appropriate type of VTK
-  // transform
-  if (transform)
-    {
-    if (refNode->IsA("vtkMRMLLinearTransformNode"))
-      {
-      vtkMRMLLinearTransformNode *ltn
-        = vtkMRMLLinearTransformNode::SafeDownCast(refNode);
-      
-      static const int D = 3;
-      int i, j;
-
-      
-      typedef itk::MatrixOffsetTransformBase<double,D,D> DoubleLinearTransformType;
-      typedef itk::MatrixOffsetTransformBase<float,D,D> FloatLinearTransformType;
-      typedef itk::IdentityTransform<double, D> DoubleIdentityTransformType;
-      typedef itk::IdentityTransform<float, D> FloatIdentityTransformType;
-      typedef itk::ScaleTransform<double, D> DoubleScaleTransformType;
-      typedef itk::ScaleTransform<float, D> FloatScaleTransformType;
-      typedef itk::TranslationTransform<double, D> DoubleTranslateTransformType;
-      typedef itk::TranslationTransform<float, D> FloatTranslateTransformType;
-
-      vtkSmartPointer<vtkMatrix4x4> vtkmat = vtkSmartPointer<vtkMatrix4x4>::New();
-      vtkmat->Identity();
-
-      // Linear transform of doubles, dimension 3
-      DoubleLinearTransformType::Pointer dlt
-        = dynamic_cast<DoubleLinearTransformType*>( transform.GetPointer() );
-      if (dlt)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          for (j=0; j < D; j++)
-            {
-            (*vtkmat)[i][j] = dlt->GetMatrix()[i][j];
-            }
-          (*vtkmat)[i][D] = dlt->GetOffset()[i];
-          }
-        }
-
-      // Linear transform of floats, dimension 3
-      FloatLinearTransformType::Pointer flt
-        = dynamic_cast<FloatLinearTransformType*>( transform.GetPointer() );
-      if (flt)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          for (j=0; j < D; j++)
-            {
-            (*vtkmat)[i][j] = flt->GetMatrix()[i][j];
-            }
-          (*vtkmat)[i][D] = flt->GetOffset()[i];
-          }
-        }
-
-      // Identity transform of doubles, dimension 3
-      DoubleIdentityTransformType::Pointer dit
-        = dynamic_cast<DoubleIdentityTransformType*>( transform.GetPointer() );
-      if (dit)
-        {
-        // nothing to do, matrix is already the identity
-        result = 1;
-        }
-
-      // Identity transform of floats, dimension 3
-      FloatIdentityTransformType::Pointer fit
-        = dynamic_cast<FloatIdentityTransformType*>( transform.GetPointer() );
-      if (fit)
-        {
-        // nothing to do, matrix is already the identity
-        result = 1;
-        }
-      
-      // Scale transform of doubles, dimension 3
-      DoubleScaleTransformType::Pointer dst
-        = dynamic_cast<DoubleScaleTransformType*>( transform.GetPointer() );
-      if (dst)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          (*vtkmat)[i][i] = dst->GetScale()[i];
-          }
-        }
-
-      // Scale transform of floats, dimension 3
-      FloatScaleTransformType::Pointer fst
-        = dynamic_cast<FloatScaleTransformType*>( transform.GetPointer() );
-      if (fst)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          (*vtkmat)[i][i] = fst->GetScale()[i];
-          }
-        }
-
-      // Translate transform of doubles, dimension 3
-      DoubleTranslateTransformType::Pointer dtt
-        = dynamic_cast<DoubleTranslateTransformType*>( transform.GetPointer());
-      if (dtt)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          (*vtkmat)[i][D] = dtt->GetOffset()[i];
-          }
-        }
-
-      // Translate transform of floats, dimension 3
-      FloatTranslateTransformType::Pointer ftt
-        = dynamic_cast<FloatTranslateTransformType*>( transform.GetPointer() );
-      if (ftt)
-        {
-        result = 1;
-        for (i=0; i < D; i++)
-          {
-          (*vtkmat)[i][i] = ftt->GetOffset()[i];
-          }
-        }
-
-      // Convert from LPS (ITK) to RAS (Slicer)
-      //
-      // Tras = lps2ras * Tlps * ras2lps
-      //
-      vtkMatrix4x4::Multiply4x4(lps2ras, vtkmat, vtkmat);
-      vtkMatrix4x4::Multiply4x4(vtkmat, ras2lps, vtkmat);
-      
-      // Convert the sense of the transform (from an ITK resampling
-      // transform to a Slicer modeling transform)
-      //
-      vtkmat->Invert();
-      
-      // Set the matrix on the node
-      ltn->SetAndObserveMatrixTransformToParent( vtkmat );
-      }
-    else if (refNode->IsA("vtkMRMLGridTransformNode"))
-      {
-      // This use case is handled separately.  Grid transforms are not
-      // currently supported as ITK transforms but rather as vector
-      // images. This is subject to change whereby an ITK transform
-      // for displacement fields will provide a standard transform API
-      // but will reference a vector image to store the displacements.
-      result = 0;
-      }
-    else if (refNode->IsA("vtkMRMLBSplineTransformNode"))
-      {
-
-      vtkMRMLBSplineTransformNode *btn
-        = vtkMRMLBSplineTransformNode::SafeDownCast(refNode);
-      
-
-      static const int D = 3;
-      typedef itk::BSplineDeformableTransform<double,D,D> DoubleBSplineTransformType;
-      typedef itk::BSplineDeformableTransform<float,D,D> FloatBSplineTransformType;
-
-      vtkSmartPointer<vtkITKBSplineTransform> vtkBSpline = 
-        vtkSmartPointer<vtkITKBSplineTransform>::New();
-      
-      // B-spline transform of doubles, dimension 3
-      {
-      DoubleBSplineTransformType::Pointer bst
-        = dynamic_cast<DoubleBSplineTransformType*>( transform.GetPointer() );
-      if (bst)
-        {
-        typedef DoubleBSplineTransformType SplineType;
-          
-        vtkBSpline->SetSplineOrder( 3 );
-        SplineType::ParametersType const& fp = bst->GetFixedParameters();
-        vtkBSpline->SetFixedParameters( fp.data_block(), fp.GetSize() );
-
-        if( bst->GetNumberOfParameters() != vtkBSpline->GetNumberOfParameters() )
-          {
-          vtkErrorMacro("Mismatch in number of BSpline parameters");
-          return 0;
-          }
-
-        SplineType::ParametersType const& param = bst->GetParameters();
-        vtkBSpline->SetParameters( param.data_block() );
-
-        if( transform2 ) 
-          {
-          typedef vtkITKBSplineTransform::BulkTransformType BulkTransformType;          
-          BulkTransformType* bulk =
-            dynamic_cast<BulkTransformType*> (transform2.GetPointer());
-          if (bulk)
-            {
-            double linear[D][D];
-            double offset[D];
-            for (int i=0; i < D; i++)
-              {
-              for (int j=0; j < D; j++)
-                {
-                linear[i][j] = bulk->GetMatrix()[i][j];
-                }
-              offset[i] = bulk->GetOffset()[i];
-              }
-            vtkBSpline->SetBulkTransform( linear, offset );            
-            }
-          else
-            {
-            vtkWarningMacro( "The type of the 2nd transform in BSplineTransform is not correct." );
-            }
-          }
-        // Convert from LPS (ITK) to RAS (Slicer)
-        vtkBSpline->SetSwitchCoordinateSystem( true );
-        
-        // Set the transform on the node
-        btn->SetAndObserveWarpTransformToParent( vtkBSpline );
-
-        result = 1;
-        }
-      else
-        {
-        result = 0;
-        }
-      }
-
-      // B-spline transform of floats, dimension 3
-      FloatBSplineTransformType::Pointer fbt
-        = dynamic_cast<FloatBSplineTransformType*>( transform.GetPointer() );
-      if (!result && fbt)
-        {
-        vtkErrorMacro( "BSpline transform storage not yet implemented for float" );
-        result = 0;
-        }
-      
-      }
+    vtkDebugMacro("ReadDataInternal: empty transform file was not saved, ignore loading");
+    return 1;
     }
 
-
-  // Convert the grid image to the appropriate type of VTK
-  // transform
-  if (gridImage)
+  // Check that the file exists
+  if (vtksys::SystemTools::FileExists(fullName.c_str()) == false)
     {
-    if (refNode->IsA("vtkMRMLGridTransformNode"))
-      {
-
-      vtkMRMLGridTransformNode *gtn
-        = vtkMRMLGridTransformNode::SafeDownCast(refNode);
-      
-      vtkGridTransform* vtkgrid = vtkGridTransform::New();
-      vtkgrid->SetInterpolationModeToCubic();
-      vtkImageData *vtkgridimage = vtkImageData::New();
-
-      //GridImageType::IndexType index
-      //  = gridImage->GetBufferedRegion().GetIndex();
-      GridImageType::SizeType size
-        = gridImage->GetBufferedRegion().GetSize();
-      
-      unsigned const int Ni = size[0];
-      unsigned const int Nj = size[1];
-      unsigned const int Nk = size[2];
-      unsigned const int Nc = gridImage->GetVectorLength();
-
-      vtkgridimage->Initialize();
-
-      // Convert from LPS (ITK) to RAS (Slicer)
-      //
-      // The conversion logic is as follows.
-      //
-      // The LPS to RAS (and back) conversion is the linear transform
-      // given by the matrix
-      //   C = [ -1 0 0; 0 -1 0; 0 0 1 ]
-      //
-      // Let o be the origin of the ITK grid transform, and s be the
-      // spacing of the ITK grid transform.  Then a pixel coordinate p
-      // on the ITK grid represents the physical point
-      //   x =  Diag(s) * p + o,
-      // where Diag(v) is the diagonal matrix with the vector v on the
-      // diagonal.  Since x is an ITK physical point, it is in the LPS
-      // coordinate system.  The corresponding point, y, in the RAS
-      // system is given by
-      //    y = C * x
-      // This gives
-      //    y = C * Diag(s) * p + C * o
-      //      = Diag(s) * C * p + C * o, since C is also a diagonal matrix
-      //      = Diag(s) * ( C * p + p0 ) + ( C * o - Diag(s) * p0 )
-      //        ( this converts RAS's pixel coordinate range from
-      //          [ -Ni + 1, -Nj + 1, 0] ~ [ 0, 0, Nk - 1 ] to
-      //          [ 0, 0, 0 ] ~ [ Ni - 1, Nj - 1, Nk - 1 ] )
-      //        ( p0 = [ Ni - 1, Nj - 1, 0 ]' )
-      //      = Diag(s2) * p2 + o2
-      // Therefore,
-      //    new spacing: 
-      //        s2 = s
-      //    new pixel coordinate: 
-      //        p2 = C * p + p0 = [ -p(1) + Ni - 1, -p(2) + Nj - 1, p(3) ]'
-      //    new origin: 
-      //        o2 = [ -o(1) - s(1)*(Ni-1), -o(2) - s(2)*(Nj-1), o(3) ]'
-      //
-      // Also, the value at each grid point is a displacement in
-      // the LPS coordinate system, and needs to be converted too.
-      // E.g. a displacement d takes a physical point x1 to a physical
-      // point x2, so that
-      //      x2 = x1 + d
-      // We require the corresponding displacement d2 that takes
-      // y1 = C*x1 to y2 = C*x2, giving us
-      //      d2 = y2-y1 = C*(x2-x1) = C*d
-      //
-      // Thus
-      //     d2 = [ -d(1), -d(2), d(3) ]
-
-      GridImageType::SpacingType spacing = gridImage->GetSpacing();
-      vtkgridimage->SetOrigin( -gridImage->GetOrigin()[0] - spacing[0] * (Ni-1),
-                               -gridImage->GetOrigin()[1] - spacing[1] * (Nj-1),
-                                gridImage->GetOrigin()[2] );
-      vtkgridimage->SetSpacing( spacing.GetDataPointer() );
-      
-      if (! (gridImage->GetDirection()(0,0) == 1 &&
-             gridImage->GetDirection()(0,1) == 0 &&
-             gridImage->GetDirection()(0,2) == 0 &&
-             gridImage->GetDirection()(1,0) == 0 &&
-             gridImage->GetDirection()(1,1) == 1 &&
-             gridImage->GetDirection()(1,2) == 0 &&
-             gridImage->GetDirection()(2,0) == 0 &&
-             gridImage->GetDirection()(2,1) == 0 &&
-             gridImage->GetDirection()(2,2) == 1) )
-        {
-        vtkErrorMacro( "Grid transform with a non-identity orientation matrix is not yet implemented" );
-        result = 0;
-        }
-
-      vtkgridimage->SetDimensions( Ni, Nj, Nk );
-      vtkgridimage->SetNumberOfScalarComponents( Nc );
-      vtkgridimage->SetScalarTypeToDouble();
-      vtkgridimage->AllocateScalars();
-
-      // convert from LPS to RAS
-      double* dataPtr = reinterpret_cast<double*>(vtkgridimage->GetScalarPointer());
-      GridImageType::IndexType ijk;
-      for( int k = 0; k < (int)Nk; ++k )
-        {
-        ijk[2] = k;
-        for( int j = 0; j < (int)Nj; ++j )
-          {
-          ijk[1] = Nj -j - 1;
-          for( int i = 0; i < (int)Ni; ++i, dataPtr += 3 )
-            {
-            ijk[0] = Ni -i - 1;
-            GridImageType::PixelType pixel = gridImage->GetPixel( ijk );
-            // negate the first two components
-            dataPtr[0] = -pixel[0];
-            dataPtr[1] = -pixel[1];
-            dataPtr[2] = pixel[2];
-            }
-          }
-        }
-
-      vtkgrid->SetDisplacementGrid( vtkgridimage );
-      vtkgridimage->Delete();
-
-      // Set the matrix on the node
-      gtn->SetAndObserveWarpTransformToParent( vtkgrid );
-      vtkgrid->Delete();
-      }
+    vtkErrorMacro("ReadDataInternal: transform file '" << fullName.c_str() << "' not found.");
+    return 0;
     }
 
+  // We support reading of grid transforms directly from a vector image
+  if (IsImageFile(fullName))
+  {
+    return ReadFromImageFile(refNode);
+  }
 
-  if (transformNode->GetTransformToParent() != NULL) 
+  // For ITKv3 backward compatibility
+  int success = this->ReadFromITKv3BSplineTransformFile(refNode);
+  if (success)
     {
-    //transformNode->GetTransformToParent()->Modified();
+    return success;
     }
-  return result;
+
+  return ReadFromTransformFile(refNode);
+}
+
+//----------------------------------------------------------------------------
+int vtkMRMLTransformStorageNode::WriteToTransformFile(vtkMRMLNode *refNode)
+{
+  vtkMRMLTransformNode *transformNode = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (transformNode == nullptr)
+    {
+    vtkErrorMacro("Unexpected node type, cannot read transform from file");
+    return 0;
+    }
+
+  // Get VTK transform from the transform node
+  vtkAbstractTransform* transformVtk = transformNode->GetTransformFromParent();
+  if (transformVtk==nullptr)
+    {
+    this->SetWriteStateSkippedNoData();
+    return 1;
+    }
+
+  // Convert VTK transform to ITK transform
+  itk::Object::Pointer secondaryTransformItk; // only used for ITKv3 compatibility
+  // ITK transform is created without initialization, because initialization may take a long time for certain transform types
+  // which would slow down saving. Initialization is only needed for computing transformations, not necessary for file writing.
+  itk::Object::Pointer transformItk = vtkITKTransformConverter::CreateITKTransformFromVTK(
+    this, transformVtk, secondaryTransformItk, this->PreferITKv3CompatibleTransforms, false);
+  if (transformItk.IsNull())
+    {
+    vtkErrorMacro("WriteTransform failed: cannot to convert VTK transform to ITK transform");
+    return 0;
+    }
+
+  TransformWriterType::Pointer writer = TransformWriterType::New();
+  writer->SetInput( transformItk );
+
+  // In ITKv3 bulk transform may be added as a second transform in the transform list
+  if( secondaryTransformItk.IsNotNull() )
+    {
+    writer->AddTransform( secondaryTransformItk );
+    }
+
+  std::string fullName =  this->GetFullNameFromFileName();
+  writer->SetFileName( fullName );
+  try
+    {
+    writer->Update();
+    }
+  catch (itk::ExceptionObject &exc)
+    {
+    vtkErrorMacro("ITK exception caught writing transform file: "
+                  << fullName.c_str() << "\n" << exc);
+    return 0;
+    }
+  catch (...)
+    {
+    vtkErrorMacro("Unknown exception caught while writing transform file: "
+                  << fullName.c_str());
+    return 0;
+    }
+
+  return 1;
+}
+
+//----------------------------------------------------------------------------
+int vtkMRMLTransformStorageNode::WriteToImageFile(vtkMRMLNode *refNode)
+{
+  vtkMRMLTransformNode *transformNode = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (transformNode == nullptr)
+    {
+    vtkErrorMacro("Unexpected node type, cannot read transform from file");
+    return 0;
+    }
+
+  vtkOrientedGridTransform* gridTransform_Ras =  vtkOrientedGridTransform::SafeDownCast(transformNode->GetTransformFromParentAs("vtkOrientedGridTransform"));
+  if (gridTransform_Ras==nullptr)
+    {
+    vtkErrorMacro("Cannot retrieve grid transform from node");
+    return 0;
+    }
+
+  // Update is needed because it refreshes the inverse flag (the flag may be out-of-date if the transform depends on its inverse)
+  gridTransform_Ras->Update();
+  if (gridTransform_Ras->GetInverseFlag())
+    {
+    vtkErrorMacro("Cannot write inverse grid transform to image file. Either save the transform in a transform file (.h5) or invert the transform before saving it into an image file.");
+    return 0;
+    }
+
+  GridImageDoubleType::Pointer gridImage_Lps;
+  vtkITKTransformConverter::SetITKImageFromVTKOrientedGridTransform(this, gridImage_Lps, gridTransform_Ras);
+
+  itk::ImageFileWriter<GridImageDoubleType>::Pointer writer = itk::ImageFileWriter<GridImageDoubleType>::New();
+  writer->SetInput( gridImage_Lps );
+  std::string fullName =  this->GetFullNameFromFileName();
+  writer->SetFileName( fullName );
+  try
+    {
+    writer->Update();
+    }
+  catch (itk::ExceptionObject &exc)
+    {
+    vtkErrorMacro("Failed to save grid transform to file: " << fullName.c_str()
+      << ". Make sure a 'Displacement field' format is selected for saving."
+      << "ITK exception caught writing transform file: \n" << exc);
+    return 0;
+    }
+  catch (...)
+    {
+    vtkErrorMacro("Unknown exception caught while writing transform file: "
+                  << fullName.c_str());
+    return 0;
+    }
+
+  return 1;
 }
 
 //----------------------------------------------------------------------------
 int vtkMRMLTransformStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
 {
   std::string fullName =  this->GetFullNameFromFileName();
-  if (fullName == std::string("")) 
+  if (fullName.empty())
     {
-    vtkErrorMacro("vtkMRMLTransformNode: File name not specified");
+    vtkErrorMacro("vtkMRMLTransformNode write data failed: file name not specified");
     return 0;
     }
-
-  // Get an ITK version of the transform and then use the TransformIO
-  // fractory mechanism
-  int result = 1;
-  static const int VTKDimension = 3;
-  
-  vtkMRMLLinearTransformNode *ln
-    = vtkMRMLLinearTransformNode::SafeDownCast(refNode);
-  vtkMRMLBSplineTransformNode *bs
-    = vtkMRMLBSplineTransformNode::SafeDownCast(refNode);
-  vtkMRMLGridTransformNode *gd
-    = vtkMRMLGridTransformNode::SafeDownCast(refNode);
-
-  if (ln != 0)
+  vtkMRMLTransformNode* transformNode = vtkMRMLTransformNode::SafeDownCast(refNode);
+  if (transformNode == nullptr)
     {
-    // Linear transform
-    vtkSmartPointer<vtkMatrix4x4> lps2ras = vtkSmartPointer<vtkMatrix4x4>::New();
-    lps2ras->Identity();
-    (*lps2ras)[0][0] = (*lps2ras)[1][1] = -1.0;
-    
-    vtkSmartPointer<vtkMatrix4x4> ras2lps = vtkSmartPointer<vtkMatrix4x4>::New();
-    ras2lps->Identity();
-    (*ras2lps)[0][0] = (*ras2lps)[1][1] = -1.0;
-
-    typedef itk::AffineTransform<double, VTKDimension> AffineTransformType;
-    AffineTransformType::Pointer affine = AffineTransformType::New();
-
-    vtkMatrix4x4 *mat2parent = ln->GetMatrixTransformToParent();
-    
-    // Convert from RAS (Slicer) to LPS (ITK)
-    //
-    // Tlps = ras2lps * Tras * lps2ras
-    //
-    vtkSmartPointer<vtkMatrix4x4> vtkmat = vtkSmartPointer<vtkMatrix4x4>::New();
-    
-    vtkMatrix4x4::Multiply4x4(ras2lps, mat2parent, vtkmat);
-    vtkMatrix4x4::Multiply4x4(vtkmat, lps2ras, vtkmat);
-    
-    // Convert the sense of the transform (from a Slicer modeling
-    // transform to an ITK resampling transform)
-    //
-    vtkmat->Invert();
-      
-    typedef AffineTransformType::MatrixType MatrixType;
-    typedef AffineTransformType::OutputVectorType OffsetType;
-
-    MatrixType itkmat;
-    OffsetType itkoffset;
-    
-    for (int i=0; i < VTKDimension; i++)
-      {
-      for (int j=0; j < VTKDimension; j++)
-        {
-        itkmat[i][j] = (*vtkmat)[i][j];
-        }
-      itkoffset[i] = (*vtkmat)[i][VTKDimension];
-      }
-
-    affine->SetMatrix(itkmat);
-    affine->SetOffset(itkoffset);
-    
-    itk::TransformFileWriter::Pointer writer = itk::TransformFileWriter::New();
-    writer->SetInput( affine );
-    writer->SetFileName( fullName );
-    try
-      {
-      writer->Update();
-      }
-    catch (itk::ExceptionObject &exc)
-      {
-      vtkErrorMacro("ITK exception caught writing transform file: "
-                    << fullName.c_str() << "\n" << exc);
-      result = 0;
-      }
-    catch (...)
-      {
-      vtkErrorMacro("Unknown exception caught while writing transform file: "
-                    << fullName.c_str());
-      result = 0;
-      }
+    vtkErrorMacro("vtkMRMLTransformNode write data failed: invalid transform node");
+    return 0;
     }
-  else if (bs != 0)
+  if (IsImageFile(fullName))
     {
-    // BSpline transform
-
-    vtkITKBSplineTransform* vtkTrans = vtkITKBSplineTransform::SafeDownCast(bs->GetWarpTransformToParent());
-    
-    // get the itkBSplineDeformableTransform directly. No need to
-    // convert the coordinate from RAS to LPS.
-    typedef itk::Transform<double, VTKDimension, VTKDimension > ITKTransformType;
-    
-    ITKTransformType::Pointer itkTrans = vtkTrans->GetITKTransform();
-    vtkITKBSplineTransform::BulkTransformType const* bulk = vtkTrans->GetBulkTransform();
-    itk::TransformFileWriter::Pointer writer = itk::TransformFileWriter::New();
-    writer->SetInput( itkTrans );
-    if( bulk )
-      {
-      writer->AddTransform( bulk );
-      }
-    writer->SetFileName( fullName );
-    try
-      {
-      writer->Update();
-      }
-    catch (itk::ExceptionObject &exc)
-      {
-      vtkErrorMacro("ITK exception caught writing transform file: "
-                    << fullName.c_str() << "\n" << exc);
-      result = 0;
-      }
-    catch (...)
-      {
-      vtkErrorMacro("Unknown exception caught while writing transform file: "
-                    << fullName.c_str());
-      result = 0;
-      }
+    return WriteToImageFile(transformNode);
     }
-  else if( gd )
+  else
     {
-    // Grid Transform
-    vtkGridTransform* vtkTrans = vtkGridTransform::SafeDownCast(gd->GetWarpTransformToParent());
-    vtkImageData* vtkgridimage = vtkTrans->GetDisplacementGrid();
-
-    // initialize the vector image
-    typedef itk::VectorImage< double, VTKDimension > GridType;
-    GridType::Pointer gridImage = GridType::New();
-    gridImage->SetVectorLength( VTKDimension );
-    GridType::IndexType start;
-    start[0] = start[1] = start[2] = 0;
-    int* Nijk = vtkgridimage->GetDimensions();
-    GridType::SizeType size;
-    size[0] = Nijk[0]; size[1] = Nijk[1]; size[2] = Nijk[2];
-    GridType::RegionType region;
-    region.SetSize( size );
-    region.SetIndex( start );
-    gridImage->SetRegions( region );
-    gridImage->SetVectorLength( VTKDimension );
-
-
-    // convert the coordinate from RAS to LPS.
-    GridType::SpacingType spacing( vtkgridimage->GetSpacing() );
-    gridImage->SetSpacing( spacing );
-    double* origin = vtkgridimage->GetOrigin();
-    origin[0] = -origin[0] - spacing[0] * (Nijk[0]-1);
-    origin[1] = -origin[1] - spacing[1] * (Nijk[1]-1);
-    gridImage->SetOrigin( origin );
-    gridImage->Allocate();
-    
-    double* dataPtr = reinterpret_cast<double*>(vtkgridimage->GetScalarPointer());
-    GridType::IndexType ijk;
-    GridType::PixelType pixel(3);
-    for( int k = 0; k < Nijk[2]; ++k )
-      {
-      ijk[2] = k;
-      for( int j = 0; j < Nijk[1]; ++j )
-        {
-        ijk[1] = -j + Nijk[1] - 1;
-        for( int i = 0; i < Nijk[0]; ++i, dataPtr += 3 )
-          {
-          ijk[0] = -i + Nijk[0] - 1;
-          // negate the first two components
-          pixel[0] = -dataPtr[0];
-          pixel[1] = -dataPtr[1];
-          pixel[2] = dataPtr[2];
-          gridImage->SetPixel( ijk, pixel );
-          }
-        }
-      }
-    itk::ImageFileWriter<GridType>::Pointer writer = itk::ImageFileWriter<GridType>::New();
-    writer->SetInput( gridImage );
-    writer->SetFileName( fullName );
-    try
-      {
-      writer->Update();
-      }
-    catch (itk::ExceptionObject &exc)
-      {
-      vtkErrorMacro("ITK exception caught writing transform file: "
-                    << fullName.c_str() << "\n" << exc);
-      result = 0;
-      }
-    catch (...)
-      {
-      vtkErrorMacro("Unknown exception caught while writing transform file: "
-                    << fullName.c_str());
-      result = 0;
-      }
+    return WriteToTransformFile(transformNode);
     }
-
-
-  return result;
 }
 
 //----------------------------------------------------------------------------
 void vtkMRMLTransformStorageNode::InitializeSupportedWriteFileTypes()
 {
+  this->SupportedWriteFileTypes->InsertNextValue("Transform (.h5)");
   this->SupportedWriteFileTypes->InsertNextValue("Transform (.tfm)");
   this->SupportedWriteFileTypes->InsertNextValue("Transform (.mat)");
   this->SupportedWriteFileTypes->InsertNextValue("Text (.txt)");
   this->SupportedWriteFileTypes->InsertNextValue("Transform (.*)");
-  this->SupportedWriteFileTypes->InsertNextValue("Deformation field (.nrrd)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.nrrd)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.nhdr)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.mha)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.mhd)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.nii)");
+  this->SupportedWriteFileTypes->InsertNextValue("Displacement field (.nii.gz)");
 }
+
 //----------------------------------------------------------------------------
-const char* vtkMRMLTransformStorageNode::GetDefaultWriteFileExtension()
+bool vtkMRMLTransformStorageNode::IsImageFile(const std::string &filename)
 {
-  return "tfm";
+  // determine file type
+  std::string extension = this->GetSupportedFileExtension(filename.c_str());
+  if( extension.empty() )
+    {
+    vtkErrorMacro("ReadData: no file extension specified: " << filename.c_str());
+    return false;
+    }
+  if ( !extension.compare(".nrrd")
+      || !extension.compare(".nhdr")
+      || !extension.compare(".mha")
+      || !extension.compare(".mhd")
+      || !extension.compare(".nii")
+      || !extension.compare(".nii.gz"))
+    {
+    return true;
+    }
+
+  // All other file extensions are transforms
+  return false;
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLTransformStorageNode::SetAndObserveTransformFromParentAutoInvert(vtkMRMLTransformNode* transformNode, vtkAbstractTransform *transform)
+{
+  bool allInvertedTransforms = true;
+
+  // Flatten the transform list to make the interpretation simpler
+  vtkNew<vtkCollection> sourceTransformList;
+  vtkMRMLTransformNode::FlattenGeneralTransform(sourceTransformList.GetPointer(), transform);
+  // Check if they are all inverse, if they are, then it indicates that this transform is computed from its inverse
+  vtkCollectionSimpleIterator it;
+  vtkWarpTransform* concatenatedTransform = nullptr;
+  for (sourceTransformList->InitTraversal(it); (concatenatedTransform = vtkWarpTransform::SafeDownCast(sourceTransformList->GetNextItemAsObject(it))) ;)
+    {
+    if (concatenatedTransform)
+      {
+      // Update is needed because it refreshes the inverse flag (the flag may be out-of-date if the transform depends on its inverse)
+      concatenatedTransform->Update();
+      if (!concatenatedTransform->GetInverseFlag())
+        {
+        // found a non-inverse transform, so it's not allInvertedTransforms
+        allInvertedTransforms = false;
+        break;
+        }
+      }
+    }
+
+  if (allInvertedTransforms)
+    {
+    // we invert the transform to store the forward transform
+    transform->Inverse();
+    transformNode->SetAndObserveTransformToParent(transform);
+    }
+  else
+    {
+    // this is a forward (or mixed) transform already so store it as is
+    transformNode->SetAndObserveTransformFromParent(transform);
+    }
 }

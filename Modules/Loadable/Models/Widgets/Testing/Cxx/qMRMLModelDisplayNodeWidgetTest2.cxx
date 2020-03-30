@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // Models includes
 #include <ctkVTKDataSetArrayComboBox.h>
 
@@ -32,12 +35,15 @@
 // VTK includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLModelDisplayNodeWidgetTest2( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   if (argc < 2)
     {
@@ -49,9 +55,8 @@ int qMRMLModelDisplayNodeWidgetTest2( int argc, char * argv [] )
   scene->SetURL(argv[1]);
   scene->Connect();
 
-  scene->InitTraversal();
   vtkMRMLModelDisplayNode* modelDisplayNode = vtkMRMLModelDisplayNode::SafeDownCast(
-    scene->GetNextNodeByClass("vtkMRMLModelDisplayNode"));
+    scene->GetFirstNodeByClass("vtkMRMLModelDisplayNode"));
 
   if (!modelDisplayNode)
     {
@@ -64,7 +69,7 @@ int qMRMLModelDisplayNodeWidgetTest2( int argc, char * argv [] )
   //modelDisplayNodeWidget.setMRMLModelDisplayNode(modelDisplayNode);
   //modelDisplayNodeWidget.show();
   ctkVTKDataSetArrayComboBox dataSetModel;
-  dataSetModel.setDataSet(modelDisplayNode->GetInputPolyData());
+  dataSetModel.setDataSet(modelDisplayNode->GetInputMesh());
 
   if (argc < 3 || QString(argv[2]) != "-I" )
     {

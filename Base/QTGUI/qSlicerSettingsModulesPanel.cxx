@@ -24,6 +24,7 @@
 
 // QtGUI includes
 #include "qSlicerApplication.h"
+#include "qSlicerCoreCommandOptions.h"
 #include "qSlicerModuleFactoryFilterModel.h"
 #include "qSlicerModuleFactoryManager.h"
 #include "qSlicerModuleManager.h"
@@ -47,6 +48,7 @@ public:
   void init();
 
   qSlicerModulesMenu* ModulesMenu;
+  QStringList ModulesToAlwaysIgnore;
 };
 
 // --------------------------------------------------------------------------
@@ -56,7 +58,7 @@ public:
 qSlicerSettingsModulesPanelPrivate::qSlicerSettingsModulesPanelPrivate(qSlicerSettingsModulesPanel& object)
   :q_ptr(&object)
 {
-  this->ModulesMenu = 0;
+  this->ModulesMenu = nullptr;
 }
 
 // --------------------------------------------------------------------------
@@ -117,13 +119,22 @@ void qSlicerSettingsModulesPanelPrivate::init()
   this->FavoritesMoreButton->setChecked(false);
 
   // Default values
-  this->PreferExecutableCLICheckBox->setChecked(false);
+  this->PreferExecutableCLICheckBox->setChecked(Slicer_CLI_PREFER_EXECUTABLE_DEFAULT);
   this->TemporaryDirectoryButton->setDirectory(coreApp->defaultTemporaryPath());
   this->DisableModulesListView->setFactoryManager( factoryManager );
   this->FavoritesModulesListView->setFactoryManager( factoryManager );
-  this->ModulesMenu->setCurrentModule("Welcome");
+  
+  this->ModulesMenu->setCurrentModule(Slicer_DEFAULT_HOME_MODULE);
+  
+  // Slicer_DEFAULT_FAVORITE_MODULES contains module names in a comma-separated list 
+  // (chosen this format because the same format is used for storing the favorites list in the .ini file).
+  QStringList favoritesRaw = QString(Slicer_DEFAULT_FAVORITE_MODULES).split(",", QString::SkipEmptyParts);
+  // The separator commas have been removed, but we also need need to remove leading and trailing spaces from the retrieved names.
   QStringList favorites;
-  favorites  << "Volumes" << "Models" << "Transforms" << "Annotations" << "Editor";
+  foreach(QString s, favoritesRaw)
+    {
+    favorites << s.trimmed();
+    }
   this->FavoritesModulesListView->filterModel()->setShowModules(favorites);
 
   // Register settings
@@ -133,6 +144,14 @@ void qSlicerSettingsModulesPanelPrivate::init()
                       "checked", SIGNAL(toggled(bool)));
   q->registerProperty("disable-cli-modules", this->LoadCommandLineModulesCheckBox,
                       "checked", SIGNAL(toggled(bool)));
+
+  q->registerProperty("disable-builtin-loadable-modules", this->LoadBuiltInLoadableModulesCheckBox,
+                      "checked", SIGNAL(toggled(bool)));
+  q->registerProperty("disable-builtin-scripted-loadable-modules", this->LoadBuiltInScriptedLoadableModulesCheckBox,
+                      "checked", SIGNAL(toggled(bool)));
+  q->registerProperty("disable-builtin-cli-modules", this->LoadBuiltInCommandLineModulesCheckBox,
+                      "checked", SIGNAL(toggled(bool)));
+
   q->registerProperty("Modules/PreferExecutableCLI", this->PreferExecutableCLICheckBox,
                       "checked", SIGNAL(toggled(bool)));
   q->registerProperty("Modules/HomeModule", this->ModulesMenu,
@@ -147,10 +166,16 @@ void qSlicerSettingsModulesPanelPrivate::init()
                       "directoryList", SIGNAL(directoryListChanged()),
                       "Additional module paths", ctkSettingsPanel::OptionRequireRestart,
                       coreApp->revisionUserSettings());
-  q->registerProperty("Modules/IgnoreModules", factoryManager,
-                      "modulesToIgnore", SIGNAL(modulesToIgnoreChanged(QStringList)),
+
+  this->ModulesToAlwaysIgnore = coreApp->revisionUserSettings()->value("Modules/IgnoreModules").toStringList();
+  emit q->modulesToAlwaysIgnoreChanged(this->ModulesToAlwaysIgnore);
+
+  q->registerProperty("Modules/IgnoreModules", q,
+                      "modulesToAlwaysIgnore", SIGNAL(modulesToAlwaysIgnoreChanged(QStringList)),
                       "Modules to ignore", ctkSettingsPanel::OptionRequireRestart,
                       coreApp->revisionUserSettings());
+  QObject::connect(factoryManager, SIGNAL(modulesToIgnoreChanged(QStringList)),
+                   q, SLOT(setModulesToAlwaysIgnore(QStringList)));
 
   // Actions to propagate to the application when settings are changed
   QObject::connect(this->TemporaryDirectoryButton, SIGNAL(directoryChanged(QString)),
@@ -163,10 +188,6 @@ void qSlicerSettingsModulesPanelPrivate::init()
                    q, SLOT(onAddModulesAdditionalPathClicked()));
   QObject::connect(this->RemoveAdditionalModulePathButton, SIGNAL(clicked()),
                    q, SLOT(onRemoveModulesAdditionalPathClicked()));
-
-  // Connect Modules to ignore
-  QObject::connect(factoryManager, SIGNAL(modulesToIgnoreChanged(QStringList)),
-                   q, SLOT(onModulesToIgnoreChanged()));
 }
 
 // --------------------------------------------------------------------------
@@ -183,7 +204,61 @@ qSlicerSettingsModulesPanel::qSlicerSettingsModulesPanel(QWidget* _parent)
 
 // --------------------------------------------------------------------------
 qSlicerSettingsModulesPanel::~qSlicerSettingsModulesPanel()
+= default;
+
+//-----------------------------------------------------------------------------
+void qSlicerSettingsModulesPanel::setModulesToAlwaysIgnore(const QStringList& moduleNames)
 {
+  Q_D(qSlicerSettingsModulesPanel);
+
+  // This slot is called in two cases:
+  //
+  // (1) each time the signal qSlicerAbstractModuleFactoryManager::modulesToIgnore
+  // is invoked.
+  //
+  // (2) each time the default settings are restored.
+  //
+  // To ensure the module names specified using the "--modules-to-ignore"
+  // command line arguments are not saved in the settings, this  slot
+  // will emit the "onModulesToAlwaysIgnoreChanged()" with an updated
+  // list.
+
+  if (d->ModulesToAlwaysIgnore == moduleNames)
+    {
+    return;
+    }
+
+  // Ensure the ModulesListView observing the factoryManager is updated
+  // when settings are restored.
+  qSlicerCoreApplication * coreApp = qSlicerCoreApplication::application();
+  coreApp->moduleManager()->factoryManager()->setModulesToIgnore(moduleNames);
+
+  // Update the list of modules to ignore removing the one
+  // specified from the command line.
+  QStringList updatedModulesToAlwaysIgnore;
+  foreach(const QString& moduleName, moduleNames)
+    {
+    if (!coreApp->coreCommandOptions()->modulesToIgnore().contains(moduleName))
+      {
+      updatedModulesToAlwaysIgnore.append(moduleName);
+      }
+    }
+
+  if (d->ModulesToAlwaysIgnore == updatedModulesToAlwaysIgnore)
+    {
+    return;
+    }
+
+  d->ModulesToAlwaysIgnore = updatedModulesToAlwaysIgnore;
+
+  emit modulesToAlwaysIgnoreChanged(updatedModulesToAlwaysIgnore);
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerSettingsModulesPanel::modulesToAlwaysIgnore()const
+{
+  Q_D(const qSlicerSettingsModulesPanel);
+  return d->ModulesToAlwaysIgnore;
 }
 
 // --------------------------------------------------------------------------
@@ -225,24 +300,20 @@ void qSlicerSettingsModulesPanel::onAdditionalModulePathsChanged()
 }
 
 // --------------------------------------------------------------------------
-void qSlicerSettingsModulesPanel::onModulesToIgnoreChanged()
-{
-}
-
-// --------------------------------------------------------------------------
 void qSlicerSettingsModulesPanel::onAddModulesAdditionalPathClicked()
 {
   Q_D(qSlicerSettingsModulesPanel);
   qSlicerCoreApplication * coreApp = qSlicerCoreApplication::application();
   QString path = QFileDialog::getExistingDirectory(
         this, tr("Select folder"),
-        coreApp->revisionUserSettings()->value("Extensions/InstallPath").toString());
+        coreApp->revisionUserSettings()->value("Modules/MostRecentlySelectedPath").toString());
   // An empty directory means that the user cancelled the dialog.
   if (path.isEmpty())
     {
     return;
     }
   d->AdditionalModulePathsView->addDirectory(path);
+  coreApp->revisionUserSettings()->setValue("Modules/MostRecentlySelectedPath", path);
 }
 
 // --------------------------------------------------------------------------

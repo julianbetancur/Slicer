@@ -17,6 +17,8 @@
 
 // MRML includes
 #include "vtkMRMLNode.h"
+class vtkMRMLStorableNode;
+
 class vtkURIHandler;
 
 // VTK includes
@@ -25,20 +27,24 @@ class vtkStringArray;
 // STD includes
 #include <vector>
 
-/// \brief A supercalss for other storage nodes.
+/// \brief A superclass for other storage nodes.
 ///
 /// A superclass for other storage nodes like volume and model.
 class VTK_MRML_EXPORT vtkMRMLStorageNode : public vtkMRMLNode
 {
 public:
   vtkTypeMacro(vtkMRMLStorageNode,vtkMRMLNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance() = 0;
+  vtkMRMLNode* CreateNodeInstance() override = 0;
 
-  /// 
+  /// Returns the first storable node that is associated to this storage node
+  /// \sa vtkMRMLStorableNode
+  virtual vtkMRMLStorableNode* GetStorableNode();
+
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   ///
   /// Read data from \a FileName and set it in the referenced node.
@@ -51,52 +57,59 @@ public:
   /// \sa SetFileName(), ReadDataInternal(), GetStoredTime()
   virtual int ReadData(vtkMRMLNode *refNode, bool temporaryFile = false);
 
-  /// 
+  ///
   /// Write data from a  referenced node
   /// Return 1 on success, 0 on failure.
   /// NOTE: Subclasses should implement this method
   virtual int WriteData(vtkMRMLNode *refNode);
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName() = 0;
+  const char* GetNodeTagName() override = 0;
 
   /// A file name or the archetype file name for a series used for read or write
   /// \sa ReadData(), WriteData()
   vtkSetStringMacro(FileName);
   vtkGetStringMacro(FileName);
 
-  /// 
+  /// Return complete file extension for the specified filename.
+  /// Longest matched extension will be returned (.seg.nrrd will be returned
+  /// if both .nrrd and .seg.nrrd are matched), including dot.
+  /// If filename is not specified then the current FileName will be used
+  /// If there is no match then empty is returned.
+  virtual std::string GetSupportedFileExtension(const char* fileName = nullptr, bool includeReadable = true, bool includeWriteable = true);
+
+  ///
   /// return the nth file name, null if doesn't exist
   const char *GetNthFileName(int n) const;
 
-  /// 
+  ///
   /// Use compression on write
   vtkBooleanMacro(UseCompression, int);
   vtkGetMacro(UseCompression, int);
   vtkSetMacro(UseCompression, int);
 
-  /// 
+  ///
   /// Location of the remote copy of this file.
   vtkSetStringMacro(URI);
   vtkGetStringMacro(URI);
-  
+
   vtkGetObjectMacro (URIHandler, vtkURIHandler);
   virtual void SetURIHandler(vtkURIHandler* uriHandler);
-  
-  /// 
-  /// Propagate Progress Event generated in ReadData
-  virtual void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData );
 
-  /// 
+  ///
+  /// Propagate Progress Event generated in ReadData
+  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData ) override;
+
+  ///
   /// Possible Read and Write states
   /// Idle: not currently working on any data, ready for the next transfer
   /// Pending: the data is remote, waiting for a transfer to be scheduled
@@ -104,6 +117,9 @@ public:
   /// Transferring: data is remote, and the transfer is working to completion
   /// TransferDone: the data is on disk and ready to be read
   /// Cancelled: the user cancelled the remote data transfer
+  /// SkippedNoData: writing or reading was skipped due to data not present.
+  ///                This is a valid state used if and only if the data node
+  ///                is empty and there is nothing to be written or read.
   enum
   {
     Idle,
@@ -111,23 +127,25 @@ public:
     Scheduled,
     Transferring,
     TransferDone,
-    Cancelled
+    Cancelled,
+    SkippedNoData
   };
 
-  /// Get/Set the state of reading 
+  /// Get/Set the state of reading
   vtkGetMacro(ReadState,int);
   vtkSetMacro(ReadState,int);
   void SetReadStatePending() { this->SetReadState(this->Pending); };
-  void SetReadStateIdle() { this->SetReadState(this->Idle); }; 
+  void SetReadStateIdle() { this->SetReadState(this->Idle); };
   void SetReadStateScheduled() { this->SetReadState(this->Scheduled); };
-  void SetReadStateTransferring() { this->SetReadState(this->Transferring); }; 
-  void SetReadStateTransferDone() { this->SetReadState(this->TransferDone); }; 
-  void SetReadStateCancelled() { this->SetReadState(this->Cancelled); }; 
+  void SetReadStateTransferring() { this->SetReadState(this->Transferring); };
+  void SetReadStateTransferDone() { this->SetReadState(this->TransferDone); };
+  void SetReadStateCancelled() { this->SetReadState(this->Cancelled); };
+  void SetReadStateSkippedNoData() { this->SetReadState(this->SkippedNoData); };
   const char *GetStateAsString(int state);
   const char *GetReadStateAsString() { return this->GetStateAsString(this->ReadState); };
-  
-  /// 
-  /// Get/Set the state of writing 
+
+  ///
+  /// Get/Set the state of writing
   vtkGetMacro(WriteState,int);
   vtkSetMacro(WriteState,int);
   void SetWriteStatePending() { this->SetWriteState(this->Pending); };
@@ -135,109 +153,126 @@ public:
   void SetWriteStateScheduled() { this->SetWriteState(this->Scheduled); };
   void SetWriteStateTransferring() { this->SetWriteState(this->Transferring); };
   void SetWriteStateTransferDone() { this->SetWriteState(this->TransferDone); };
-  void SetWriteStateCancelled() { this->SetWriteState(this->Cancelled); }; 
+  void SetWriteStateCancelled() { this->SetWriteState(this->Cancelled); };
+  void SetWriteStateSkippedNoData() { this->SetWriteState(this->SkippedNoData); };
   const char *GetWriteStateAsString() { return this->GetStateAsString(this->WriteState); };
 
-  /// 
+  ///
   /// Get the file's absolute path from the file name and the mrml scene root
   /// dir. GetFullnameFromFileName calls GetFullNameFromNthFileName with -1.
   std::string GetFullNameFromFileName();
   std::string GetFullNameFromNthFileName(int n);
 
-  /// 
+  ///
   /// Check to see if this storage node can handle the file type in the input
   /// string. If input string is null, check URI, then check FileName. Returns
-  /// 1 if is supported, 0 otherwise.
+  /// nonzero if supported, 0 otherwise.
+  /// The higher the value, the higher the confidence that this reader
+  /// is the most suitable for reading the file.
+  /// Typically, the confidence is the length of the file matched file extension
+  /// (including the dot). So, for example for .nrrd file extension the returned
+  /// value is 5, for .seg.nrrd the returned value is 9. If a reader looks into
+  /// the file content then it may return with much higher confidence values.
   /// Subclasses should implement this method.
   virtual int SupportedFileType(const char *fileName);
 
-  /// 
+  ///
   /// Get all the supported read file types
   /// Subclasses should overwrite InitializeSupportedReadFileTypes().
   virtual vtkStringArray* GetSupportedReadFileTypes();
 
-  /// 
+  ///
   /// Get all the supported write file types
   /// Subclasses should overwrite InitializeSupportedWriteFileTypes().
   virtual vtkStringArray* GetSupportedWriteFileTypes();
 
-  /// 
+  ///
+  /// Get all file extensions from file types list
+  /// returned by GetSupportedReadFileTypes() or GetSupportedWriteFileTypes().
+  /// Always includes a dot.
+  /// If extension is not specified for a type or .* is specified then .* will be returned.
+  virtual void GetFileExtensionsFromFileTypes(vtkStringArray* inputFileTypes, vtkStringArray* outputFileExtensions);
+
+  ///
   /// Allow to set specific file format that this node will write output.
   vtkSetStringMacro(WriteFileFormat);
   vtkGetStringMacro(WriteFileFormat);
 
-  /// 
+  ///
   /// Add in another file name to the list of file names
   unsigned int AddFileName (const char *fileName);
-  /// 
+  ///
   /// Clear the array of file names
   void ResetFileNameList();
-  
-  /// 
+
+  ///
   /// See how many file names were generated during ExecuteInformation
   int GetNumberOfFileNames() const
   {
     return (int)this->FileNameList.size();
   };
 
-  /// 
+  ///
   /// is filename in the filename list already?
   /// returns 1 if yes, 0 if no
   int FileNameIsInList(const char *fileName);
-  
-  /// 
+
+  ///
   /// Add in another URI to the list of URI's
   unsigned int AddURI(const char *uri);
 
-  /// 
+  ///
   /// Get the nth URI from the list of URI's
   const char *GetNthURI(int n);
-  
-  /// 
+
+  ///
   /// Clear the array of URIs
   void ResetURIList();
-  
-  /// 
+
+  ///
   /// Return how many uri names this storage node holds in it's list
   int GetNumberOfURIs()
   {
     return (int)this->URIList.size();
   }
 
-  /// 
+  ///
   /// Set a new data directory for all files
   void SetDataDirectory(const char* dataDirName);
-  /// 
+  ///
   /// Set a new URI base for all URI's
   void SetURIPrefix(const char *uriPrefix);
-  
-  /// 
-  /// Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension()
-    {
-    return NULL;
-    };
 
-  /// 
+  ///
+  /// Return default file extension for writing.
+  virtual const char* GetDefaultWriteFileExtension();
+
+  ///
+  /// Set default file extension for writing.
+  /// It is just a hint, the storage node may choose a different
+  /// extension if the provided extension is not suitable.
+  virtual void SetDefaultWriteFileExtension(const char* ext);
+
+  ///
   /// Set the nth file in FileNameList, checks that it is already defined
   void ResetNthFileName(int n, const char *fileName);
-  /// 
+  ///
   /// Set the nth uri in URIList, checks that it is already defined
   void ResetNthURI(int n, const char *uri);
 
-  /// 
+  ///
   /// Checks is file path is a relative path by calling appropriate
   /// method on the scene depending on whether the scene pointer is valid.
   /// returns 0 if it's not relative or the input is null, 1 if it is relative
   int IsFilePathRelative(const char * filepath);
 
-  /// Calcualtes and the absolute path to the input file if the input path is
+  /// Calculates and the absolute path to the input file if the input path is
   /// relative and the scene is defined with a root directory. Sets and then
   /// return TempFileName. Returns null if the input path is null or the path
   /// is relative and the scene is not defined. Returns inputPath if it's absolute.
   const char *GetAbsoluteFilePath(const char *inputPath);
-  
-  /// 
+
+  ///
   /// A temporary file name used to calculate absolute paths
   vtkSetStringMacro(TempFileName);
   vtkGetStringMacro(TempFileName);
@@ -271,10 +306,73 @@ public:
   /// instance to turn off compression.
   virtual void ConfigureForDataExchange() {};
 
+  /// Helper function for getting extension from a full filename.
+  /// It always returns lowercase extension.
+  static std::string GetLowercaseExtensionFromFileName(const std::string& filename);
+
+  /// Remove supported extension from filename.
+  /// If filename is not specified then the current FileName will be used.
+  std::string GetFileNameWithoutExtension(const char* fileName = nullptr);
+
+  /// Compression parameter that is used to save the node
+  vtkSetMacro(CompressionParameter, std::string);
+  vtkGetMacro(CompressionParameter, std::string);
+
+  /// Returns a list of displayable names of the supported compression presets
+  virtual std::vector<std::string> GetCompressionPresetDisplayNames();
+
+  /// Returns a string representing the specified preset
+  virtual std::string GetCompressionParameterFromDisplayName(const std::string& name);
+
+  /// Returns the name of the specified preset
+  virtual std::string GetDisplayNameFromCompressionParameter(const std::string& preset);
+
+  /// Get the number of compression presets
+  virtual int GetNumberOfCompressionPresets();
+
+  /// Presets that can be offered to users to choose from
+  /// instead of asking them to enter parameter value.
+  struct CompressionPreset
+  {
+    CompressionPreset()
+     = default;
+
+    CompressionPreset(const std::string &parameter, const std::string &name)
+      : CompressionParameter(parameter)
+      , DisplayName(name)
+    {
+    }
+
+    std::string CompressionParameter;
+    std::string DisplayName;
+  };
+
+  /// Get a list of all supported compression presets
+  virtual const std::vector<CompressionPreset> GetCompressionPresets();
+
+  /// Coordinate system options
+  /// LPS coordinate system is used the most commonly in medical image computing.
+  ///   Slicer is moving towards using this coordinate system in all files by default
+  ///   (while keep using RAS coordinate system internally).
+  /// RAS coordinate system is used in Slicer internally. For many years, Slicer used
+  ///   this coordinate system in files that it created, too.
+  enum
+  {
+    CoordinateSystemRAS = 0,
+    RAS = 0, ///< for backward compatibility
+    CoordinateSystemLPS = 1,
+    LPS = 1, ///< for backward compatibility
+    CoordinateSystemType_Last
+  };
+
+  ///
+  /// Convert between coordinate system ID and name
+  static const char *GetCoordinateSystemTypeAsString(int id);
+  static int GetCoordinateSystemTypeFromString(const char *name);
 
 protected:
   vtkMRMLStorageNode();
-  ~vtkMRMLStorageNode();
+  ~vtkMRMLStorageNode() override;
   vtkMRMLStorageNode(const vtkMRMLStorageNode&);
   void operator=(const vtkMRMLStorageNode&);
 
@@ -288,12 +386,12 @@ protected:
   /// To be reimplemented in subclass.
   virtual int WriteDataInternal(vtkMRMLNode* refNode);
 
-  /// 
+  ///
   /// If the URI is not null, fetch it and save it to the node's FileName location or
   /// load directly into the reference node.
   void StageReadData ( vtkMRMLNode *refNode );
 
-  /// 
+  ///
   /// Copy data from the local file location (node->FileName) or node to the remote
   /// location specified by the URI
   void StageWriteData ( vtkMRMLNode *refNode );
@@ -305,33 +403,43 @@ protected:
   int UseCompression;
   int ReadState;
   int WriteState;
+  std::string CompressionParameter;
+  std::vector<CompressionPreset> CompressionPresets;
 
-  /// 
+  ///
   /// An array of file names, should contain the FileName but may not
   std::vector<std::string> FileNameList;
-  /// 
+  ///
   /// An array of URI's, should contain the URI but may not
   std::vector<std::string> URIList;
   /// List of supported extensions to read in
   vtkStringArray* SupportedReadFileTypes;
 
   /// List of supported extensions to write in
+  std::string DefaultWriteFileExtension;
   vtkStringArray* SupportedWriteFileTypes;
   char* WriteFileFormat;
 
   /// Initialize all the supported read file types
   /// Subclasses can derive this method to initialize SupportedReadFileTypes
   virtual void InitializeSupportedReadFileTypes();
-  /// 
+  ///
   /// Initialize all the supported write file types
   /// Subclasses should use this method to initialize SupportedWriteFileTypes.
   virtual void InitializeSupportedWriteFileTypes();
+  ///
+  /// Update list of  supported compression presets.
+  /// It is called before each access to the preset list.
+  /// Subclasses can use this method to set presets based on storable node content.
+  virtual void UpdateCompressionPresets();
 
   /// Time when data was last read or written.
   /// This is used by the storable node to know when it needs to save its data
   /// Can be reset with InvalidateFile.
   /// \sa InvalidateFile
   vtkTimeStamp* StoredTime;
+
+  vtkWeakPointer<vtkMRMLStorableNode> LastFoundStorableNode;
 };
 
 #endif

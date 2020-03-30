@@ -12,8 +12,8 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef __itkDifferenceDiffusionTensor3DImageFilter_h
-#define __itkDifferenceDiffusionTensor3DImageFilter_h
+#ifndef itkDifferenceDiffusionTensor3DImageFilter_h
+#define itkDifferenceDiffusionTensor3DImageFilter_h
 
 #include "itkImageToImageFilter.h"
 #include "itkDiffusionTensor3D.h"
@@ -35,12 +35,12 @@ namespace itk
  * neighborhood of the homologous pixel in the other image. At one voxel, it
  * adds the absolute value of the difference between the different components
  * of the diffusion tensor. It compares the sum to a threshold set by the
- * developper
+ * developer
  *
  * \ingroup IntensityImageFilters   Multithreaded
  */
 template <class TInputImage, class TOutputImage>
-class ITK_EXPORT DifferenceDiffusionTensor3DImageFilter :
+class DifferenceDiffusionTensor3DImageFilter :
   public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
@@ -99,11 +99,10 @@ protected:
   MatrixType GetMetaDataDictionary( const InputImageType* image );
 
   DifferenceDiffusionTensor3DImageFilter();
-  virtual ~DifferenceDiffusionTensor3DImageFilter()
-  {
-  }
+  ~DifferenceDiffusionTensor3DImageFilter() override
+   = default;
 
-  void PrintSelf(std::ostream& os, Indent indent) const;
+  void PrintSelf(std::ostream& os, Indent indent) const override;
 
   /** DifferenceImageFilter can be implemented as a multithreaded
    * filter.  Therefore, this implementation provides a
@@ -116,16 +115,11 @@ protected:
    *
    * \sa ImageToImageFilter::ThreadedGenerateData(),
    *     ImageToImageFilter::GenerateData()  */
-#if ITK_VERSION_MAJOR < 4
-  void ThreadedGenerateData(const OutputImageRegionType& threadRegion, int threadId);
+  void ThreadedGenerateData(const OutputImageRegionType& threadRegion, ThreadIdType threadId) override;
 
-#else
-  void ThreadedGenerateData(const OutputImageRegionType& threadRegion, ThreadIdType threadId);
+  void BeforeThreadedGenerateData() override;
 
-#endif
-  void BeforeThreadedGenerateData();
-
-  void AfterThreadedGenerateData();
+  void AfterThreadedGenerateData() override;
 
   InputPixelType ApplyMeasurementFrameToTensor( InputPixelType tensor, const MatrixType & measurementFrame );
 
@@ -137,11 +131,11 @@ protected:
 
   Array<AccumulateType> m_ThreadDifferenceSum;
   Array<unsigned long>  m_ThreadNumberOfPixels;
-  MatrixType            measurementFrameValid;
-  MatrixType            measurementFrameTest;
+  MatrixType            m_MeasurementFrameValid;
+  MatrixType            m_MeasurementFrameTest;
 private:
-  DifferenceDiffusionTensor3DImageFilter(const Self &); // purposely not implemented
-  void operator=(const Self &);                         // purposely not implemented
+  DifferenceDiffusionTensor3DImageFilter(const Self &) = delete;
+  void operator=(const Self &) = delete;
 
   bool m_IgnoreBoundaryPixels;
 };

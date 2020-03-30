@@ -23,7 +23,7 @@ class vtkMRMLDiffusionTensorVolumeDisplayNode;
 ///
 /// Diffusion Weigthed Volume nodes describe data sets that encode diffusion weigthed
 /// images. These images are the basis for computing the diffusion tensor.
-/// The node is a container for the neccesary information to interpert DW images:
+/// The node is a container for the necessary information to interpert DW images:
 /// 1. Gradient information.
 /// 2. B value for each gradient.
 /// 3. Measurement frame that relates the coordinate system where the gradients are given
@@ -33,25 +33,28 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionTensorVolumeNode : public vtkMRMLDiffusion
   public:
   static vtkMRMLDiffusionTensorVolumeNode *New();
   vtkTypeMacro(vtkMRMLDiffusionTensorVolumeNode,vtkMRMLDiffusionImageVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() { return "DiffusionTensorVolume"; }
+  const char* GetNodeTagName() override { return "DiffusionTensorVolume"; }
 
   /// Associated volume display MRML node
   virtual void SetAndObserveDisplayNodeID(const char *DisplayNodeID);
- 
+
   /// Associated display MRML node
   virtual vtkMRMLDiffusionTensorVolumeDisplayNode* GetDiffusionTensorVolumeDisplayNode();
 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
+
+  /// Create and observe default display node
+  void CreateDefaultDisplayNodes() override;
 
 protected:
   vtkMRMLDiffusionTensorVolumeNode();
-  ~vtkMRMLDiffusionTensorVolumeNode();
+  ~vtkMRMLDiffusionTensorVolumeNode() override;
 
   vtkMRMLDiffusionTensorVolumeNode(const vtkMRMLDiffusionTensorVolumeNode&);
   void operator=(const vtkMRMLDiffusionTensorVolumeNode&);

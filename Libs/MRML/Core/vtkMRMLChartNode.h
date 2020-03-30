@@ -40,32 +40,32 @@ class VTK_MRML_EXPORT vtkMRMLChartNode : public vtkMRMLNode
 
   static vtkMRMLChartNode *New();
   vtkTypeMacro(vtkMRMLChartNode,vtkMRMLNode);
-  
-  void PrintSelf(ostream& os, vtkIndent indent);
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  /// 
+  vtkMRMLNode* CreateNodeInstance() override;
+
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName()
-    {return "Chart";};
+  const char* GetNodeTagName() override
+    {return "Chart";}
 
-  /// 
+  ///
   /// Method to propagate events generated in mrml
-  virtual void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData );
-  
+  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData ) override;
+
   //----------------------------------------------------------------
   /// Access methods
   //----------------------------------------------------------------
@@ -75,7 +75,7 @@ class VTK_MRML_EXPORT vtkMRMLChartNode : public vtkMRMLNode
   /// referencing the array when setting properties for plotting the
   /// array or for removing the array from the chart.
   void AddArray(const char *name, const char * id);
-  
+
   ///
   /// Remove a double array from the chart
   void RemoveArray(const char *name);
@@ -102,7 +102,7 @@ class VTK_MRML_EXPORT vtkMRMLChartNode : public vtkMRMLNode
   /// is either a property of the entire chart or a default property
   /// for the arrays (which can be overridden by properties assigned
   /// to specific arrays).  Available properties are:
-  /// 
+  ///
   /// Chart level properties
   ///
   /// \li  "type" - Line, Bar, Scatter, Box
@@ -129,16 +129,18 @@ class VTK_MRML_EXPORT vtkMRMLChartNode : public vtkMRMLNode
   ///
   /// \li  "showLines" - show lines "on" or "off"
   /// \li  "showMarkers" - show markers "on" or "off"
+  /// \li  "size" - marker size is an integer larger than 0 and smaller than 2^32 - 1
   /// \li  "linePattern" - line pattern can be "solid", "dashed", "dotted",
   ///                      "dashed-dotted"
-  /// \li  "color" - color to use for the array lines and points (#RRGGBB)
-  /// \li  "lookupTable" - MRMLID of a ColorNode to use to color individual 
+  /// \li  "lineWidth" - line width is an integer larger than 0 and smaller than 2^32 - 1
+  /// \li  "color" - color to use for the array lines and points (<code>\#RRGGBB</code>)
+  /// \li  "lookupTable" - MRMLID of a ColorNode to use to color individual
   ///         bars in bar chart (useful with categorical data)
   ///
   /// When using DoubleArrayNodes, dates are specified as floats
-  /// representing the number of seconds since January 1, 1970 UTC. 
+  /// representing the number of seconds since January 1, 1970 UTC.
   /// Fractional seconds are permitted.
-  /// 
+  ///
   void SetProperty(const char *arrname, const char *property, const char *value);
   const char* GetProperty(const char *arrname, const char *property);
 
@@ -156,23 +158,23 @@ class VTK_MRML_EXPORT vtkMRMLChartNode : public vtkMRMLNode
 
   /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void SetSceneReferences();
+  void SetSceneReferences() override;
 
-  /// 
-  /// Updates this node if it depends on other nodes 
+  ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void UpdateReferences();
+  void UpdateReferences() override;
 
-  /// 
+  ///
   /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
+  void UpdateReferenceID(const char *oldID, const char *newID) override;
 
  protected:
   //----------------------------------------------------------------
   /// Constructor and destroctor
   //----------------------------------------------------------------
   vtkMRMLChartNode();
-  ~vtkMRMLChartNode();
+  ~vtkMRMLChartNode() override;
   vtkMRMLChartNode(const vtkMRMLChartNode&);
   void operator=(const vtkMRMLChartNode&);
 

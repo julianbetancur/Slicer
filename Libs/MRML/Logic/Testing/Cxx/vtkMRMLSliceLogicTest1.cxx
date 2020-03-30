@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -18,61 +18,57 @@
 #include <vtkMRMLLinearTransformNode.h>
 #include <vtkMRMLModelDisplayNode.h>
 #include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLSliceCompositeNode.h>
 
 // VTK includes
 #include <vtkImageBlend.h>
-
+#include <vtkNew.h>
 
 #include "vtkMRMLCoreTestingMacros.h"
 
 int vtkMRMLSliceLogicTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLSliceLogic > node1 = vtkSmartPointer< vtkMRMLSliceLogic >::New();
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
+  vtkNew<vtkMRMLSliceLogic> logic;
+  EXERCISE_BASIC_OBJECT_METHODS(logic.GetPointer());
 
-#define TEST_SET_GET_OBJECT(object,prefix,variable) \
-  vtkSmartPointer<prefix> __##variable = vtkSmartPointer<prefix>::New();\
-  object->Set##variable(__##variable); \
-  object->Get##variable()->Print(std::cout)
+  vtkNew<vtkMRMLScene> scene;
 
-#define TEST_GET_OBJECT(object,variable) \
-  object->Get##variable()->Print(std::cout)
+  // Add default slice orientation presets
+  vtkMRMLSliceNode::AddDefaultSliceOrientationPresets(scene.GetPointer());
 
-#define TEST_SET_GET_VALUE(object,variable,value) \
-  object->Set##variable(value); \
-  if (object->Get##variable() != value) \
-    {   \
-    std::cerr << "Error getting " << #variable << std::endl; \
-    std::cerr << "Expected " << value << std::endl; \
-    std::cerr << "but got  " << object->Get##variable()<< std::endl; \
-    return EXIT_FAILURE; \
-    }
-    
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  node1->SetName("Green");
-  node1->SetMRMLScene(scene);
-  TEST_SET_GET_OBJECT(node1, vtkMRMLSliceNode, SliceNode);
-  TEST_SET_GET_OBJECT(node1, vtkMRMLSliceLayerLogic, LabelLayer);
-  TEST_SET_GET_OBJECT(node1, vtkMRMLSliceCompositeNode, SliceCompositeNode);
-  TEST_SET_GET_OBJECT(node1, vtkMRMLSliceLayerLogic, ForegroundLayer);
-  TEST_SET_GET_OBJECT(node1, vtkMRMLSliceLayerLogic, BackgroundLayer);
-  TEST_SET_GET_VALUE(node1, ForegroundOpacity, .5);
-  TEST_SET_GET_VALUE(node1, LabelOpacity, .5);
+  logic->SetName("Green");
+  logic->SetMRMLScene(scene.GetPointer());
+
+  vtkNew<vtkMRMLSliceNode> SliceNode;
+  TEST_SET_GET_VALUE(logic, SliceNode, SliceNode.GetPointer());
+
+  vtkNew<vtkMRMLSliceLayerLogic> LabelLayer;
+  TEST_SET_GET_VALUE(logic, LabelLayer, LabelLayer.GetPointer());
+
+  vtkNew<vtkMRMLSliceCompositeNode> SliceCompositeNode;
+  TEST_SET_GET_VALUE(logic, SliceCompositeNode, SliceCompositeNode.GetPointer());
+
+  vtkNew<vtkMRMLSliceLayerLogic> ForegroundLayer;
+  TEST_SET_GET_VALUE(logic, ForegroundLayer, ForegroundLayer.GetPointer());
+
+  vtkNew<vtkMRMLSliceLayerLogic> BackgroundLayer;
+  TEST_SET_GET_VALUE(logic, BackgroundLayer, BackgroundLayer.GetPointer());
+
   // TODO: need to fix the test.
   // The problem here is that the current node of the logic is wrong
   // it hasn't been added to the mrml scene. So when modified,
   // the logic realizes it and create a new node (loosing the props).
-  //TEST_SET_GET_VALUE(node1, SliceOffset, 1);
+  //TEST_SET_GET_VALUE(logic, SliceOffset, 1);
 
-  node1->DeleteSliceModel();
-  node1->CreateSliceModel();
-  TEST_GET_OBJECT(node1, SliceModelNode);
-  TEST_GET_OBJECT(node1, SliceModelDisplayNode);
-  TEST_GET_OBJECT(node1, SliceModelTransformNode);
-  TEST_GET_OBJECT(node1, Blend);
+  logic->DeleteSliceModel();
+  logic->CreateSliceModel();
+  TEST_GET_OBJECT(logic, SliceModelNode);
+  TEST_GET_OBJECT(logic, SliceModelDisplayNode);
+  TEST_GET_OBJECT(logic, SliceModelTransformNode);
+  TEST_GET_OBJECT(logic, Blend);
 
-  node1->Print(std::cout);
+  logic->Print(std::cout);
   return EXIT_SUCCESS;
 }
 

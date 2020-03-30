@@ -40,7 +40,7 @@ class qSlicerAbstractCoreModulePrivate;
 
 #define qSlicerGetTitleMacro(_TITLE)               \
   static QString staticTitle() { return _TITLE; }  \
-  virtual QString title()const { return _TITLE; }
+  QString title() const override { return _TITLE; }
 
 /// \brief qSlicerAbstractCoreModule is the base class of any module in Slicer.
 //
@@ -102,10 +102,19 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerAbstractCoreModule : public QObject
 
   /// This property holds whether the module is visible to the user.
   /// If the module is hidden, it doesn't appear in the list of modules menu.
-  /// However, the module is programatically accessible.
+  /// However, the module is programmatically accessible.
   /// By default, modules are visible (hidden == false).
   /// \sa isHidden
   Q_PROPERTY(bool hidden READ isHidden)
+
+  /// This property holds whether the module should be able to create new
+  /// widget representations or not.
+  /// By default, modules can create new widget representations.
+  /// \sa isWidgetRepresentationCreationEnabled
+  /// \sa setWidgetRepresentationCreationEnabled
+  Q_PROPERTY(bool widgetRepresentationCreationEnabled
+             READ isWidgetRepresentationCreationEnabled
+             WRITE setWidgetRepresentationCreationEnabled)
 
   /// This property holds the help of the module.
   /// The help is displayed inside the module as a tab.
@@ -126,14 +135,14 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerAbstractCoreModule : public QObject
   /// It is shown in the Acknowledgement page.
   /// If there are multiple contributors, they must be listed in the order
   /// of contribution. For each contributor, the name of the institution
-  /// can succede the author: e.g. John Doe, CompanyName Inc.
+  /// can succeed the author: e.g. John Doe, CompanyName Inc.
   /// \a contributors() must be reimplemented for each module.
   /// \sa helpText, acknowledgementText
   Q_PROPERTY(QStringList contributors READ contributors)
 
   /// This property holds the URL of the module for the Slicer wiki.
   /// It can be used in the help/ackknowledgement.
-  /// \tbd: obsolete ? should be static ?
+  /// \todo Is the slicerWikiUrl module property obsolete ? should it be static ?
   Q_PROPERTY(QString slicerWikiUrl READ slicerWikiUrl)
 
   /// This property holds the module name list of the module dependencies.
@@ -158,6 +167,23 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerAbstractCoreModule : public QObject
   /// reimplemented in each module.
   Q_PROPERTY(bool isInstalled READ isInstalled)
 
+  /// This property holds whether module is a built-in Slicer module or
+  /// one from an extension or any user-specified folder.
+  /// \a isBuiltIn is set by the module factory and shouldn't be
+  /// reimplemented in each module.
+  Q_PROPERTY(bool isBuiltIn READ isBuiltIn)
+
+  /// This property specifies node classes this module is associated with.
+  /// All children node classes are also associated with the module.
+  /// Currently association is only used for editing node properties.
+  /// If a node class is specified in this property and setEditedNode() and
+  /// nodeEditable() methods are implemented in the module's widget then
+  /// "Edit properties" function in node selector widgets will activate this
+  /// module and select the chosen node.
+  /// Any module can associate nodes with any module, by calling
+  /// qSlicerApplication::application()->registerNodeModule() method.
+  Q_PROPERTY(QStringList associatedNodeTypes READ associatedNodeTypes)
+
 public:
 
   typedef QObject Superclass;
@@ -166,8 +192,8 @@ public:
   /// The modules can typically be instantiated before the application
   /// is initialized (module manager, iomanager...). Most of the
   /// initialization must be done in qSlicerAbstractCoreModule::setup()
-  qSlicerAbstractCoreModule(QObject *parent=0);
-  virtual ~qSlicerAbstractCoreModule();
+  qSlicerAbstractCoreModule(QObject *parent=nullptr);
+  ~qSlicerAbstractCoreModule() override;
 
   virtual void printAdditionalInfo();
 
@@ -177,7 +203,6 @@ public:
   /// Initialize the module, an appLogic must be given to
   /// initialize the module
   void initialize(vtkSlicerApplicationLogic* appLogic);
-  inline bool initialized() { return this->Initialized; }
 
   /// Set/Get the name of the module. The name is used to uniquely describe
   /// a module: name must be unique.
@@ -199,9 +224,10 @@ public:
   /// Return the category index of the module.
   virtual int index()const;
 
-  /// Returns true if the module should be hidden to the user.
-  /// By default, modules are not hidden.
-  /// \sa hidden
+  /// Returns \a true if the module should be hidden to the user.
+  /// By default, interactive modules are visible and non-interactive
+  /// modules are hidden.
+  /// \sa hidden, isWidgetRepresentationCreationEnabled
   virtual bool isHidden()const;
 
   /// Return the contributors of the module
@@ -215,10 +241,24 @@ public:
   /// Must be reimplemented in the derived classes
   virtual QString acknowledgementText()const;
 
+  /// Set/Get if the module should be able to create new widget
+  /// representations or not.
+  /// \sa widgetRepresentation()
+  bool isWidgetRepresentationCreationEnabled()const;
+  void setWidgetRepresentationCreationEnabled(bool value);
+
   /// This method allows to get a pointer to the WidgetRepresentation.
   /// If no WidgetRepresentation already exists, one will be created calling
   /// 'createWidgetRepresentation' method.
+  /// \sa createNewWidgetRepresentation(), createWidgetRepresentation()
   qSlicerAbstractModuleRepresentation* widgetRepresentation();
+
+  /// Force the creation of a new widget representation.
+  /// It does not return the widget of the module, but a new instance instead.
+  /// It can be useful when embedding a module widget into another module.
+  /// \sa widgetRepresentation(), createWidgetRepresentation()
+  /// \sa isWidgetRepresentationCreationEnabled()
+  qSlicerAbstractModuleRepresentation* createNewWidgetRepresentation();
 
   /// Get/Set the application logic.
   /// It must be set.
@@ -246,6 +286,14 @@ public:
   bool isInstalled()const;
   void setInstalled(bool value);
 
+  /// Determine if this module is a built-in Slicer module or one from an extension
+  /// or any user-specified folder.
+  bool isBuiltIn()const;
+  void setBuiltIn(bool value);
+
+  /// Return node types associated with this module (e.g., node types this module can edit)
+  virtual QStringList associatedNodeTypes()const;
+
 public slots:
 
   /// Set the current MRML scene to the module, it is propagated to the logic
@@ -270,9 +318,10 @@ private:
   Q_DECLARE_PRIVATE(qSlicerAbstractCoreModule);
   Q_DISABLE_COPY(qSlicerAbstractCoreModule);
   friend class qSlicerAbstractModuleRepresentation;
-  void representationDeleted();
-  /// Indicate if the module has already been initialized
-  bool Initialized;
+
+  /// Internal method called by the destructor of qSlicerAbstractModuleRepresentation
+  /// to remove the representation from the list.
+  void representationDeleted(qSlicerAbstractModuleRepresentation *representation);
 };
 
 #endif

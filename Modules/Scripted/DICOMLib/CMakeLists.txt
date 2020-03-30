@@ -1,24 +1,38 @@
-set(EditorLib_PYTHON_SCRIPTS
+#-----------------------------------------------------------------------------
+set(MODULE_NAME DICOMLib)
+string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
+
+#-----------------------------------------------------------------------------
+add_subdirectory(Logic)
+add_subdirectory(Widgets)
+add_subdirectory(SubjectHierarchyPlugins)
+
+#-----------------------------------------------------------------------------
+set(MODULE_PYTHON_SCRIPTS
   __init__
+  DICOMBrowser
+  DICOMExportScalarVolume
+  DICOMExportScene
   DICOMPlugin
+  DICOMPluginSelector
   DICOMProcesses
-  DICOMDataExchange
-  DICOMWidgets
+  DICOMRecentActivityWidget
+  DICOMSendDialog
+  DICOMUtils
   )
 
-set(EditorLib_PYTHON_RESOURCES
-  )
-
-ctkMacroCompilePythonScript(
-  TARGET_NAME DICOMLib
-  SCRIPTS "${EditorLib_PYTHON_SCRIPTS}"
-  RESOURCES "${EditorLib_PYTHON_RESOURCES}"
-  DESTINATION_DIR ${Slicer_BINARY_DIR}/bin/Python/DICOMLib
-  INSTALL_DIR ${Slicer_INSTALL_BIN_DIR}/Python
+set(MODULE_PYTHON_RESOURCES
   )
 
 #-----------------------------------------------------------------------------
-# Testing
-#
+slicerMacroBuildScriptedModule(
+  NAME ${MODULE_NAME}
+  SCRIPTS ${MODULE_PYTHON_SCRIPTS}
+  RESOURCES ${MODULE_PYTHON_RESOURCES}
+  WITH_SUBDIR
+  )
+
+#-----------------------------------------------------------------------------
 if(BUILD_TESTING)
+#  add_subdirectory(Testing)
 endif()

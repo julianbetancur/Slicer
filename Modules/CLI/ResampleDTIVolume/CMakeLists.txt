@@ -1,6 +1,37 @@
 
 #-----------------------------------------------------------------------------
-set(MODULE_NAME ResampleDTIVolume) # Do not use 'project()'
+set(MODULE_NAME ResampleDTIVolume)
+
+#-----------------------------------------------------------------------------
+
+#
+# SlicerExecutionModel
+#
+find_package(SlicerExecutionModel REQUIRED)
+include(${SlicerExecutionModel_USE_FILE})
+
+#
+# ITK
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ITKCommon
+  ITKDiffusionTensorImage
+  ITKIOImageBase
+  ITKIONRRD
+  ITKIOTransformBase
+  ITKImageFilterBase
+  ITKImageFunction
+  ITKImageGrid
+  ITKImageIntensity
+  ITKSpatialObjects
+  ITKTestKernel
+  ITKTransform
+  ${ModuleDescriptionParser_ITK_COMPONENTS}
+  )
+find_package(ITK 4.6 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+include(${ITK_USE_FILE})
+
 
 #-----------------------------------------------------------------------------
 SEMMacroBuildCLI(
@@ -12,7 +43,6 @@ SEMMacroBuildCLI(
     dtiprocessFiles/itkHFieldToDeformationFieldImageFilter.h
     dtiprocessFiles/itkHFieldToDeformationFieldImageFilter.txx
   TARGET_LIBRARIES ModuleDescriptionParser ${ITK_LIBRARIES}
-  LINK_DIRECTORIES ${ModuleDescriptionParser_BINARY_DIR}
   INCLUDE_DIRECTORIES
     ${SlicerBaseCLI_SOURCE_DIR} ${SlicerBaseCLI_BINARY_DIR}
   )

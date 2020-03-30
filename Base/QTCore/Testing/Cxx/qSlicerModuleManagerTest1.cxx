@@ -27,27 +27,27 @@ int qSlicerModuleManagerTest1(int argc, char * argv [] )
   // That we will be sure, an ApplicationLogic and a MRMLScene have also been instantiated
   // This enforced in the constructor of qSlicerModuleManager (using Q_ASSERTs)
   qSlicerCoreApplication app(argc, argv);
-  app.initialize(); 
-  
+  app.initialize();
+
   qSlicerModuleManager moduleManager;
 
   moduleManager.factory()->registerCoreModules();
   moduleManager.factory()->instantiateCoreModules();
-  
+
   moduleManager.printAdditionalInfo();
-  
+
   qSlicerModuleFactory * factory = moduleManager.factory();
 
-  if( factory == NULL )
+  if( factory == nullptr )
     {
     std::cerr << "Error in factory()" << std::endl;
     return EXIT_FAILURE;
     }
 
   QString moduleName = "qSlicerTransformsModule";
-  
+
   bool result0 = moduleManager.isLoaded( moduleName );
-  
+
   if( result0 != false )
     {
     std::cerr << "Error in isLoaded() " << std::endl;
@@ -55,7 +55,7 @@ int qSlicerModuleManagerTest1(int argc, char * argv [] )
     }
 
   bool result1 = moduleManager.loadModule( moduleName );
-  
+
   if( result1 == false )
     {
     std::cerr << "Error in loadModule() " << std::endl;
@@ -71,8 +71,8 @@ int qSlicerModuleManagerTest1(int argc, char * argv [] )
     }
 
   qSlicerAbstractModule * module = moduleManager.module( moduleName );
-  
-  if( module == NULL )
+
+  if( module == nullptr )
     {
     std::cerr << "Error in getModule() " << std::endl;
     return EXIT_FAILURE;

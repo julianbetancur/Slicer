@@ -19,14 +19,16 @@
 ==============================================================================*/
 
 // MRMLDisplayableManager includes
+#include <vtkMRMLCameraDisplayableManager.h>
 #include <vtkMRMLDisplayableManagerGroup.h>
 #include <vtkMRMLThreeDReformatDisplayableManager.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
 
 // MRML includes
+#include <vtkMRMLScene.h>
 #include <vtkMRMLSliceNode.h>
 #include <vtkMRMLViewNode.h>
 
@@ -866,20 +868,37 @@ char vtkMRMLThreeDReformatDisplayableManagerTest1EventLog[] =
   "LeaveEvent 604 592 0 0 0 0 0\n"
   ;
 
-namespace 
+namespace
 {
+
 //----------------------------------------------------------------------------
 class vtkAbortCommand: public vtkCommand
 {
 public:
   static vtkAbortCommand *New(){ return new vtkAbortCommand; }
-  virtual void Execute (vtkObject* vtkNotUsed(caller),
+  void Execute (vtkObject* vtkNotUsed(caller),
                         unsigned long vtkNotUsed(eventId),
-                        void* vtkNotUsed(callData))
+                        void* vtkNotUsed(callData)) override
     {
     this->SetAbortFlag(1);
     }
 };
+
+class vtkRenderCallback : public vtkCommand
+{
+public:
+  static vtkRenderCallback *New()
+    {
+    return new vtkRenderCallback;
+    }
+  void Execute(vtkObject *vtkNotUsed(caller), unsigned long vtkNotUsed(eventId), void* vtkNotUsed(callData)) override
+    {
+    this->RenderWindow->Render();
+    }
+  vtkRenderCallback() :RenderWindow(nullptr) {}
+  vtkRenderWindow *RenderWindow;
+};
+
 };
 
 //----------------------------------------------------------------------------
@@ -896,11 +915,8 @@ int vtkMRMLThreeDReformatDisplayableManagerTest1(int argc, char* argv[])
   renderWindow->SetInteractor(renderWindowInteractor.GetPointer());
 
   // Set Interactor Style
-  vtkNew<vtkThreeDViewInteractorStyle> iStyle;
+  vtkNew<vtkMRMLThreeDViewInteractorStyle> iStyle;
   renderWindowInteractor->SetInteractorStyle(iStyle.GetPointer());
-
-  // move back far enough to see the reformat widgets
-  renderer->GetActiveCamera()->SetPosition(0,0,-500.);
 
   renderWindow->Render();
 
@@ -918,21 +934,37 @@ int vtkMRMLThreeDReformatDisplayableManagerTest1(int argc, char* argv[])
   displayableManagerGroup->SetRenderer(renderer.GetPointer());
   displayableManagerGroup->SetMRMLDisplayableNode(viewNode.GetPointer());
 
+  vtkNew<vtkRenderCallback> renderCallback;
+  renderCallback->RenderWindow = renderWindow;
+  displayableManagerGroup->AddObserver(vtkCommand::UpdateEvent, renderCallback);
+
+  iStyle->SetDisplayableManagers(displayableManagerGroup);
+
   vtkNew<vtkMRMLThreeDReformatDisplayableManager> reformatDisplayableManager;
   reformatDisplayableManager->SetMRMLApplicationLogic(applicationLogic);
   displayableManagerGroup->AddDisplayableManager(reformatDisplayableManager.GetPointer());
 
+  // Need to add vtkMRMLCameraDisplayableManager, as this processes camera manipulation events
+  vtkNew<vtkMRMLCameraDisplayableManager> cameraDisplayableManager;
+  cameraDisplayableManager->SetMRMLApplicationLogic(applicationLogic);
+  displayableManagerGroup->AddDisplayableManager(cameraDisplayableManager.GetPointer());
+
+  // Camera displayable manager sets default camera position/orientation.
+  // Move camera back far enough to see the reformat widgets.
+  renderer->GetActiveCamera()->SetPosition(0, 0, -500.);
+  renderer->GetActiveCamera()->SetViewUp(0, 1., 0);
+
   // Visible when added
   vtkNew<vtkMRMLSliceNode> sliceNodeRed;
   // TODO: This color should be taken into account, not the layout name
-  sliceNodeRed->SetLayoutColor(vtkMRMLSliceNode::redColor());
+  sliceNodeRed->SetLayoutColor(vtkMRMLAbstractViewNode::GetRedColor());
   sliceNodeRed->SetWidgetVisible(1);
 
   scene->AddNode(sliceNodeRed.GetPointer());
 
   // Locked to Camera
   vtkNew<vtkMRMLSliceNode> sliceNodeYellow;
-  sliceNodeYellow->SetLayoutColor(vtkMRMLSliceNode::yellowColor());
+  sliceNodeYellow->SetLayoutColor(vtkMRMLAbstractViewNode::GetYellowColor());
   sliceNodeYellow->SetWidgetVisible(1);
   sliceNodeYellow->SetWidgetNormalLockedToCamera(1);
 
@@ -940,7 +972,7 @@ int vtkMRMLThreeDReformatDisplayableManagerTest1(int argc, char* argv[])
 
   // Delayed Visibility
   vtkNew<vtkMRMLSliceNode> sliceNodeGreen;
-  sliceNodeGreen->SetLayoutColor(vtkMRMLSliceNode::greenColor());
+  sliceNodeGreen->SetLayoutColor(vtkMRMLAbstractViewNode::GetGreenColor());
   sliceNodeGreen->SetWidgetNormalLockedToCamera(1);
   sliceNodeGreen->SetSliceOffset(-20);
 
@@ -1021,22 +1053,26 @@ int vtkMRMLThreeDReformatDisplayableManagerTest1(int argc, char* argv[])
     {
     vtkNew<vtkWindowToImageFilter> windowToImageFilter;
     windowToImageFilter->SetInput(renderWindow.GetPointer());
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 1)
+    windowToImageFilter->SetScale(1, 1); //set the resolution of the output image
+#else
     windowToImageFilter->SetMagnification(1); //set the resolution of the output image
+#endif
     windowToImageFilter->Update();
 
     vtkNew<vtkTesting> testHelper;
     testHelper->AddArguments(argc, const_cast<const char **>(argv));
 
     vtkStdString screenshootFilename = testHelper->GetDataRoot();
-    screenshootFilename += "/Baseline/vtkMRMLCameraDisplayableManagerTest1.png";
+    screenshootFilename += "/Baseline/vtkMRMLThreeDReformatDisplayableManagerTest1.png";
     vtkNew<vtkPNGWriter> writer;
     writer->SetFileName(screenshootFilename.c_str());
-    writer->SetInput(windowToImageFilter->GetOutput());
+    writer->SetInputConnection(windowToImageFilter->GetOutputPort());
     writer->Write();
     std::cout << "Saved screenshot: " << screenshootFilename << std::endl;
     }
 
-  reformatDisplayableManager->SetMRMLApplicationLogic(0);
+  reformatDisplayableManager->SetMRMLApplicationLogic(nullptr);
   applicationLogic->Delete();
   scene->Delete();
 

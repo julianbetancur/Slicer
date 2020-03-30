@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -33,13 +36,17 @@
 
 // qMRML includes
 #include "qMRMLThreeDWidget.h"
+#include "qMRMLThreeDViewControllerWidget.h"
 
 // MRML includes
-#include <vtkMRMLViewNode.h>
+#include <vtkMRMLInteractionNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSelectionNode.h>
+#include <vtkMRMLViewNode.h>
 
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -59,7 +66,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLThreeDWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -72,15 +81,26 @@ int qMRMLThreeDWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
   qMRMLThreeDWidget widget;
   widget.show();
 
-  vtkNew<vtkMRMLViewNode> viewNode;
-
   vtkNew<vtkMRMLScene> scene;
+
+  // vtkMRMLAbstractDisplayableManager requires selection and interaction nodes
+  vtkNew<vtkMRMLSelectionNode> selectionNode;
+  scene->AddNode(selectionNode.GetPointer());
+  vtkNew<vtkMRMLInteractionNode> interactionNode;
+  scene->AddNode(interactionNode.GetPointer());
+
+  vtkNew<vtkMRMLViewNode> viewNode;
   scene->AddNode(viewNode.GetPointer());
 
+  widget.setViewLabel("View1");
   widget.setMRMLScene(scene.GetPointer());
   widget.setMRMLViewNode(viewNode.GetPointer());
   etpWidget.addTestCase(&widget,
+#ifdef Slicer_VTK_USE_QVTKOPENGLWIDGET
+                        xmlDirectory + "qMRMLThreeDWidgetEventTranslatorPlayerTest1_QVTKOpenGLWidget.xml",
+#else
                         xmlDirectory + "qMRMLThreeDWidgetEventTranslatorPlayerTest1.xml",
+#endif
                         &checkFinalWidgetState);
 
   // ------------------------

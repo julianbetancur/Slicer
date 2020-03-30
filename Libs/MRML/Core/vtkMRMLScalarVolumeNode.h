@@ -18,98 +18,80 @@
 // MRML includes
 #include "vtkMRMLVolumeNode.h"
 class vtkMRMLScalarVolumeDisplayNode;
-class vtkMRMLVolumeArchetypeStorageNode;
-
-// VTK includes
-class vtkImageData;
-class vtkImageAccumulateDiscrete;
-class vtkImageBimodalAnalysis;
+class vtkCodedEntry;
 
 /// \brief MRML node for representing a volume (image stack).
 ///
-/// Volume nodes describe data sets that can be thought of as stacks of 2D 
+/// Volume nodes describe data sets that can be thought of as stacks of 2D
 /// images that form a 3D volume. Volume nodes contain only the image data,
 /// where it is store on disk and how to read the files is controlled by
 /// the volume storage node, how to render the data (window and level) is
-/// controlled by the volume display nodes. Image information is extracted 
+/// controlled by the volume display nodes. Image information is extracted
 /// from the image headers (if they exist) at the time the MRML file is
 /// generated.
-/// Consequently, MRML files isolate MRML browsers from understanding how 
-/// to read the myriad of file formats for medical data. 
-/// A scalar volume node can be a labelmap, which is typically the output of
-/// a segmentation that labels each voxel according to its tissue type.
-/// The alternative is a gray-level or color image.
+/// Consequently, MRML files isolate MRML browsers from understanding how
+/// to read the myriad of file formats for medical data.
 class VTK_MRML_EXPORT vtkMRMLScalarVolumeNode : public vtkMRMLVolumeNode
 {
   public:
   static vtkMRMLScalarVolumeNode *New();
   vtkTypeMacro(vtkMRMLScalarVolumeNode,vtkMRMLVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "Volume";};
+  const char* GetNodeTagName() override {return "Volume";}
 
   ///
-  /// Returns true (1) if the volume is a labelmap (1 label value per voxel
-  /// to indicates the tissue type.
-  /// \sa SetLabelMap
-  int GetLabelMap();
-
-  ///
-  /// Set the volume as a labelmap. 
-  /// If true (1), it sets the volume as a labelmap.
-  /// \sa GetLabelMap(), LabelMapOn(), LabelMapOff()
-  void SetLabelMap(int);
-
-  ///
-  /// Convenient method that sets the volume as labelmap
-  /// \sa SetLabelMap, LabelMapOff()
-  void LabelMapOn();
-
-  ///
-  /// Convenient method that unsets the volume a labelmap
-  /// \sa SetLabelMap, LabelMapOff()
-  void LabelMapOff();
-
-  /// 
   /// Make a 'None' volume node with blank image data
   static void CreateNoneNode(vtkMRMLScene *scene);
 
-  /// 
+  ///
   /// Associated display MRML node
   virtual vtkMRMLScalarVolumeDisplayNode* GetScalarVolumeDisplayNode();
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
+
+  ///
+  /// Create and observe default display node
+  void CreateDefaultDisplayNodes() override;
+
+  /// Measured quantity of voxel values, specified as a standard coded entry.
+  /// For example: (DCM, 112031, "Attenuation Coefficient")
+  void SetVoxelValueQuantity(vtkCodedEntry*);
+  vtkGetObjectMacro(VoxelValueQuantity, vtkCodedEntry);
+
+  /// Measurement unit of voxel value quantity, specified as a standard coded entry.
+  /// For example: (UCUM, [hnsf'U], "Hounsfield unit")
+  /// It stores a single unit. Plural (units) name is chosen to be consistent
+  /// with nomenclature in the DICOM standard.
+  void SetVoxelValueUnits(vtkCodedEntry*);
+  vtkGetObjectMacro(VoxelValueUnits, vtkCodedEntry);
 
 protected:
   vtkMRMLScalarVolumeNode();
-  ~vtkMRMLScalarVolumeNode();
+  ~vtkMRMLScalarVolumeNode() override;
   vtkMRMLScalarVolumeNode(const vtkMRMLScalarVolumeNode&);
   void operator=(const vtkMRMLScalarVolumeNode&);
 
-  /// 
-  /// Used internally in CalculateScalarAutoLevels and CalculateStatisticsAutoLevels
-  vtkImageAccumulateDiscrete *Accumulate;
-  vtkImageBimodalAnalysis *Bimodal;
-
-  int CalculatingAutoLevels;
+  vtkCodedEntry* VoxelValueQuantity;
+  vtkCodedEntry* VoxelValueUnits;
 };
 
 #endif

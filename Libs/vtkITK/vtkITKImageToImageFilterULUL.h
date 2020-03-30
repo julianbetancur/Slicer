@@ -16,7 +16,7 @@
 #define __vtkITKImageToImageFilterULUL_h
 
 #include "vtkITKImageToImageFilter.h"
-#include "vtkImageToImageFilter.h"
+#include "vtkImageAlgorithm.h"
 #include "itkImageToImageFilter.h"
 #include "itkVTKImageExport.h"
 #include "itkVTKImageImport.h"
@@ -35,7 +35,7 @@ public:
   };
 
 protected:
-  
+
   /// To/from ITK
   typedef itk::Image<unsigned long, 3> InputImageType;
   typedef itk::Image<unsigned long, 3> OutputImageType;
@@ -66,7 +66,7 @@ protected:
   ~vtkITKImageToImageFilterULUL()
   {
   };
-  
+
 private:
   vtkITKImageToImageFilterULUL(const vtkITKImageToImageFilterULUL&);  /// Not implemented.
   void operator=(const vtkITKImageToImageFilterULUL&);  /// Not implemented.

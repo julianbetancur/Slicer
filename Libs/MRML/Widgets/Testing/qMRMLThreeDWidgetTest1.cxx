@@ -22,15 +22,22 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLThreeDWidget.h"
+#include "qMRMLThreeDViewControllerWidget.h"
 
 // MRML includes
-#include <vtkMRMLViewNode.h>
+#include <vtkMRMLInteractionNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSelectionNode.h>
+#include <vtkMRMLViewNode.h>
 
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -38,18 +45,27 @@
 
 int qMRMLThreeDWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
   qMRMLThreeDWidget widget;
   widget.show();
-  
-  vtkNew<vtkMRMLViewNode> viewNode;
 
   vtkNew<vtkMRMLScene> scene;
+
+  // vtkMRMLAbstractDisplayableManager requires selection and interaction nodes
+  vtkNew<vtkMRMLSelectionNode> selectionNode;
+  scene->AddNode(selectionNode.GetPointer());
+  vtkNew<vtkMRMLInteractionNode> interactionNode;
+  scene->AddNode(interactionNode.GetPointer());
+
+  vtkNew<vtkMRMLViewNode> viewNode;
   scene->AddNode(viewNode.GetPointer());
-  
+
+  widget.setViewLabel("View1");
   widget.setMRMLScene(scene.GetPointer());
   widget.setMRMLViewNode(viewNode.GetPointer());
-  
+
   if (argc < 2 || QString(argv[1]) != "-I" )
     {
     QTimer::singleShot(200, &app, SLOT(quit()));

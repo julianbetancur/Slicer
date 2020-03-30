@@ -27,7 +27,7 @@ class qSlicerAnnotationModulePropertyDialog : public QDialog
 
 public:
   qSlicerAnnotationModulePropertyDialog(const char * id, vtkSlicerAnnotationModuleLogic* logic);
-  ~qSlicerAnnotationModulePropertyDialog();
+  ~qSlicerAnnotationModulePropertyDialog() override;
 
   const char * GetID() { return this->m_id; }
 
@@ -40,8 +40,6 @@ public:
   void SetButtonText(int type);
   void updateLockUnlockStatus(bool isLock);
 
-  static void toQColor(const double* color, QColor &qcolor);
-  static void toColor(const QColor &qcolor, double* color);
   static void formatValueToChar(const char* format, std::vector<double> vv, QString &valueString );
 
   /// for the current m_id node, if all display nodes have the same unselected
@@ -81,11 +79,11 @@ protected slots:
   /// reset the hierarchy point glyph combo box to default glyph type
   void onHierarchyPointGlyphTypeDefaultButtonClicked();
 
-  
+
   void onSizeSmallPushButtonClicked();
   void onSizeMediumPushButtonClicked();
   void onSizeLargePushButtonClicked();
-  
+
     void onCoordinateChanged(QString text);
 
     void onPointsTableWidgetChanged(QTableWidgetItem *tableItem);
@@ -118,6 +116,7 @@ protected slots:
   void onTextSelectedColorChanged(QColor qcolor);
   void onTextScaleChanged(double value);
   void onTextOpacityChanged(double value);
+  void onTextVisibilityChanged(bool value);
 
   void onLockUnlockButtonClicked();
   void onVisibleInvisibleButtonClicked();
@@ -133,7 +132,7 @@ signals:
     void colorPropertyChanged(QColor, char*, int);
     void itemChanged(QTableWidgetItem *);
   void coordinatesChanged(double*);
-  
+
 private:
 
     void saveLinesNode(vtkMRMLAnnotationLinesNode* node);

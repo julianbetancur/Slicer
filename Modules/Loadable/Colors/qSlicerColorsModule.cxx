@@ -19,7 +19,6 @@
 ==============================================================================*/
 
 // Qt includes
-#include <QtPlugin>
 #include <QSettings>
 
 // CTK includes
@@ -31,9 +30,9 @@
 #include "qSlicerNodeWriter.h"
 
 // Colors includes
-#include "qSlicerColorsIO.h"
 #include "qSlicerColorsModule.h"
 #include "qSlicerColorsModuleWidget.h"
+#include "qSlicerColorsReader.h"
 
 // qMRML includes
 #include <qMRMLColorPickerWidget.h>
@@ -41,9 +40,6 @@
 // Slicer Logic includes
 #include <vtkSlicerApplicationLogic.h>
 #include "vtkSlicerColorLogic.h"
-
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerColorsModule, qSlicerColorsModule);
 
 //-----------------------------------------------------------------------------
 class qSlicerColorsModulePrivate
@@ -57,7 +53,7 @@ public:
 qSlicerColorsModulePrivate::qSlicerColorsModulePrivate()
 {
   this->ColorDialogPickerWidget =
-    QSharedPointer<qMRMLColorPickerWidget>(new qMRMLColorPickerWidget(0));
+    QSharedPointer<qMRMLColorPickerWidget>(new qMRMLColorPickerWidget(nullptr));
 }
 
 //-----------------------------------------------------------------------------
@@ -69,8 +65,7 @@ qSlicerColorsModule::qSlicerColorsModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerColorsModule::~qSlicerColorsModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QStringList qSlicerColorsModule::categories()const
@@ -94,15 +89,15 @@ void qSlicerColorsModule::setup()
     return;
     }
   vtkSlicerColorLogic* colorLogic = vtkSlicerColorLogic::SafeDownCast(this->logic());
-  if (this->appLogic() != 0)
+  if (this->appLogic() != nullptr)
     {
     this->appLogic()->SetColorLogic(colorLogic);
     }
   app->coreIOManager()->registerIO(
-    new qSlicerColorsIO(colorLogic, this));
+    new qSlicerColorsReader(colorLogic, this));
   app->coreIOManager()->registerIO(new qSlicerNodeWriter(
     "Colors", QString("ColorTableFile"),
-    QStringList() << "vtkMRMLColorNode", this));
+    QStringList() << "vtkMRMLColorNode", true, this));
 
   QStringList paths = app->userSettings()->value("QTCoreModules/Colors/ColorFilePaths").toStringList();
 #ifdef Q_OS_WIN32
@@ -113,7 +108,7 @@ void qSlicerColorsModule::setup()
   // Warning: If the logic has already created the color nodes (AddDefaultColorNodes),
   // setting the user color file paths doesn't trigger any action to add new nodes.
   // It's something that must be fixed into the logic, not here
-  colorLogic->SetUserColorFilePaths(joinedPaths.toLatin1());
+  colorLogic->SetUserColorFilePaths(joinedPaths.toUtf8());
 
   // Color picker
   d->ColorDialogPickerWidget->setMRMLColorLogic(colorLogic);
@@ -191,4 +186,10 @@ QStringList qSlicerColorsModule::contributors()const
 bool qSlicerColorsModule::isHidden()const
 {
   return false;
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerColorsModule::associatedNodeTypes() const
+{
+  return QStringList() << "vtkMRMLColorNode";
 }

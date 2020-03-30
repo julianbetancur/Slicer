@@ -25,30 +25,30 @@ class VTK_MRML_EXPORT vtkMRMLChartViewNode : public vtkMRMLAbstractViewNode
 public:
   static vtkMRMLChartViewNode *New();
   vtkTypeMacro(vtkMRMLChartViewNode, vtkMRMLAbstractViewNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-   virtual vtkMRMLNode* CreateNodeInstance();
+   vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-  
-  /// 
+  void Copy(vtkMRMLNode *node) override;
+
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName();
+  const char* GetNodeTagName() override;
 
   ///
   /// Set the Chart node id displayed in this Chart View
@@ -58,14 +58,14 @@ public:
   /// Get the Chart node id displayed in this Chart View
   vtkGetStringMacro(ChartNodeID);
 
-  /// 
-  /// Updates this node if it depends on other nodes 
+  ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void UpdateReferences();
+  void UpdateReferences() override;
 
-  /// 
+  ///
   /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
+  void UpdateReferenceID(const char *oldID, const char *newID) override;
 
   ///
   /// Events
@@ -73,10 +73,10 @@ public:
   {
     ChartNodeChangedEvent = 16000
   };
-  
+
 protected:
   vtkMRMLChartViewNode();
-  ~vtkMRMLChartViewNode();
+  ~vtkMRMLChartViewNode() override;
   vtkMRMLChartViewNode(const vtkMRMLChartViewNode&);
   void operator=(const vtkMRMLChartViewNode&);
 

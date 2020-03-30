@@ -22,7 +22,6 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "itkConnectedThresholdImageFilter.h"
 
-vtkCxxRevisionMacro(vtkITKWandImageFilter, "$Revision: 1.0 $");
 vtkStandardNewMacro(vtkITKWandImageFilter);
 
 // Description:
@@ -36,8 +35,7 @@ vtkITKWandImageFilter::vtkITKWandImageFilter()
 }
 
 vtkITKWandImageFilter::~vtkITKWandImageFilter()
-{
-}
+= default;
 
 
 template <class T>
@@ -76,13 +74,13 @@ void vtkITKWandExecute(vtkITKWandImageFilter *self, vtkImageData* input,
        ind[1] < 0 || ind[1] >= dims[1] ||
        ind[2] < 0 || ind[2] >= dims[2] )
     {
-    vtkWarningWithObjectMacro(self, "Seed (" << ind[0] << ", " << ind[1] << ", " << ind[2] << ") is not in input region (" 
+    vtkWarningWithObjectMacro(self, "Seed (" << ind[0] << ", " << ind[1] << ", " << ind[2] << ") is not in input region ("
       << dims[0] << ", " << dims[1] << ", " << dims[2] << ")" );
     return;
     }
 
   // Segment using itk::WandImageFilter
-  typedef itk::Image<T,3> SegmentImageType;  
+  typedef itk::Image<T,3> SegmentImageType;
   typedef itk::ConnectedThresholdImageFilter<ImageType, SegmentImageType> WandType;
   typename WandType::Pointer wand = WandType::New();
 
@@ -109,7 +107,7 @@ void vtkITKWandExecute(vtkITKWandImageFilter *self, vtkImageData* input,
 
 
 //
-// 
+//
 //
 void vtkITKWandImageFilter::SimpleExecute(vtkImageData *input, vtkImageData *output)
 {
@@ -120,13 +118,13 @@ void vtkITKWandImageFilter::SimpleExecute(vtkImageData *input, vtkImageData *out
   //
   vtkPointData *pd = input->GetPointData();
   pd=input->GetPointData();
-  if (pd ==NULL)
+  if (pd ==nullptr)
     {
     vtkErrorMacro(<<"PointData is NULL");
     return;
     }
   vtkDataArray *inScalars=pd->GetScalars();
-  if ( inScalars == NULL )
+  if ( inScalars == nullptr )
     {
     vtkErrorMacro(<<"Scalars must be defined for wand selection");
     return;
@@ -160,7 +158,7 @@ void vtkITKWandImageFilter::SimpleExecute(vtkImageData *input, vtkImageData *out
             static_cast<VTK_TT *>(outPtr)));
       } //switch
     }
-  else 
+  else
     {
     vtkErrorMacro(<< "Can only select scalar.");
     }
@@ -170,7 +168,7 @@ void vtkITKWandImageFilter::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
 
-  os << indent << "Seed point location: [" 
+  os << indent << "Seed point location: ["
     << Seed[0] << "," << Seed[1] << "," << Seed[2] << "]" << std::endl;
   os << indent << "Dynamic range percentage: " << DynamicRangePercentage << std::endl;
 }

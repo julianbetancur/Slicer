@@ -20,9 +20,7 @@ class vtkVolumeProperty;
 
 // STD includes
 #include <string>
-#include <vtksys/stl/vector>
-
-#define COUNT_CROPPING_REGION_PLANES 6
+#include <vector>
 
 /// \brief vtkMRMLVolumePropertyNode contains the transfer functions (scalar
 /// opacity, color and gradient opacity) for the volume rendering.
@@ -30,23 +28,25 @@ class VTK_SLICER_VOLUMERENDERING_MODULE_MRML_EXPORT vtkMRMLVolumePropertyNode
   : public vtkMRMLStorableNode
 {
 public:
-  //--------------------------------------------------------------------------
-  /// OWN methods
-  //--------------------------------------------------------------------------
+  enum
+    {
+    /// Invoked when \sa EffectiveRange is modified
+    EffectiveRangeModified = 62300
+    };
 
   /// Create a new vtkMRMLVolumePropertyNode
   static vtkMRMLVolumePropertyNode *New();
   vtkTypeMacro(vtkMRMLVolumePropertyNode,vtkMRMLStorableNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  /// Don't change its scalarOpacity, gradientOpacity or color on the volumeproperty
+  /// Don't change its scalarOpacity, gradientOpacity or color on the volume property
   /// but use the methods below. It wouldn't observe them.
-  vtkGetObjectMacro(VolumeProperty,vtkVolumeProperty);
+  vtkGetObjectMacro(VolumeProperty, vtkVolumeProperty);
 
   /// Set the scalar opacity to the volume property.
   /// \sa GetScalarOpacity, GetPiecewiseFunctionString(), SetGradientOpacity(),
   /// SetColor()
-  void SetScalarOpacity(vtkPiecewiseFunction* newScalarOpacity, int component = 0);\
+  void SetScalarOpacity(vtkPiecewiseFunction* newScalarOpacity, int component = 0);
   /// Return the scalar opacity function for a given component or 0 if no
   /// function exists.
   /// \sa SetScalarOpacity()
@@ -115,56 +115,104 @@ public:
   static inline void GetColorTransferFunctionFromString(const char *str,
                                                         vtkColorTransferFunction* result);
 
+  /// Utility function:
+  /// Return the nearest higher value.
+  /// \sa HigherAndUnique()
+  static double NextHigher(double value);
+  /// Utility function:
+  /// Return the value or the nearest higher value if the value is equal
+  /// to previousValue. Update previousValue with the new higher value.
+  /// \sa NextHigher()
+  static double HigherAndUnique(double value, double & previousValue);
+
+  /// Set effective range
+  void SetEffectiveRange(double min, double max);
+  void SetEffectiveRange(double range[2]);
+  /// Get effective range
+  vtkGetVector2Macro(EffectiveRange, double);
+
+  /// Calculate effective range to include all the transfer functions.
+  /// \return True if calculation was successful, false is not (missing transfer functions)
+  bool CalculateEffectiveRange();
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// Copy only the parameterset (like Volume Propertys, Piecewiesefunctions
-  /// etc. as deep copy,but no references etc.)
+  /// Copy only the parameter set (like volume properties, piecewise functions
+  /// etc. as deep copy, but no references etc.)
   void CopyParameterSet(vtkMRMLNode *node);
 
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "VolumeProperty";};
+  const char* GetNodeTagName() override {return "VolumeProperty";}
 
   /// Reimplemented for internal reasons.
-  virtual void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData);
+  void ProcessMRMLEvents ( vtkObject *caller, unsigned long event, void *callData) override;
 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
   /// \sa vtkMRMLStorableNode::GetModifiedSinceRead()
-  virtual bool GetModifiedSinceRead();
+  bool GetModifiedSinceRead() override;
 
 protected:
-  /// Use ::New() to get a new instance.
-  vtkMRMLVolumePropertyNode(void);
+  vtkMRMLVolumePropertyNode();
+  ~vtkMRMLVolumePropertyNode() override;
 
-  /// Use ->Delete() to delete object
-  ~vtkMRMLVolumePropertyNode(void);
+  static int NodesFromString(const std::string& dataString, double* &data, int nodeSize);
+  static int DataFromString(const std::string& dataString, double* &data);
+  static std::string DataToString(double* data, int size);
 
-  static int dataFromString(const std::string& dataString, double* &data);
-  static std::string dataToString(double* data, int size);
+  // Getter and setter functions for the storable attributes
+  // (protected because only the XML read/write methods need to use these)
+  int GetInterpolationType();
+  void SetInterpolationType(int);
+  int GetShade();
+  void SetShade(int);
+  double GetDiffuse();
+  void SetDiffuse(double);
+  double GetAmbient();
+  void SetAmbient(double);
+  double GetSpecular();
+  void SetSpecular(double);
+  double GetSpecularPower();
+  void SetSpecularPower(double);
+  std::string GetScalarOpacityAsString();
+  void SetScalarOpacityAsString(std::string);
+  std::string GetGradientOpacityAsString();
+  void SetGradientOpacityAsString(std::string);
+  std::string GetRGBTransferFunctionAsString();
+  void SetRGBTransferFunctionAsString(std::string);
 
+protected:
   /// Events observed on the transfer functions
   vtkIntArray* ObservedEvents;
 
   /// Main parameters for visualization
   vtkVolumeProperty* VolumeProperty;
 
+  /// Effective range of the transfer functions. Outside this range the functions are constant.
+  /// Elements: {xMin, xMax}. Other axes not supported because the three transfer funcsions are
+  /// independent value-wise, and they do not have third and fourth axes.
+  double EffectiveRange[2];
+
+  /// Keep track of state of disable modified events
+  int DisabledModify;
+
 private:
   /// Caution: Not implemented
-  vtkMRMLVolumePropertyNode(const vtkMRMLVolumePropertyNode&);//Not implemented
-  void operator=(const vtkMRMLVolumePropertyNode&);/// Not implmented
+  vtkMRMLVolumePropertyNode(const vtkMRMLVolumePropertyNode&) = delete;
+  void operator=(const vtkMRMLVolumePropertyNode&) = delete;
 
 };
 

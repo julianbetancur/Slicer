@@ -6,32 +6,49 @@ set(MODULE_TITLE "${MODULE_NAME}")
 string(TOUPPER ${MODULE_NAME} MODULE_NAME_UPPER)
 
 #-----------------------------------------------------------------------------
+add_subdirectory(Logic)
+add_subdirectory(MRMLDM)
+add_subdirectory(Widgets)
+add_subdirectory(SubjectHierarchyPlugins)
+
+#-----------------------------------------------------------------------------
 set(MODULE_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_EXPORT")
 
 # Additional includes - Current_{source,binary} and Slicer_{Libs,Base} already included
 set(MODULE_INCLUDE_DIRECTORIES
+  ${CMAKE_CURRENT_SOURCE_DIR}/Logic
+  ${CMAKE_CURRENT_BINARY_DIR}/Logic
+  ${CMAKE_CURRENT_SOURCE_DIR}/SubjectHierarchyPlugins
+  ${CMAKE_CURRENT_BINARY_DIR}/SubjectHierarchyPlugins
+  ${qSlicerSubjectHierarchyModuleWidgets_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/Widgets
+  ${CMAKE_CURRENT_BINARY_DIR}/Widgets
   )
 
 set(MODULE_SRCS
-  qSlicer${MODULE_NAME}IO.cxx
-  qSlicer${MODULE_NAME}IO.h
   qSlicer${MODULE_NAME}Module.cxx
   qSlicer${MODULE_NAME}Module.h
   qSlicer${MODULE_NAME}ModuleWidget.cxx
   qSlicer${MODULE_NAME}ModuleWidget.h
+  qSlicer${MODULE_NAME}Reader.cxx
+  qSlicer${MODULE_NAME}Reader.h
   )
 
 set(MODULE_MOC_SRCS
-  qSlicer${MODULE_NAME}IO.h
   qSlicer${MODULE_NAME}Module.h
   qSlicer${MODULE_NAME}ModuleWidget.h
+  qSlicer${MODULE_NAME}Reader.h
   )
 
 set(MODULE_UI_SRCS
-  Resources/UI/qSlicer${MODULE_NAME}Module.ui
+  Resources/UI/qSlicer${MODULE_NAME}ModuleWidget.ui
   )
 
 set(MODULE_TARGET_LIBRARIES
+  vtkSlicer${MODULE_NAME}ModuleMRMLDisplayableManager
+  vtkSlicer${MODULE_NAME}ModuleLogic
+  qSlicer${MODULE_NAME}ModuleWidgets
+  qSlicer${MODULE_NAME}SubjectHierarchyPlugins
   )
 
 set(MODULE_RESOURCES
@@ -39,7 +56,7 @@ set(MODULE_RESOURCES
   )
 
 #-----------------------------------------------------------------------------
-slicerMacroBuildQtModule(
+slicerMacroBuildLoadableModule(
   NAME ${MODULE_NAME}
   TITLE ${MODULE_TITLE}
   EXPORT_DIRECTIVE ${MODULE_EXPORT_DIRECTIVE}
@@ -49,6 +66,7 @@ slicerMacroBuildQtModule(
   UI_SRCS ${MODULE_UI_SRCS}
   TARGET_LIBRARIES ${MODULE_TARGET_LIBRARIES}
   RESOURCES ${MODULE_RESOURCES}
+  WITH_GENERIC_TESTS
   )
 
 #-----------------------------------------------------------------------------

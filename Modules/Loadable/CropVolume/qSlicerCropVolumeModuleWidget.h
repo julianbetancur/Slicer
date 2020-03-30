@@ -19,43 +19,48 @@ class Q_SLICER_QTMODULES_CROPVOLUME_EXPORT qSlicerCropVolumeModuleWidget :
 public:
 
   typedef qSlicerAbstractModuleWidget Superclass;
-  qSlicerCropVolumeModuleWidget(QWidget *parent=0);
-  virtual ~qSlicerCropVolumeModuleWidget();
+  qSlicerCropVolumeModuleWidget(QWidget *parent=nullptr);
+  ~qSlicerCropVolumeModuleWidget() override;
+
+  bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
 
 public slots:
+  void setParametersNode(vtkMRMLNode* node);
 
 protected:
   QScopedPointer<qSlicerCropVolumeModuleWidgetPrivate> d_ptr;
-  
-  virtual void setup();
-  virtual void enter();
-  virtual void setMRMLScene(vtkMRMLScene*);
 
-  void initializeParameterNode(vtkMRMLScene*);
-
-
+  void setup() override;
+  void enter() override;
+  void setMRMLScene(vtkMRMLScene*) override;
 
 protected slots:
-  void initializeNode(vtkMRMLNode*);
-  void onInputVolumeChanged();
-  void onInputROIChanged();
-  void onROIVisibilityChanged();
+  void setInputVolume(vtkMRMLNode*);
+  void setOutputVolume(vtkMRMLNode* node);
+  void setInputROI(vtkMRMLNode*);
+  void initializeInputROI(vtkMRMLNode*);
+  /// when ROIs get added to the node selector, if the selector doesn't
+  /// have a current node, select it
+  void onInputROIAdded(vtkMRMLNode* node);
+
+  void onROIVisibilityChanged(bool);
+  void onROIFit();
   void onInterpolationModeChanged();
   void onApply();
-  void updateWidget();
-  void updateParameters();
+  void onFixAlignment();
+  void updateWidgetFromMRML();
   void onSpacingScalingValueChanged(double);
-  void onIsotropicModeChanged();
-  void onEndCloseEvent();
-  void onVoxelBasedChecked(bool checked);
+  void onIsotropicModeChanged(bool);
+  void onMRMLSceneEndBatchProcessEvent();
+  void onInterpolationEnabled(bool interpolationEnabled);
+  void onVolumeInformationSectionClicked(bool isOpen);
+  void onFillValueChanged(double);
 
+  void updateVolumeInfo();
 
 private:
   Q_DECLARE_PRIVATE(qSlicerCropVolumeModuleWidget);
   Q_DISABLE_COPY(qSlicerCropVolumeModuleWidget);
-
-  vtkMRMLCropVolumeParametersNode *parametersNode;
-
 };
 
 #endif

@@ -22,44 +22,59 @@
 #include <QStyle>
 #include <QPainter>
 
+// CTK includes
+#include "ctkVTKWidgetsUtils.h"
+
 // qMRML includes
 #include "qMRMLUtils.h"
 
 // MRML includes
-#include <vtkMRMLLinearTransformNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLTransformNode.h>
 #include <vtkMRMLViewNode.h>
 
 // VTK includes
-#include <vtkTransform.h>
 #include <vtkImageData.h>
+#include <vtkNew.h>
+#include <vtkQImageToImageSource.h>
+#include <vtkTransform.h>
+
+//-----------------------------------------------------------------------------
+qMRMLUtils::qMRMLUtils(QObject* _parent)
+  :QObject(_parent)
+{
+}
+
+//-----------------------------------------------------------------------------
+qMRMLUtils::~qMRMLUtils()
+= default;
 
 //------------------------------------------------------------------------------
 void qMRMLUtils::vtkMatrixToQVector(vtkMatrix4x4* matrix, QVector<double> & vector)
 {
   if (!matrix) { return; }
-  
+
   vector.clear();
-  
+
   for (int i=0; i < 4; i++)
     {
     for (int j=0; j < 4; j++)
       {
-      vector.append(matrix->GetElement(i,j)); 
+      vector.append(matrix->GetElement(i,j));
       }
     }
 }
 
 //------------------------------------------------------------------------------
-void qMRMLUtils::getTransformInCoordinateSystem(vtkMRMLNode* node, bool global, 
+void qMRMLUtils::getTransformInCoordinateSystem(vtkMRMLNode* node, bool global,
     vtkTransform* transform)
 {
-  Self::getTransformInCoordinateSystem(vtkMRMLLinearTransformNode::SafeDownCast( node ), 
-    global, transform); 
+  Self::getTransformInCoordinateSystem(vtkMRMLTransformNode::SafeDownCast( node ),
+    global, transform);
 }
 
 //------------------------------------------------------------------------------
-void qMRMLUtils::getTransformInCoordinateSystem(vtkMRMLLinearTransformNode* transformNode, 
+void qMRMLUtils::getTransformInCoordinateSystem(vtkMRMLTransformNode* transformNode,
   bool global, vtkTransform* transform)
 {
   Q_ASSERT(transform);
@@ -70,19 +85,20 @@ void qMRMLUtils::getTransformInCoordinateSystem(vtkMRMLLinearTransformNode* tran
 
   transform->Identity();
 
-  if (!transformNode) 
-    { 
-    return; 
+  if (!transformNode || !transformNode->IsLinear())
+    {
+    return;
     }
 
-  vtkMatrix4x4 *matrix = transformNode->GetMatrixTransformToParent();
-  Q_ASSERT(matrix);
-  if (!matrix) 
-    { 
-    return; 
+  vtkNew<vtkMatrix4x4> matrix;
+  int matrixDefined=transformNode->GetMatrixTransformToParent(matrix.GetPointer());
+  Q_ASSERT(matrixDefined);
+  if (!matrixDefined)
+    {
+    return;
     }
-  
-  transform->SetMatrix(matrix);
+
+  transform->SetMatrix(matrix.GetPointer());
 
   if ( global )
     {
@@ -136,80 +152,34 @@ QPixmap qMRMLUtils::createColorPixmap(QStyle * style, const QColor &color)
 }
 
 //---------------------------------------------------------------------------
-bool qMRMLUtils::qImageToVtkImageData(const QImage& img, vtkImageData* vtkimage)
+bool qMRMLUtils::qImageToVtkImageData(const QImage& qImage, vtkImageData* vtkimage)
 {
-  if (vtkimage == 0)
-    {
-    return false;
-    }
-
-  int height = img.height();
-  int width = img.width();
-  int numcomponents = img.hasAlphaChannel() ? 4 : 3;
-
-  vtkimage->SetWholeExtent(0, width-1, 0, height-1, 0, 0);
-  vtkimage->SetSpacing(1.0, 1.0, 1.0);
-  vtkimage->SetOrigin(0.0, 0.0, 0.0);
-  vtkimage->SetNumberOfScalarComponents(numcomponents);
-  vtkimage->SetScalarType(VTK_UNSIGNED_CHAR);
-  vtkimage->SetExtent(vtkimage->GetWholeExtent());
-  vtkimage->AllocateScalars();
-  for(int i=0; i<height; i++)
-    {
-    unsigned char* row;
-    row = static_cast<unsigned char*>(vtkimage->GetScalarPointer(0, height-i-1, 0));
-    const QRgb* linePixels = reinterpret_cast<const QRgb*>(img.scanLine(i));
-    for(int j=0; j<width; j++)
-      {
-      const QRgb& col = linePixels[j];
-      row[j*numcomponents] = qRed(col);
-      row[j*numcomponents+1] = qGreen(col);
-      row[j*numcomponents+2] = qBlue(col);
-      if(numcomponents == 4)
-        {
-        row[j*numcomponents+3] = qAlpha(col);
-        }
-      }
-    }
-  return true;
+  return ctk::qImageToVTKImageData(qImage, vtkimage);
 }
 
 //---------------------------------------------------------------------------
 bool qMRMLUtils::vtkImageDataToQImage(vtkImageData* vtkimage, QImage& img)
 {
-  if (!vtkimage ||
-      vtkimage->GetScalarType() != VTK_UNSIGNED_CHAR)
+  img = ctk::vtkImageDataToQImage(vtkimage);
+  return !img.isNull();
+}
+
+//-----------------------------------------------------------------------------
+void qMRMLUtils::colorToQColor(const double* color, QColor &qcolor)
+{
+  if (color)
     {
-    return false;
+    qcolor = QColor::fromRgbF(color[0], color[1], color[2]);
     }
+}
 
-  int extent[6];
-  vtkimage->GetExtent(extent);
-  int width = extent[1]-extent[0]+1;
-  int height = extent[3]-extent[2]+1;
-  int numcomponents = vtkimage->GetNumberOfScalarComponents();
-  if(!(numcomponents == 3 || numcomponents == 4))
+//-----------------------------------------------------------------------------
+void qMRMLUtils::qColorToColor(const QColor &qcolor, double* color)
+{
+  if (color)
     {
-    return false;
+    color[0] = qcolor.redF();
+    color[1] = qcolor.greenF();
+    color[2] = qcolor.blueF();
     }
-
-  QImage newimg(width, height, QImage::Format_ARGB32);
-
-  for(int i=0; i<height; i++)
-    {
-    QRgb* bits = reinterpret_cast<QRgb*>(newimg.scanLine(i));
-    unsigned char* row;
-    row = static_cast<unsigned char*>(
-      vtkimage->GetScalarPointer(extent[0], extent[2] + height-i-1, extent[4]));
-    for(int j=0; j<width; j++)
-      {
-      unsigned char* data = &row[j*numcomponents];
-      bits[j] = numcomponents == 4 ?
-        qRgba(data[0], data[1], data[2], data[3]) :
-        qRgb(data[0], data[1], data[2]);
-      }
-    }
-
-  img = newimg;
-  return true;
 }

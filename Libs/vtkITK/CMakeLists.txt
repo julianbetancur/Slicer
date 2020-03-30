@@ -1,25 +1,61 @@
 project(vtkITK)
 
 #-----------------------------------------------------------------------------
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.13.4)
 #-----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
-# See http://cmake.org/cmake/help/cmake-2-8-docs.html#section_Policies for details
-#-----------------------------------------------------------------------------
-if(POLICY CMP0017)
-  cmake_policy(SET CMP0017 OLD)
-endif()
-
-find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})
-
-find_package(ITK REQUIRED)
-include(${ITK_USE_FILE})
-
+# --------------------------------------------------------------------------
+# Options
+# --------------------------------------------------------------------------
 if(NOT DEFINED BUILD_SHARED_LIBS)
   option(BUILD_SHARED_LIBS "Build with shared libraries." ON)
 endif()
+
+if(NOT DEFINED VTKITK_BUILD_DICOM_SUPPORT)
+  option(VTKITK_BUILD_DICOM_SUPPORT "Build with DICOM support" ON)
+endif()
+
+# --------------------------------------------------------------------------
+# Dependencies
+# --------------------------------------------------------------------------
+
+#
+# VTK
+#
+#find_package(VTK REQUIRED)
+#include(${VTK_USE_FILE})
+
+#
+# ITK
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ITKAnisotropicSmoothing
+  ITKCommon
+  ITKConnectedComponents
+  ITKDistanceMap
+  ITKIOGDCM
+  ITKIOGE
+  ITKIOImageBase
+  ITKImageCompose
+  ITKImageFilterBase
+  ITKImageFunction
+  ITKImageGrid
+  ITKLabelMap
+  ITKPath
+  ITKRegionGrowing
+  ITKThresholding
+  ITKVTK
+  # Needed for ITKv5 so that SimpleFastMutexLock is an alias to std::mutex in ITKv5
+  # once ITKv4 is not supported, then we can simply replace SimpleFastMutexLock with std::mutex
+  # the use the DeprecatedLib allows building without many preprocessor conditionals
+  # for ITKv5/ITKv4 differences.
+  ITKDeprecated
+  )
+find_package(ITK 5.0 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+list(APPEND ITK_LIBRARIES ITKFactoryRegistration)
+list(APPEND ITK_INCLUDE_DIRS ${ITKFactoryRegistration_INCLUDE_DIRS})
+include(${ITK_USE_FILE})
 
 # --------------------------------------------------------------------------
 # Include dirs
@@ -27,6 +63,7 @@ endif()
 set(include_dirs
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${vtkAddon_INCLUDE_DIRS}
   )
 include_directories(${include_dirs})
 
@@ -62,20 +99,23 @@ set(vtkITK_SRCS
   vtkITKArchetypeImageSeriesScalarReader.cxx
   vtkITKArchetypeImageSeriesVectorReaderFile.cxx
   vtkITKArchetypeImageSeriesVectorReaderSeries.cxx
+  vtkITKImageThresholdCalculator.cxx
   vtkITKImageWriter.cxx
   vtkITKImageToImageFilter.h
   vtkITKImageToImageFilterFF.h
   vtkITKImageToImageFilterSS.h
   vtkITKGradientAnisotropicDiffusionImageFilter.cxx
   vtkITKDistanceTransform.cxx
+  vtkITKLabelShapeStatistics.cxx
   vtkITKLevelTracingImageFilter.cxx
   vtkITKLevelTracing3DImageFilter.cxx
   vtkITKWandImageFilter.cxx
   vtkITKNewOtsuThresholdImageFilter.cxx
-  vtkITKBSplineTransform.cxx
   vtkITKTimeSeriesDatabase.cxx
   vtkITKIslandMath.cxx
+  vtkITKImageMargin.cxx
   vtkITKGrowCutSegmentationImageFilter.cxx
+  vtkITKMorphologicalContourInterpolator.cxx
   )
 
 # these types are never instantiated, so they don't
@@ -111,8 +151,6 @@ set(lib_name ${PROJECT_NAME})
 set(srcs ${vtkITK_SRCS})
 add_library(${lib_name} ${srcs})
 
-set(VTK_LIBRARIES vtkCommon vtkFiltering vtkImaging)
-
 set(libs
   ${ITK_LIBRARIES}
   ${VTK_LIBRARIES}
@@ -122,6 +160,16 @@ target_link_libraries(${lib_name} ${libs})
 # Apply user-defined properties to the library target.
 if(Slicer_LIBRARY_PROPERTIES)
   set_target_properties(${lib_name} PROPERTIES ${Slicer_LIBRARY_PROPERTIES})
+endif()
+
+# --------------------------------------------------------------------------
+# Folder
+# --------------------------------------------------------------------------
+if(NOT DEFINED ${PROJECT_NAME}_FOLDER)
+  set(${PROJECT_NAME}_FOLDER ${PROJECT_NAME})
+endif()
+if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+  set_target_properties(${lib_name} PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
 endif()
 
 # --------------------------------------------------------------------------
@@ -160,6 +208,14 @@ if(VTK_WRAP_PYTHON)
     )
   # Export target
   export(TARGETS ${lib_name}Python ${lib_name}PythonD APPEND FILE ${${PROJECT_NAME}_EXPORT_FILE})
+  # Folder
+  if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name}Python PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    set_target_properties(${lib_name}PythonD PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    if(TARGET ${lib_name}Hierarchy)
+      set_target_properties(${lib_name}Hierarchy PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    endif()
+  endif()
 endif()
 
 # --------------------------------------------------------------------------

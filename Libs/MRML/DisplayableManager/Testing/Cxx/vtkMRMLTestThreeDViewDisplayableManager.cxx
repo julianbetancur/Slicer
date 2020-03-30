@@ -25,13 +25,13 @@
 #include <vtkMRMLCameraNode.h>
 
 // VTK includes
+#include <vtkObjectFactory.h>
 
 // STD includes
 #include <cassert>
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLTestThreeDViewDisplayableManager );
-vtkCxxRevisionMacro(vtkMRMLTestThreeDViewDisplayableManager, "$Revision: 13525 $");
 
 //---------------------------------------------------------------------------
 int vtkMRMLTestThreeDViewDisplayableManager::NodeAddedCount = 0;
@@ -57,8 +57,7 @@ vtkMRMLTestThreeDViewDisplayableManager::vtkInternal::vtkInternal(vtkMRMLTestThr
 
 //---------------------------------------------------------------------------
 vtkMRMLTestThreeDViewDisplayableManager::vtkInternal::~vtkInternal()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 // vtkMRMLTestThreeDViewDisplayableManager methods

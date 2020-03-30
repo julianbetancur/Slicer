@@ -11,13 +11,13 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DMatrix3x3Transform_h
-#define __itkDiffusionTensor3DMatrix3x3Transform_h
+#ifndef itkDiffusionTensor3DMatrix3x3Transform_h
+#define itkDiffusionTensor3DMatrix3x3Transform_h
 
 #include "itkDiffusionTensor3DTransform.h"
 #include <itkVector.h>
 #include <itkMatrixOffsetTransformBase.h>
-#include <itkMutexLock.h>
+#include <mutex>
 
 namespace itk
 {
@@ -48,6 +48,9 @@ public:
   typedef SmartPointer<Self>                               Pointer;
   typedef SmartPointer<const Self>                         ConstPointer;
 
+  /** Run-time type information (and related methods). */
+  itkTypeMacro(DiffusionTensor3DMatrix3x3Transform, DiffusionTensor3DTransform);
+
   // /Set the translation vector
   void SetTranslation( VectorType translation );
 
@@ -58,7 +61,7 @@ public:
   void SetCenter( PointType center );
 
   // /Evaluate the position of the transformed tensor in the output image
-  PointType EvaluateTensorPosition( const PointType & point );
+  PointType EvaluateTensorPosition( const PointType & point ) override;
 
   // /Set the 3x3 transform matrix
   virtual void SetMatrix3x3( MatrixTransformType & matrix );
@@ -69,7 +72,7 @@ public:
   // /Evaluate the transformed tensor
   virtual TensorDataType EvaluateTransformedTensor( TensorDataType & tensor );
 
-  virtual TensorDataType EvaluateTransformedTensor( TensorDataType & tensor, PointType & outputPosition ); // dummy
+  TensorDataType EvaluateTransformedTensor( TensorDataType & tensor, PointType & outputPosition ) override; // dummy
                                                                                                            // output
                                                                                                            // position;
                                                                                                            // to be
@@ -78,7 +81,7 @@ public:
                                                                                                            // non-rigid
                                                                                                            // transforms
 
-  virtual typename Transform<double, 3, 3>::Pointer GetTransform();
+  typename Transform<double, 3, 3>::Pointer GetTransform() override;
 
 protected:
   void ComputeOffset();
@@ -89,11 +92,11 @@ protected:
   InternalMatrixTransformType m_TransformMatrix;
   InternalMatrixTransformType m_Transform;
   InternalMatrixTransformType m_TransformT;
-  unsigned long               latestTime;
+  unsigned long               m_LatestTime;
   VectorType                  m_Translation;
   VectorType                  m_Offset;
   PointType                   m_Center;
-  MutexLock::Pointer          m_Lock;
+  std::mutex                  m_Lock;
 };
 
 } // end namespace itk

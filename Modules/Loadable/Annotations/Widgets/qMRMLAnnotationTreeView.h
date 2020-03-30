@@ -27,6 +27,7 @@
 // Annotations includes
 #include "qSlicerAnnotationsModuleWidgetsExport.h"
 class qMRMLAnnotationTreeViewPrivate;
+class qMRMLSceneAnnotationModel;
 
 // Logic includes
 class vtkSlicerAnnotationModuleLogic;
@@ -45,8 +46,9 @@ class Q_SLICER_MODULE_ANNOTATIONS_WIDGETS_EXPORT qMRMLAnnotationTreeView
   Q_OBJECT
 
 public:
-  qMRMLAnnotationTreeView(QWidget *parent=0);
-  virtual ~qMRMLAnnotationTreeView();
+  typedef qMRMLTreeView Superclass;
+  qMRMLAnnotationTreeView(QWidget *parent=nullptr);
+  ~qMRMLAnnotationTreeView() override;
 
   void hideScene();
 
@@ -64,13 +66,9 @@ public:
 
   void selectedAsCollection(vtkCollection* collection);
 
-  void setSelectedNode(const char* id);
-
-public slots:
-  void onSelectionChanged(const QItemSelection& index,const QItemSelection& beforeIndex);
+  qMRMLSceneAnnotationModel* annotationModel()const;
 
 signals:
-  void currentNodeChanged(vtkMRMLNode* node);
   void onPropertyEditButtonClicked(QString id);
 
 protected slots:
@@ -78,20 +76,26 @@ protected slots:
 
 protected:
   QScopedPointer<qMRMLAnnotationTreeViewPrivate> d_ptr;
-  #ifndef QT_NO_CURSOR
-    void mouseMoveEvent(QMouseEvent* e);
-    bool viewportEvent(QEvent* e);
-  #endif
-  virtual void mousePressEvent(QMouseEvent* event);
+#ifndef QT_NO_CURSOR
+  void mouseMoveEvent(QMouseEvent* e) override;
+  bool viewportEvent(QEvent* e) override;
+#endif
+  void mousePressEvent(QMouseEvent* event) override;
+
+  void toggleVisibility(const QModelIndex& index) override;
+
+  /// Reimplemented to also set the active hierarchy node when the current
+  /// index changes.
+  /// \sa qMRMLTreeView::onSelectionChanged(),
+  /// vtkSlicerAnnotationModuleLogic::SetActiveHierarchyNodeID()
+  void onSelectionChanged(const QItemSelection & selected,
+                                  const QItemSelection & deselected) override;
 
 private:
   Q_DECLARE_PRIVATE(qMRMLAnnotationTreeView);
   Q_DISABLE_COPY(qMRMLAnnotationTreeView);
 
   vtkSlicerAnnotationModuleLogic* m_Logic;
-  
-  // toggle the visibility of an annotation
-  void onVisibilityColumnClicked(vtkMRMLNode* node);
 
   // toggle un-/lock of an annotation
   void onLockColumnClicked(vtkMRMLNode* node);

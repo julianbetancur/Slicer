@@ -22,9 +22,10 @@
 #include <QPushButton>
 
 // QtGUI includes
-#include "qSlicerCoreApplication.h"
+#include "qSlicerApplication.h"
 #include "qSlicerExtensionsManagerDialog.h"
 #include "qSlicerExtensionsManagerModel.h"
+#include "qSlicerSettingsExtensionsPanel.h"
 #include "ui_qSlicerExtensionsManagerDialog.h"
 
 //-----------------------------------------------------------------------------
@@ -42,11 +43,13 @@ public:
 
   QStringList PreviousModulesAdditionalPaths;
   QStringList PreviousExtensionsScheduledForUninstall;
+  QVariantMap PreviousExtensionsScheduledForUpdate;
 };
 
 // --------------------------------------------------------------------------
 qSlicerExtensionsManagerDialogPrivate::qSlicerExtensionsManagerDialogPrivate(qSlicerExtensionsManagerDialog& object)
-  :q_ptr(&object)
+  : q_ptr(&object)
+  , RestartRequested(false)
 {
 }
 
@@ -69,6 +72,17 @@ void qSlicerExtensionsManagerDialogPrivate::init()
   QSettings * settings = qSlicerCoreApplication::application()->revisionUserSettings();
   this->PreviousModulesAdditionalPaths = settings->value("Modules/AdditionalPaths").toStringList();
   this->PreviousExtensionsScheduledForUninstall = settings->value("Extensions/ScheduledForUninstall").toStringList();
+  this->PreviousExtensionsScheduledForUpdate = settings->value("Extensions/ScheduledForUpdate").toMap();
+
+  qSlicerSettingsExtensionsPanel * extensionsPanel =
+      qobject_cast<qSlicerSettingsExtensionsPanel*>(
+        qSlicerApplication::application()->settingsDialog()->panel("Extensions"));
+  Q_ASSERT(extensionsPanel);
+  if (extensionsPanel)
+    {
+    QObject::connect(extensionsPanel, SIGNAL(extensionsServerUrlChanged(QString)),
+                     this->ExtensionsManagerWidget, SLOT(refreshInstallWidget()));
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -85,8 +99,7 @@ qSlicerExtensionsManagerDialog::qSlicerExtensionsManagerDialog(QWidget *_parent)
 
 // --------------------------------------------------------------------------
 qSlicerExtensionsManagerDialog::~qSlicerExtensionsManagerDialog()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 qSlicerExtensionsManagerModel* qSlicerExtensionsManagerDialog::extensionsManagerModel()const
@@ -120,6 +133,10 @@ void qSlicerExtensionsManagerDialog::setExtensionsManagerModel(qSlicerExtensions
             this, SLOT(onModelUpdated()));
     connect(model, SIGNAL(extensionCancelledScheduleForUninstall(QString)),
             this, SLOT(onModelUpdated()));
+    connect(model, SIGNAL(extensionScheduledForUpdate(QString)),
+            this, SLOT(onModelUpdated()));
+    connect(model, SIGNAL(extensionCancelledScheduleForUpdate(QString)),
+            this, SLOT(onModelUpdated()));
     connect(model, SIGNAL(extensionEnabledChanged(QString,bool)),
             this, SLOT(onModelUpdated()));
     }
@@ -151,7 +168,9 @@ void qSlicerExtensionsManagerDialog::onModelUpdated()
   if (d->PreviousModulesAdditionalPaths
       != coreApp->revisionUserSettings()->value("Modules/AdditionalPaths").toStringList() ||
       d->PreviousExtensionsScheduledForUninstall
-      != coreApp->revisionUserSettings()->value("Extensions/ScheduledForUninstall").toStringList())
+      != coreApp->revisionUserSettings()->value("Extensions/ScheduledForUninstall").toStringList() ||
+      d->PreviousExtensionsScheduledForUpdate
+      != coreApp->revisionUserSettings()->value("Extensions/ScheduledForUpdate").toMap())
     {
     shouldRestart = true;
     }

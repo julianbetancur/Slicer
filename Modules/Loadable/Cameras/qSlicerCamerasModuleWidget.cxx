@@ -20,7 +20,7 @@
 
 // SlicerQt includes
 #include "qSlicerCamerasModuleWidget.h"
-#include "ui_qSlicerCamerasModule.h"
+#include "ui_qSlicerCamerasModuleWidget.h"
 #include "vtkSlicerCamerasModuleLogic.h"
 
 // MRML includes
@@ -31,7 +31,7 @@
 // STD includes
 
 //-----------------------------------------------------------------------------
-class qSlicerCamerasModuleWidgetPrivate: public Ui_qSlicerCamerasModule
+class qSlicerCamerasModuleWidgetPrivate: public Ui_qSlicerCamerasModuleWidget
 {
 public:
 };
@@ -45,8 +45,7 @@ qSlicerCamerasModuleWidget::qSlicerCamerasModuleWidget(QWidget* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerCamerasModuleWidget::~qSlicerCamerasModuleWidget()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerCamerasModuleWidget::setup()
@@ -108,7 +107,7 @@ void qSlicerCamerasModuleWidget::setCameraToCurrentView(vtkMRMLNode* mrmlNode)
     }
   vtkMRMLViewNode *currentViewNode = vtkMRMLViewNode::SafeDownCast(
     d->ViewNodeSelector->currentNode());
-  if (currentViewNode == 0)
+  if (currentViewNode == nullptr)
     {
     return;
     }
@@ -150,4 +149,34 @@ void  qSlicerCamerasModuleWidget::setMRMLScene(vtkMRMLScene* scene)
   // its items before the camera, and the synchronizeCameraWithView() might do nothing.
   // Let's resync here.
   this->synchronizeCameraWithView();
+}
+
+//-----------------------------------------------------------
+bool qSlicerCamerasModuleWidget::setEditedNode(vtkMRMLNode* node,
+                                               QString role /* = QString()*/,
+                                               QString context /* = QString()*/)
+{
+  Q_D(qSlicerCamerasModuleWidget);
+  Q_UNUSED(role);
+  Q_UNUSED(context);
+
+  if (vtkMRMLViewNode::SafeDownCast(node))
+    {
+    d->ViewNodeSelector->setCurrentNode(node);
+    return true;
+    }
+
+  if (vtkMRMLCameraNode::SafeDownCast(node))
+    {
+    vtkMRMLCameraNode* cameraNode = vtkMRMLCameraNode::SafeDownCast(node);
+    vtkMRMLViewNode* viewNode = vtkMRMLViewNode::SafeDownCast(this->mrmlScene()->GetNodeByID(cameraNode->GetActiveTag()));
+    if (!viewNode)
+      {
+      return false;
+      }
+    d->ViewNodeSelector->setCurrentNode(viewNode);
+    return true;
+    }
+
+  return false;
 }

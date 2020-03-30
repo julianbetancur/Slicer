@@ -1,73 +1,148 @@
 
-# Make sure this file is included only once
-get_filename_component(CMAKE_CURRENT_LIST_FILENAME ${CMAKE_CURRENT_LIST_FILE} NAME_WE)
-if(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED)
-  return()
+set(proj SlicerExecutionModel)
+
+# Set dependency list
+set(${proj}_DEPENDENCIES ${ITK_EXTERNAL_NAME})
+
+if(Slicer_USE_TBB)
+  list(APPEND ${proj}_DEPENDENCIES tbb)
 endif()
-set(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED 1)
+
+if(Slicer_BUILD_PARAMETERSERIALIZER_SUPPORT)
+  set(${proj}_DEPENDENCIES ${${proj}_DEPENDENCIES} JsonCpp ParameterSerializer)
+endif()
+
+# Include dependent projects if any
+ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
+
+if(Slicer_USE_SYSTEM_${proj})
+  message(FATAL_ERROR "Enabling Slicer_USE_SYSTEM_${proj} is not supported !")
+endif()
 
 # Sanity checks
 if(DEFINED SlicerExecutionModel_DIR AND NOT EXISTS ${SlicerExecutionModel_DIR})
-  message(FATAL_ERROR "SlicerExecutionModel_DIR variable is defined but corresponds to non-existing directory")
+  message(FATAL_ERROR "SlicerExecutionModel_DIR variable is defined but corresponds to nonexistent directory")
 endif()
 
-# Set dependency list
-set(SlicerExecutionModel_DEPENDENCIES ${ITK_EXTERNAL_NAME})
+if(NOT DEFINED SlicerExecutionModel_DIR AND NOT Slicer_USE_SYSTEM_${proj})
 
-# Include dependent projects if any
-SlicerMacroCheckExternalProjectDependency(SlicerExecutionModel)
-set(proj SlicerExecutionModel)
+  set(EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS)
+  set(EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS)
+  set(EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_BUILD)
+  set(EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_INSTALL)
 
-if(NOT DEFINED SlicerExecutionModel_DIR)
-  #message(STATUS "${__indent}Adding project ${proj}")
-
-  # Set CMake OSX variable to pass down the external project
-  set(CMAKE_OSX_EXTERNAL_PROJECT_ARGS)
   if(APPLE)
-    list(APPEND CMAKE_OSX_EXTERNAL_PROJECT_ARGS
-      -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-      -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
-      -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET})
+    list(APPEND EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS
+      -DSlicerExecutionModel_DEFAULT_CLI_EXECUTABLE_LINK_FLAGS:STRING=-Wl,-rpath,@loader_path/../../../
+      )
   endif()
 
-  if(NOT DEFINED git_protocol)
-    set(git_protocol "git")
+  if(Slicer_BUILD_PARAMETERSERIALIZER_SUPPORT)
+    list(APPEND EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS
+      -DJsonCpp_INCLUDE_DIR:PATH=${JsonCpp_INCLUDE_DIR}
+      -DParameterSerializer_DIR:PATH=${ParameterSerializer_DIR}
+      )
+    # JsoncCpp_LIBRARY needs to be added as a CMAKE_ARGS because it contains an
+    # expression that needs to be evaluated
+    list(APPEND EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS
+      -DJsonCpp_LIBRARY:PATH=${JsonCpp_LIBRARY}
+      )
   endif()
+
+  if(Slicer_USE_TBB)
+    list(APPEND EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_BUILD
+      ${TBB_BIN_DIR}
+      )
+    list(APPEND EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_INSTALL
+      ${TBB_BIN_DIR}
+      )
+  endif()
+
+  # If it applies, prepend "CMAKE_ARGS"
+  if(NOT EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS STREQUAL "")
+    set(EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS
+      CMAKE_ARGS
+      ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS})
+  endif()
+
+  ExternalProject_SetIfNotDefined(
+    Slicer_${proj}_GIT_REPOSITORY
+    "${EP_GIT_PROTOCOL}://github.com/Slicer/SlicerExecutionModel.git"
+    QUIET
+    )
+
+  ExternalProject_SetIfNotDefined(
+    Slicer_${proj}_GIT_TAG
+    "1788b378ed2e4928cded2bc9ecdc2b37c7f2af5f"
+    QUIET
+    )
+
+  set(EP_SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj})
+  set(EP_BINARY_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
 
   ExternalProject_Add(${proj}
-    GIT_REPOSITORY "${git_protocol}://github.com/Slicer/SlicerExecutionModel.git"
-    GIT_TAG "09df5936ede810dc2cb7ff4f69ec28121362659a"
-    "${slicer_external_update}"
-    SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
-    BINARY_DIR ${proj}-build
-    CMAKE_GENERATOR ${gen}
-    CMAKE_ARGS
+    ${${proj}_EP_ARGS}
+    GIT_REPOSITORY "${Slicer_${proj}_GIT_REPOSITORY}"
+    GIT_TAG "${Slicer_${proj}_GIT_TAG}"
+    SOURCE_DIR ${EP_SOURCE_DIR}
+    BINARY_DIR ${EP_BINARY_DIR}
+    CMAKE_CACHE_ARGS
+      # Compiler settings
       -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
       -DCMAKE_CXX_FLAGS:STRING=${ep_common_cxx_flags}
       -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
       -DCMAKE_C_FLAGS:STRING=${ep_common_c_flags} # Unused
-      ${CMAKE_OSX_EXTERNAL_PROJECT_ARGS}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+      -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
+      -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=${CMAKE_CXX_STANDARD_REQUIRED}
+      -DCMAKE_CXX_EXTENSIONS:BOOL=${CMAKE_CXX_EXTENSIONS}
+      # Options
       -DBUILD_TESTING:BOOL=OFF
+      -DSlicerExecutionModel_USE_UTF8:BOOL=ON
       -DITK_DIR:PATH=${ITK_DIR}
+      -DSlicerExecutionModel_USE_SERIALIZER:BOOL=${Slicer_BUILD_PARAMETERSERIALIZER_SUPPORT}
+      -DSlicerExecutionModel_USE_JSONCPP:BOOL=${Slicer_BUILD_PARAMETERSERIALIZER_SUPPORT}
       -DSlicerExecutionModel_LIBRARY_PROPERTIES:STRING=${Slicer_LIBRARY_PROPERTIES}
+      # Output directories
+      -DSlicerExecutionModel_DEFAULT_CLI_RUNTIME_OUTPUT_DIRECTORY:PATH=${SlicerExecutionModel_DEFAULT_CLI_RUNTIME_OUTPUT_DIRECTORY}
+      -DSlicerExecutionModel_DEFAULT_CLI_LIBRARY_OUTPUT_DIRECTORY:PATH=${SlicerExecutionModel_DEFAULT_CLI_LIBRARY_OUTPUT_DIRECTORY}
+      -DSlicerExecutionModel_DEFAULT_CLI_ARCHIVE_OUTPUT_DIRECTORY:PATH=${SlicerExecutionModel_DEFAULT_CLI_ARCHIVE_OUTPUT_DIRECTORY}
+      # Install directories
       -DSlicerExecutionModel_INSTALL_BIN_DIR:PATH=${Slicer_INSTALL_LIB_DIR}
       -DSlicerExecutionModel_INSTALL_LIB_DIR:PATH=${Slicer_INSTALL_LIB_DIR}
       #-DSlicerExecutionModel_INSTALL_SHARE_DIR:PATH=${Slicer_INSTALL_ROOT}share/${SlicerExecutionModel}
-      -DSlicerExecutionModel_INSTALL_NO_DEVELOPMENT:BOOL=${Slicer_INSTALL_NO_DEVELOPMENT}
-      -DSlicerExecutionModel_DEFAULT_CLI_RUNTIME_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${Slicer_BINARY_INNER_SUBDIR}/${Slicer_CLIMODULES_BIN_DIR}
-      -DSlicerExecutionModel_DEFAULT_CLI_LIBRARY_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${Slicer_BINARY_INNER_SUBDIR}/${Slicer_CLIMODULES_LIB_DIR}
-      -DSlicerExecutionModel_DEFAULT_CLI_ARCHIVE_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${Slicer_BINARY_INNER_SUBDIR}/${Slicer_CLIMODULES_LIB_DIR}
       -DSlicerExecutionModel_DEFAULT_CLI_INSTALL_RUNTIME_DESTINATION:STRING=${Slicer_INSTALL_CLIMODULES_BIN_DIR}
       -DSlicerExecutionModel_DEFAULT_CLI_INSTALL_LIBRARY_DESTINATION:STRING=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
       -DSlicerExecutionModel_DEFAULT_CLI_INSTALL_ARCHIVE_DESTINATION:STRING=${Slicer_INSTALL_CLIMODULES_LIB_DIR}
+      # Options
+      -DSlicerExecutionModel_INSTALL_NO_DEVELOPMENT:BOOL=${Slicer_INSTALL_NO_DEVELOPMENT}
+      -DSlicerExecutionModel_DEFAULT_CLI_TARGETS_FOLDER_PREFIX:STRING=Module-
+      -DSlicerExecutionModel_ADDITIONAL_FORWARD_PATHS_BUILD:PATH=${EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_BUILD}
+      -DSlicerExecutionModel_ADDITIONAL_FORWARD_PATHS_INSTALL:PATH=${EXTERNAL_PROJECT_ADDITIONAL_FORWARD_PATHS_INSTALL}
+      ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS}
+    ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_ARGS}
     INSTALL_COMMAND ""
     DEPENDS
-      ${SlicerExecutionModel_DEPENDENCIES}
+      ${${proj}_DEPENDENCIES}
     )
-  set(SlicerExecutionModel_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+
+  ExternalProject_GenerateProjectDescription_Step(${proj})
+
+  set(SlicerExecutionModel_DIR ${EP_BINARY_DIR})
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${SlicerExecutionModel_DIR}/ModuleDescriptionParser/bin/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
 else()
-  # The project is provided using SlicerExecutionModel_DIR, nevertheless since other project may depend on SlicerExecutionModel,
-  # let's add an 'empty' one
-  SlicerMacroEmptyExternalProject(${proj} "${SlicerExecutionModel_DEPENDENCIES}")
+  ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})
 endif()
+
+mark_as_superbuild(
+  VARS SlicerExecutionModel_DIR:PATH
+  LABELS "FIND_PACKAGE"
+  )

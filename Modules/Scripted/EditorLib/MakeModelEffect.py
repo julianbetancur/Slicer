@@ -1,24 +1,29 @@
 import os
-from __main__ import vtk
-from __main__ import qt
-from __main__ import ctk
-from __main__ import slicer
-from EditOptions import EditOptions
-import EditUtil
-import EditorLib
-import Effect
+import vtk
+import qt
+import ctk
+import slicer
+from . import HelpButton
+from . import EditUtil
+from . import EffectOptions, EffectTool, EffectLogic, Effect
 
+__all__ = [
+  'MakeModelEffectOptions',
+  'MakeModelEffectTool',
+  'MakeModelEffectLogic',
+  'MakeModelEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
-  MakeModelEffect is a subclass of Effect (for tools that plug into the 
-  slicer Editor module) for making model nodes from the 
+  MakeModelEffect is a subclass of Effect (for tools that plug into the
+  slicer Editor module) for making model nodes from the
   current paint label
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -27,7 +32,7 @@ comment = """
 # MakeModelEffectOptions - see EditOptions and Effect for superclasses
 #
 
-class MakeModelEffectOptions(Effect.EffectOptions):
+class MakeModelEffectOptions(EffectOptions):
   """ MakeModelEffect-specfic gui
   """
 
@@ -50,7 +55,7 @@ class MakeModelEffectOptions(Effect.EffectOptions):
 
     self.smooth = qt.QCheckBox("Smooth Model", self.frame)
     self.smooth.checked = True
-    self.smooth.setToolTip("When smoothed, the model will look better, but some details of the label map will not be visible on the model.  When not smoothed you will see individual voxel boundaries in the model.  Smoothing here corresponds to Decimation of 0.25 and Smooting iterations of 10.")
+    self.smooth.setToolTip("When smoothed, the model will look better, but some details of the label map will not be visible on the model.  When not smoothed you will see individual voxel boundaries in the model.  Smoothing here corresponds to Decimation of 0.25 and Smoothing iterations of 10.")
     self.frame.layout().addWidget(self.smooth)
     self.widgets.append(self.smooth)
 
@@ -68,16 +73,17 @@ class MakeModelEffectOptions(Effect.EffectOptions):
     self.widgets.append(self.modelNameLabel)
 
     self.modelName = qt.QLineEdit(self.nameFrame)
-    self.modelName.setText( self.getUniqueModelName( self.editUtil.getLabelName() ) )
+    self.modelName.setText( self.getUniqueModelName( EditUtil.getLabelName() ) )
     self.nameFrame.layout().addWidget(self.modelName)
     self.widgets.append(self.modelName)
 
     self.apply = qt.QPushButton("Apply", self.frame)
+    self.apply.objectName = self.__class__.__name__ + 'Apply'
     self.apply.setToolTip("Build a model for the current label value of the label map being edited in the Red slice window.  Model will be created in the background." )
     self.frame.layout().addWidget(self.apply)
     self.widgets.append(self.apply)
 
-    EditorLib.HelpButton(self.frame, "Use this tool build a model.  A subset of model building options is provided here.  Go to the Model Maker module to expose a range of parameters.  Use Merge and Build button in the Advanced... tab to quickly make a model of all defined structures in the merge label map.")
+    HelpButton(self.frame, "Use this tool build a model.  A subset of model building options is provided here.  Go to the Model Maker module to expose a range of parameters.  Use Merge and Build button in the Advanced... tab to quickly make a model of all defined structures in the merge label map.")
 
     # Add vertical spacer
     self.frame.layout().addStretch(1)
@@ -94,7 +100,7 @@ class MakeModelEffectOptions(Effect.EffectOptions):
     defined in the leaf classes in EditOptions.py
     in each leaf subclass so that "self" in the observer
     is of the correct type """
-    node = self.editUtil.getParameterNode()
+    node = EditUtil.getParameterNode()
     if node != self.parameterNode:
       if self.parameterNode:
         node.RemoveObserver(self.parameterNodeTag)
@@ -106,7 +112,8 @@ class MakeModelEffectOptions(Effect.EffectOptions):
       modelMaker = slicer.modules.modelmaker
       return True
     except AttributeError:
-      qt.QMessageBox.critical(slicer.util.mainWindow(), 'Editor', 'The ModelMaker module is not available<p>Perhaps it was disabled in the application settings or did not load correctly.')
+      slicer.util.errorDisplay('The ModelMaker module is not available<p>Perhaps it was disabled in the application '
+                               'settings or did not load correctly.', windowTitle='Editor')
       return False
 
   def onGoToModelMaker(self):
@@ -116,7 +123,7 @@ class MakeModelEffectOptions(Effect.EffectOptions):
 
   def onApply(self):
     if self.checkForModelMakerModule():
-      # 
+      #
       # run the task (in the background)
       # - use the GUI to provide progress feedback
       # - use the GUI's Logic to invoke the task
@@ -151,8 +158,8 @@ class MakeModelEffectOptions(Effect.EffectOptions):
 #
 # MakeModelEffectTool
 #
- 
-class MakeModelEffectTool(Effect.EffectTool):
+
+class MakeModelEffectTool(EffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -171,13 +178,13 @@ class MakeModelEffectTool(Effect.EffectTool):
 #
 # MakeModelEffectLogic
 #
- 
-class MakeModelEffectLogic(Effect.EffectLogic):
+
+class MakeModelEffectLogic(EffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an MakeModelEffectTool
   or MakeModelEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the MakeModelEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -192,7 +199,7 @@ class MakeModelEffectLogic(Effect.EffectLogic):
     # based on the current editor parameters
     #
 
-    volumeNode = self.editUtil.getLabelVolume()
+    volumeNode = EditUtil.getLabelVolume()
     if not volumeNode:
       return
 
@@ -206,10 +213,10 @@ class MakeModelEffectLogic(Effect.EffectLogic):
     parameters['FilterType'] = "Sinc"
 
     # build only the currently selected model.
-    parameters['Labels'] = self.editUtil.getLabel()
+    parameters['Labels'] = EditUtil.getLabel()
     parameters["StartLabel"] = -1
     parameters["EndLabel"] = -1
-    
+
     parameters['GenerateAll'] = False
     parameters["JointSmoothing"] = False
     parameters["SplitNormals"] = True
@@ -224,12 +231,12 @@ class MakeModelEffectLogic(Effect.EffectLogic):
       parameters["Smooth"] = 0
 
     #
-    # output 
+    # output
     # - make a new hierarchy node if needed
     #
     numNodes = slicer.mrmlScene.GetNumberOfNodesByClass( "vtkMRMLModelHierarchyNode" )
     outHierarchy = None
-    for n in xrange(numNodes):
+    for n in range(numNodes):
       node = slicer.mrmlScene.GetNthNodeByClass( n, "vtkMRMLModelHierarchyNode" )
       if node.GetName() == "Editor Models":
         outHierarchy = node
@@ -245,7 +252,7 @@ class MakeModelEffectLogic(Effect.EffectLogic):
 
     modelMaker = slicer.modules.modelmaker
 
-    # 
+    #
     # run the task (in the background)
     # - use the GUI to provide progress feedback
     # - use the GUI's Logic to invoke the task
@@ -256,10 +263,10 @@ class MakeModelEffectLogic(Effect.EffectLogic):
     slicer.util.showStatusMessage( "Model Making Started...", 2000 )
 
 #
-# The MakeModelEffect class definition 
+# The MakeModelEffect class definition
 #
 
-class MakeModelEffect(Effect.Effect):
+class MakeModelEffect(Effect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """

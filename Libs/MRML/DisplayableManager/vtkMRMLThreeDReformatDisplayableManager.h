@@ -23,7 +23,7 @@
 
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractThreeDViewDisplayableManager.h"
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 /// \brief Displayable manager for ImplicitPlaneWidget2 in 3D views.
 ///
@@ -34,30 +34,30 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLThreeDReformatDisplayableManager
 
 public:
   static vtkMRMLThreeDReformatDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLThreeDReformatDisplayableManager,
+  vtkTypeMacro(vtkMRMLThreeDReformatDisplayableManager,
                        vtkMRMLAbstractThreeDViewDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
 protected:
   vtkMRMLThreeDReformatDisplayableManager();
-  virtual ~vtkMRMLThreeDReformatDisplayableManager();
+  ~vtkMRMLThreeDReformatDisplayableManager() override;
 
   /// Initialize the displayable manager based on its associated
   /// vtkMRMLSliceNode
-  virtual void Create();
+  void Create() override;
 
   /// WidgetCallback is a static function to relay modified events from the Logic
-  virtual void ProcessWidgetsEvents(vtkObject *caller, unsigned long event, void *callData);
+  void ProcessWidgetsEvents(vtkObject *caller, unsigned long event, void *callData) override;
 
-  virtual void UnobserveMRMLScene();
-  virtual void UpdateFromMRMLScene();
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* node);
-  virtual void OnMRMLNodeModified(vtkMRMLNode* node);
+  void UnobserveMRMLScene() override;
+  void UpdateFromMRMLScene() override;
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  void OnMRMLSceneNodeRemoved(vtkMRMLNode* node) override;
+  void OnMRMLNodeModified(vtkMRMLNode* node) override;
 
 private:
-  vtkMRMLThreeDReformatDisplayableManager(const vtkMRMLThreeDReformatDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLThreeDReformatDisplayableManager&);                         // Not Implemented
+  vtkMRMLThreeDReformatDisplayableManager(const vtkMRMLThreeDReformatDisplayableManager&) = delete;
+  void operator=(const vtkMRMLThreeDReformatDisplayableManager&) = delete;
 
   class vtkInternal;
   vtkInternal* Internal;

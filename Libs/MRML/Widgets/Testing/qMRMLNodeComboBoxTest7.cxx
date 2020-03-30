@@ -18,6 +18,8 @@
 // QT includes
 #include <QApplication>
 #include <QTimer>
+// Slicer includes
+#include "vtkSlicerConfigure.h"
 
 // qMRML includes
 #include "qMRMLNodeComboBox.h"
@@ -28,34 +30,36 @@
 #include <vtkMRMLScalarVolumeNode.h>
 
 // VTK includes
-#include "vtkSmartPointer.h"
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
-// STD includes
 
 // test the filtering with many cases
 int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
-  vtkSmartPointer<vtkMRMLScene> scene =  vtkSmartPointer<vtkMRMLScene>::New();
-  
-  vtkSmartPointer<vtkMRMLScalarVolumeNode> noAttributeNode = vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
-  scene->AddNode(noAttributeNode);
-  
+  vtkNew<vtkMRMLScene> scene;
+
+  vtkNew<vtkMRMLScalarVolumeNode> noAttributeNode;
+  scene->AddNode(noAttributeNode.GetPointer());
+
   const char *testingAttributeName = "testingAttribute";
   const char *testingAttribute = noAttributeNode->GetAttribute(testingAttributeName);
   std::cout << "Volume node with no call to SetAttribute, GetAttribute returns " << (testingAttribute ? testingAttribute : "0") << "." << std::endl;
-  
-  vtkSmartPointer<vtkMRMLScalarVolumeNode> emptyStringAttributeNode = vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
+
+  vtkNew<vtkMRMLScalarVolumeNode> emptyStringAttributeNode;
   emptyStringAttributeNode->SetAttribute(testingAttributeName, "");
-  scene->AddNode(emptyStringAttributeNode);
+  scene->AddNode(emptyStringAttributeNode.GetPointer());
 
   testingAttribute = emptyStringAttributeNode->GetAttribute(testingAttributeName);
   std::cout << "Volume node with SetAttribute called with an empty string, GetAttribute returns " << (testingAttribute ? testingAttribute : "0") << "." << std::endl;
 
-  vtkSmartPointer<vtkMRMLScalarVolumeNode> validAttributeNode = vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
+  vtkNew<vtkMRMLScalarVolumeNode> validAttributeNode;
   validAttributeNode->SetAttribute(testingAttributeName, "a");
-  scene->AddNode(validAttributeNode);
+  scene->AddNode(validAttributeNode.GetPointer());
 
   testingAttribute = validAttributeNode->GetAttribute(testingAttributeName);
   std::cout << "Volume node with SetAttribute called with 'a', GetAttribute returns " << (testingAttribute ? testingAttribute : "0") << "." << std::endl;
@@ -64,7 +68,7 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
   // counted
   qMRMLNodeComboBox nodeSelector;
   nodeSelector.setNodeTypes(QStringList("vtkMRMLScalarVolumeNode"));
-  nodeSelector.setMRMLScene(scene);
+  nodeSelector.setMRMLScene(scene.GetPointer());
 
   int nodeCount = nodeSelector.nodeCount();
   if (nodeCount != 3)
@@ -77,13 +81,13 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
     std::cout << "Passed with no filtering\n" << std::endl;
     }
   nodeSelector.show();
-  
+
   // a node selector with a defined filtering attribute, only one volume
   // should be counted
   qMRMLNodeComboBox nodeSelectorA;
   nodeSelectorA.setNodeTypes(QStringList("vtkMRMLScalarVolumeNode"));
   nodeSelectorA.addAttribute("vtkMRMLScalarVolumeNode", testingAttributeName, "a");
-  nodeSelectorA.setMRMLScene(scene);
+  nodeSelectorA.setMRMLScene(scene.GetPointer());
 
   nodeCount = nodeSelectorA.nodeCount();
   if (nodeCount != 1)
@@ -97,12 +101,12 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
     }
   nodeSelectorA.show();
 
-  // a node selector with a defined filtering attribute that doens't match any
+  // a node selector with a defined filtering attribute that doesn't match any
   // volumes, count should be zero
   qMRMLNodeComboBox nodeSelectorB;
   nodeSelectorB.setNodeTypes(QStringList("vtkMRMLScalarVolumeNode"));
   nodeSelectorB.addAttribute("vtkMRMLScalarVolumeNode", testingAttributeName, "b");
-  nodeSelectorB.setMRMLScene(scene);
+  nodeSelectorB.setMRMLScene(scene.GetPointer());
 
   nodeCount = nodeSelectorB.nodeCount();
   if (nodeCount != 0)
@@ -115,13 +119,13 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
     std::cout << "Passed filtering on 'b'\n" << std::endl;
     }
   nodeSelectorB.show();
-  
+
   // a node selector with an empty string as the filtering attribute, only one
   // volume should be counted
   qMRMLNodeComboBox nodeSelectorEmpty;
   nodeSelectorEmpty.setNodeTypes(QStringList("vtkMRMLScalarVolumeNode"));
   nodeSelectorEmpty.addAttribute("vtkMRMLScalarVolumeNode", testingAttributeName, "");
-  nodeSelectorEmpty.setMRMLScene(scene);
+  nodeSelectorEmpty.setMRMLScene(scene.GetPointer());
 
   nodeCount = nodeSelectorEmpty.nodeCount();
   if (nodeCount != 1)
@@ -140,7 +144,7 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
   qMRMLNodeComboBox nodeSelectorNull;
   nodeSelectorNull.setNodeTypes(QStringList("vtkMRMLScalarVolumeNode"));
   nodeSelectorNull.addAttribute("vtkMRMLScalarVolumeNode", testingAttributeName);
-  nodeSelectorNull.setMRMLScene(scene);
+  nodeSelectorNull.setMRMLScene(scene.GetPointer());
 
   nodeCount = nodeSelectorNull.nodeCount();
   if (nodeCount != 2)
@@ -153,7 +157,7 @@ int qMRMLNodeComboBoxTest7( int argc, char * argv [] )
     std::cout << "Passed filtering on null\n" << std::endl;
     }
   nodeSelectorNull.show();
-  
+
   if (argc < 2 || QString(argv[1]) != "-I")
     {
     QTimer::singleShot(200, &app, SLOT(quit()));

@@ -22,17 +22,25 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLCheckableNodeComboBox.h"
 #include "qMRMLSceneFactoryWidget.h"
 
 // MRML includes
 
+// VTK includes
+#include "qMRMLWidget.h"
+
 // STD includes
 
 int qMRMLCheckableNodeComboBoxTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLCheckableNodeComboBox nodeSelector;
 
@@ -62,7 +70,7 @@ int qMRMLCheckableNodeComboBoxTest1( int argc, char * argv [] )
   sceneFactory.generateNode("vtkMRMLViewNode");
   sceneFactory.generateNode("vtkMRMLViewNode");
   sceneFactory.generateNode("vtkMRMLViewNode");
-  
+
   nodeSelector.show();
 
   if (argc < 2 || QString(argv[1]) != "-I")

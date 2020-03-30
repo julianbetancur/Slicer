@@ -15,94 +15,56 @@
 #ifndef __vtkMRMLLinearTransformNode_h
 #define __vtkMRMLLinearTransformNode_h
 
+#define TRANSFORM_NODE_MATRIX_COPY_REQUIRED
+
 #include "vtkMRMLTransformNode.h"
 
 class vtkMRMLStorageNode;
+class vtkTransform;
+class InternalTransformToParentMatrix;
 
-/// \brief MRML node for representing a linear transformation to the parent
-/// node.
+/// \brief MRML node for representing a linear transformation.
 ///
-/// MRML node for representing
-/// a linear transformation to the parent node in the form vtkMatrix4x4
-/// MatrixTransformToParent.
+/// Internally, always the TransformToParent matrix is stored and TransformFromParent is computed by inverting
+/// the matrix. It makes the code simpler and faster to hardcode this. ToParent is stored because this is what
+/// we usually display to the user (it is more intuitive than the FromParent resampling transform).
 class VTK_MRML_EXPORT vtkMRMLLinearTransformNode : public vtkMRMLTransformNode
 {
   public:
   static vtkMRMLLinearTransformNode *New();
   vtkTypeMacro(vtkMRMLLinearTransformNode,vtkMRMLTransformNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
-
-  /// 
-  /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-
-  /// 
-  /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
-
-  /// 
-  /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-
-  /// 
-  /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "LinearTransform";};
-
-  /// 
-  /// 1 if transfrom is linear, 0 otherwise
-  virtual int IsLinear() {return 1;};
-
-  /// 
-  /// vtkGeneral transform of this node to paren node
-  virtual vtkGeneralTransform* GetTransformToParent();
-
-  /// 
-  /// Return the vtkMatrix4x4 transform of this node to parent node
-  vtkGetObjectMacro(MatrixTransformToParent, vtkMatrix4x4);
+  vtkMRMLNode* CreateNodeInstance() override;
 
   ///
-  /// Set and observe a new matrix transform of this node to parent node.
-  /// Each time the matrix is modified,
-  /// vtkMRMLTransformableNode::TransformModifiedEvent is fired.
-  /// ModifiedEvent() and TransformModifiedEvent() are fired after the matrix
-  /// is set.
-  void SetAndObserveMatrixTransformToParent(vtkMatrix4x4 *matrix);
+  /// Read node attributes from XML file
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
-  /// Get concatinated transforms to the top
-  virtual int  GetMatrixTransformToWorld(vtkMatrix4x4* transformToWorld);
-  
-  /// 
-  /// Get concatinated transforms  bwetween nodes  
-  virtual int  GetMatrixTransformToNode(vtkMRMLTransformNode* node, 
-                                        vtkMatrix4x4* transformToNode);
+  ///
+  /// Write this node's information to a MRML file in XML format.
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
-  /// alternative method to propagate events generated in Transform nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  ///
+  /// Copy the node's attributes to this object
+  void Copy(vtkMRMLNode *node) override;
 
-  virtual bool CanApplyNonLinearTransforms()const;
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix);
- 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode()
+  ///
+  /// Get node XML tag name (like Volume, Model)
+  const char* GetNodeTagName() override {return "LinearTransform";};
+
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override
     {
     return Superclass::CreateDefaultStorageNode();
     };
 
 protected:
   vtkMRMLLinearTransformNode();
-  ~vtkMRMLLinearTransformNode();
+  ~vtkMRMLLinearTransformNode() override;
   vtkMRMLLinearTransformNode(const vtkMRMLLinearTransformNode&);
   void operator=(const vtkMRMLLinearTransformNode&);
-
-  vtkMatrix4x4* MatrixTransformToParent;
 };
 
 #endif
-

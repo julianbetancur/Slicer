@@ -20,7 +20,6 @@
 
 // Qt includes
 #include <QApplication>
-#include <QDebug>
 
 // qMRML includes
 #include "qMRMLColorModel_p.h"
@@ -37,7 +36,11 @@ qMRMLColorModelPrivate::qMRMLColorModelPrivate(qMRMLColorModel& object)
 {
   this->CallBack = vtkSmartPointer<vtkCallbackCommand>::New();
   this->NoneEnabled = false;
-  this->LabelInColor = false;
+  this->ColorColumn = 0;
+  this->LabelColumn = 1;
+  this->OpacityColumn = 2;
+  this->CheckableColumn = -1;
+  this->IsUpdatingWidgetFromMRML = false;
 }
 
 //------------------------------------------------------------------------------
@@ -55,18 +58,47 @@ void qMRMLColorModelPrivate::init()
   Q_Q(qMRMLColorModel);
   this->CallBack->SetClientData(q);
   this->CallBack->SetCallback(qMRMLColorModel::onMRMLNodeEvent);
-  q->setColumnCount(3);
-  if (this->LabelInColor)
+  this->updateColumnCount();
+  QStringList headerLabels;
+  for (int i = 0; i <= this->maxColumnId(); ++i)
     {
-    q->setHorizontalHeaderLabels(QStringList() << "Color" << "Label" << "Opacity");
+    headerLabels << "";
     }
-  else
+  if (q->colorColumn() != -1)
     {
-    q->setHorizontalHeaderLabels(QStringList() << "" << "Label" << "Opacity");
+    headerLabels[q->colorColumn()] = "Color";
     }
+  if (q->labelColumn() != -1)
+    {
+    headerLabels[q->labelColumn()] = "Label";
+    }
+  if (q->opacityColumn() != -1)
+    {
+    headerLabels[q->opacityColumn()] = "Opacity";
+    }
+  q->setHorizontalHeaderLabels(headerLabels);
   QObject::connect(q, SIGNAL(itemChanged(QStandardItem*)),
                    q, SLOT(onItemChanged(QStandardItem*)),
                    Qt::UniqueConnection);
+}
+
+//------------------------------------------------------------------------------
+void qMRMLColorModelPrivate::updateColumnCount()
+{
+  Q_Q(qMRMLColorModel);
+  const int max = this->maxColumnId();
+  q->setColumnCount(max + 1);
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorModelPrivate::maxColumnId()const
+{
+  int maxId = 0; // information (scene, node uid... ) are stored in the 1st column
+  maxId = qMax(maxId, this->ColorColumn);
+  maxId = qMax(maxId, this->LabelColumn);
+  maxId = qMax(maxId, this->OpacityColumn);
+  maxId = qMax(maxId, this->CheckableColumn);
+  return maxId;
 }
 
 //------------------------------------------------------------------------------
@@ -91,8 +123,7 @@ qMRMLColorModel::qMRMLColorModel(qMRMLColorModelPrivate* pimpl, QObject *parentO
 
 //------------------------------------------------------------------------------
 qMRMLColorModel::~qMRMLColorModel()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void qMRMLColorModel::setMRMLColorNode(vtkMRMLColorNode* colorNode)
@@ -145,30 +176,72 @@ bool qMRMLColorModel::noneEnabled()const
 }
 
 //------------------------------------------------------------------------------
-void qMRMLColorModel::setLabelInColorColumn(bool enable)
+int qMRMLColorModel::colorColumn()const
 {
-  Q_D(qMRMLColorModel);
-  if (d->LabelInColor == enable)
-    {
-    return;
-    }
-  d->LabelInColor = enable;
-  this->updateNode();
+  Q_D(const qMRMLColorModel);
+  return d->ColorColumn;
 }
 
 //------------------------------------------------------------------------------
-bool qMRMLColorModel::isLabelInColorColumn()const
+void qMRMLColorModel::setColorColumn(int column)
+{
+  Q_D(qMRMLColorModel);
+  d->ColorColumn = column;
+  d->updateColumnCount();
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorModel::labelColumn()const
 {
   Q_D(const qMRMLColorModel);
-  return d->LabelInColor;
+  return d->LabelColumn;
 }
+
+//------------------------------------------------------------------------------
+void qMRMLColorModel::setLabelColumn(int column)
+{
+  Q_D(qMRMLColorModel);
+  d->LabelColumn = column;
+  d->updateColumnCount();
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorModel::opacityColumn()const
+{
+  Q_D(const qMRMLColorModel);
+  return d->OpacityColumn;
+}
+
+//------------------------------------------------------------------------------
+void qMRMLColorModel::setOpacityColumn(int column)
+{
+  Q_D(qMRMLColorModel);
+  d->OpacityColumn = column;
+  d->updateColumnCount();
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorModel::checkableColumn()const
+{
+  Q_D(const qMRMLColorModel);
+  return d->CheckableColumn;
+}
+
+//------------------------------------------------------------------------------
+void qMRMLColorModel::setCheckableColumn(int column)
+{
+  Q_D(qMRMLColorModel);
+  d->CheckableColumn = column;
+  d->updateColumnCount();
+}
+
 
 //------------------------------------------------------------------------------
 int qMRMLColorModel::colorFromItem(QStandardItem* colorItem)const
 {
   Q_D(const qMRMLColorModel);
   // TODO: fasten by saving the pointer into the data
-  if (d->MRMLColorNode == 0 || colorItem == 0)
+  if (d->MRMLColorNode == nullptr || colorItem == nullptr)
     {
     return -1;
     }
@@ -186,9 +259,9 @@ QStandardItem* qMRMLColorModel::itemFromColor(int color, int column)const
   //Q_D(const qMRMLColorModel);
   if (color == -1)
     {
-    return 0;
+    return nullptr;
     }
-  QModelIndexList indexes = this->match(QModelIndex(), qMRMLColorModel::ColorEntryRole,
+  QModelIndexList indexes = this->match(this->index(0,0), qMRMLColorModel::ColorEntryRole,
                                       color, 1,
                                       Qt::MatchExactly | Qt::MatchRecursive);
   while (indexes.size())
@@ -200,13 +273,13 @@ QStandardItem* qMRMLColorModel::itemFromColor(int color, int column)const
     indexes = this->match(indexes[0], qMRMLColorModel::ColorEntryRole, color, 1,
                           Qt::MatchExactly | Qt::MatchRecursive);
     }
-  return 0;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------------
 QModelIndexList qMRMLColorModel::indexes(int color)const
 {
-  return this->match(QModelIndex(), qMRMLColorModel::ColorEntryRole, color, -1,
+  return this->match(this->index(0,0), qMRMLColorModel::ColorEntryRole, color, -1,
                      Qt::MatchExactly | Qt::MatchRecursive);
 }
 
@@ -214,7 +287,7 @@ QModelIndexList qMRMLColorModel::indexes(int color)const
 QColor qMRMLColorModel::qcolorFromColor(int entry)const
 {
   Q_D(const qMRMLColorModel);
-  if (d->MRMLColorNode == 0 || entry < 0)
+  if (d->MRMLColorNode == nullptr || entry < 0)
     {
     return QColor();
     }
@@ -227,7 +300,7 @@ QColor qMRMLColorModel::qcolorFromColor(int entry)const
 QString qMRMLColorModel::nameFromColor(int entry)const
 {
   Q_D(const qMRMLColorModel);
-  if (d->MRMLColorNode == 0 || entry < 0)
+  if (d->MRMLColorNode == nullptr || entry < 0)
     {
     return QString();
     }
@@ -235,13 +308,32 @@ QString qMRMLColorModel::nameFromColor(int entry)const
 }
 
 //------------------------------------------------------------------------------
+int qMRMLColorModel::colorFromName(const QString& name)const
+{
+  Q_D(const qMRMLColorModel);
+  if (d->MRMLColorNode == nullptr)
+    {
+    return -1;
+    }
+  return d->MRMLColorNode->GetColorIndexByName(name.toUtf8());
+}
+
+//------------------------------------------------------------------------------
 void qMRMLColorModel::updateNode()
 {
   Q_D(qMRMLColorModel);
 
-  if (d->MRMLColorNode == 0)
+  if (d->IsUpdatingWidgetFromMRML)
+    {
+    // Updating widget from MRML is already in progress
+    return;
+    }
+  d->IsUpdatingWidgetFromMRML = true;
+
+  if (d->MRMLColorNode == nullptr)
     {
     this->setRowCount(this->noneEnabled() ? 1 : 0);
+    d->IsUpdatingWidgetFromMRML = false;
     return;
     }
 
@@ -269,38 +361,10 @@ void qMRMLColorModel::updateNode()
   QObject::connect(this, SIGNAL(itemChanged(QStandardItem*)),
                    this, SLOT(onItemChanged(QStandardItem*)),
                    Qt::UniqueConnection);
-}
-/*
-//------------------------------------------------------------------------------
-void qMRMLColorModel::populateNode()
-{
-  Q_D(qMRMLColorModel);
-  Q_ASSERT(d->MRMLColorNode);
-  // Add nodes
-  for (int i = 0; i < d->MRMLColorNode->GetNumberOfColors(); ++i)
-    {
-    this->insertColor(i);
-    }
+
+  d->IsUpdatingWidgetFromMRML = false;
 }
 
-//------------------------------------------------------------------------------
-void qMRMLColorModel::insertColor(int color)
-{
-  Q_D(qMRMLColorModel);
-  Q_ASSERT(color >= 0);
-  QStandardItem* parent = this->mrmlColorNodeItem();
-  
-  QList<QStandardItem*> items;
-  for (int i= 0; i < this->columnCount(); ++i)
-    {
-    QStandardItem* newItem = new QStandardItem();
-    this->updateItemFromColor(newItem, color, i);
-    items.append(newItem);
-    }
-
-  this->mrmlColorNodeItem()->appendRow(items);
-}
-*/
 //------------------------------------------------------------------------------
 void qMRMLColorModel::updateItemFromColor(QStandardItem* item, int color, int column)
 {
@@ -310,56 +374,48 @@ void qMRMLColorModel::updateItemFromColor(QStandardItem* item, int color, int co
     return;
     }
   item->setData(color, qMRMLColorModel::ColorEntryRole);
-  double rgba[4] = {0.,0.,0.,1.};
-  bool validColor = d->MRMLColorNode->GetColor(color, rgba);
+
   QString colorName = d->MRMLColorNode->GetNamesInitialised() ?
     d->MRMLColorNode->GetColorName(color) : "";
-  switch (column)
+  if (column == d->ColorColumn)
     {
-    case qMRMLColorModel::ColorColumn:
-    default:
+    QPixmap pixmap;
+    double rgba[4] = { 0., 0., 0., 1. };
+    const bool validColor = d->MRMLColorNode->GetColor(color, rgba);
+    if (validColor)
       {
-      QPixmap pixmap;
-      if (validColor)
-        {
-        // It works to set just a QColor but if the model gets into a QComboBox,
-        // the currently selected item doesn't get a decoration.
-        // TODO: Cache the pixmap as it is expensive to compute and it is done
-        // for ALL the colors of the node anytime a color is changed.
-        //item->setData(QColor::fromRgbF(rgba[0], rgba[1], rgba[2]), Qt::DecorationRole);
-        pixmap = qMRMLUtils::createColorPixmap(
-          qApp->style(), QColor::fromRgbF(rgba[0], rgba[1], rgba[2]));
-        item->setData(pixmap, Qt::DecorationRole);
-        //item->setData(QColor::fromRgbF(rgba[0], rgba[1], rgba[2]), Qt::DecorationRole);
-        item->setData(QColor::fromRgbF(rgba[0], rgba[1], rgba[2]), qMRMLColorModel::ColorRole);
-        //item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-        }
-      else
-        {
-        item->setData(QVariant(), Qt::DecorationRole);
-        item->setData(QColor(), qMRMLColorModel::ColorRole);
-        }
-      if (d->LabelInColor)
-        {
-        item->setText(colorName);
-        item->setData(QVariant(),Qt::SizeHintRole);
-        //item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-        }
-      else
-        {
-        item->setText(QString());
-        item->setData((validColor ? pixmap.size() : QVariant()),Qt::SizeHintRole);
-        //item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        }
-      item->setToolTip(colorName);
-      break;
+      // It works to set just a QColor but if the model gets into a QComboBox,
+      // the currently selected item doesn't get a decoration.
+      // TODO: Cache the pixmap as it is expensive to compute and it is done
+      // for ALL the colors of the node anytime a color is changed.
+      pixmap = qMRMLUtils::createColorPixmap(
+        qApp->style(), QColor::fromRgbF(rgba[0], rgba[1], rgba[2]));
+      item->setData(pixmap, Qt::DecorationRole);
+      item->setData(QColor::fromRgbF(rgba[0], rgba[1], rgba[2]), qMRMLColorModel::ColorRole);
       }
-    case qMRMLColorModel::LabelColumn:
-      item->setText(colorName);
-      break;
-    case qMRMLColorModel::OpacityColumn:
-      item->setData(QString::number(rgba[3],'f',2), Qt::DisplayRole);
-      break;
+    else
+      {
+      item->setData(QVariant(), Qt::DecorationRole);
+      item->setData(QColor(), qMRMLColorModel::ColorRole);
+      }
+    item->setData(validColor && column != d->LabelColumn ?
+      pixmap.size() : QVariant(), Qt::SizeHintRole);
+    item->setToolTip(colorName);
+    }
+  if (column == d->LabelColumn)
+    {
+    item->setText(colorName);
+    item->setToolTip("");
+    }
+  if (column == d->OpacityColumn)
+    {
+    double rgba[4] = { 0., 0., 0., 1. };
+    d->MRMLColorNode->GetColor(color, rgba);
+    item->setData(QString::number(rgba[3],'f',2), Qt::DisplayRole);
+    }
+  if (column == d->CheckableColumn)
+    {
+    item->setCheckable(true);
     }
 }
 
@@ -372,22 +428,18 @@ void qMRMLColorModel::updateColorFromItem(int color, QStandardItem* item)
     {
     return;
     }
-  switch(item->column())
+  if (item->column() == d->ColorColumn)
     {
-    case qMRMLColorModel::ColorColumn:
-      {
-      QColor rgba(item->data(qMRMLColorModel::ColorRole).value<QColor>());
-      colorTableNode->SetColor(color, rgba.redF(), rgba.greenF(), rgba.blueF(), rgba.alphaF());
-      break;
-      }
-    case qMRMLColorModel::LabelColumn:
-      colorTableNode->SetColorName(color, item->text().toLatin1());
-      break;
-    case qMRMLColorModel::OpacityColumn:
-      colorTableNode->SetOpacity(color, item->data(Qt::DisplayRole).toDouble());
-      break;
-    default:
-      break;
+    QColor rgba(item->data(qMRMLColorModel::ColorRole).value<QColor>());
+    colorTableNode->SetColor(color, rgba.redF(), rgba.greenF(), rgba.blueF());
+    }
+  else if (item->column() == d->LabelColumn)
+    {
+    colorTableNode->SetColorName(color, item->text().toUtf8());
+    }
+  else if (item->column() == d->OpacityColumn)
+    {
+    colorTableNode->SetOpacity(color, item->data(Qt::DisplayRole).toDouble());
     }
 }
 
@@ -428,4 +480,22 @@ void qMRMLColorModel::onItemChanged(QStandardItem * item)
     }
   int color = this->colorFromItem(item);
   this->updateColorFromItem(color, item);
+}
+
+//------------------------------------------------------------------------------
+QVariant qMRMLColorModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+  QVariant retval =  QStandardItemModel::headerData(section, orientation, role);
+
+  if (orientation == Qt::Vertical &&
+      role == Qt::DisplayRole)
+    {
+    // for the vertical header, decrement the row number by one, since the
+    // rows start from 1 and the indices start from 0 in the color look up
+    // table.
+    retval = QVariant(retval.toInt() - 1);
+    }
+
+  return retval;
+
 }

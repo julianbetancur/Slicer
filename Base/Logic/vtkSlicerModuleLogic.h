@@ -26,8 +26,8 @@ class VTK_SLICER_BASE_LOGIC_EXPORT vtkSlicerModuleLogic
 public:
   /// The Usual vtk class functions
   static vtkSlicerModuleLogic *New();
-  vtkTypeRevisionMacro(vtkSlicerModuleLogic, vtkMRMLAbstractLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkSlicerModuleLogic, vtkMRMLAbstractLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// Get access to overall application state
   virtual vtkSlicerApplicationLogic* GetApplicationLogic();
@@ -39,12 +39,12 @@ public:
 protected:
 
   vtkSlicerModuleLogic();
-  virtual ~vtkSlicerModuleLogic();
+  ~vtkSlicerModuleLogic() override;
 
 private:
 
-  vtkSlicerModuleLogic(const vtkSlicerModuleLogic&); // Not implemented
-  void operator=(const vtkSlicerModuleLogic&);       // Not implemented
+  vtkSlicerModuleLogic(const vtkSlicerModuleLogic&) = delete;
+  void operator=(const vtkSlicerModuleLogic&) = delete;
 
   std::string ModuleShareDirectory;
 };

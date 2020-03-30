@@ -33,8 +33,8 @@ class QMRML_WIDGETS_EXPORT qMRMLVolumeThresholdWidget
 public:
   /// Constructors
   typedef qMRMLVolumeWidget Superclass;
-  explicit qMRMLVolumeThresholdWidget(QWidget* parent=0);
-  virtual ~qMRMLVolumeThresholdWidget();
+  explicit qMRMLVolumeThresholdWidget(QWidget* parent=nullptr);
+  ~qMRMLVolumeThresholdWidget() override;
 
   enum ControlMode
   {
@@ -49,19 +49,19 @@ public:
   /// Is the thresholding activated
   bool isOff()const;
 
-  /// 
+  ///
   /// Get lowerThreshold
   double lowerThreshold()const;
 
-  /// 
+  ///
   /// Get upperThreshold
   double upperThreshold()const;
 
 signals:
-  /// 
+  ///
   /// Signal sent if the lowerThreshold/upperThreshold value is updated
   void thresholdValuesChanged(double lowerThreshold, double upperThreshold);
-  /// 
+  ///
   /// Signal sent if the auto/manual value is updated
   void autoThresholdValueChanged(int value);
 
@@ -69,23 +69,23 @@ public slots:
   /// Set Auto/Manual mode
   void setAutoThreshold(int autoThreshold);
 
-  /// 
+  ///
   /// Set lowerThreshold
   void setLowerThreshold(double lowerThreshold);
 
-  /// 
+  ///
   /// Set upperThreshold
   void setUpperThreshold(double upperThreshold);
 
-  /// 
+  ///
   /// Set lowerThreshold/upperThreshold in once
   void setThreshold(double lowerThreshold, double upperThreshold);
 
 protected:
   /// Update the widget from volume display node properties.
-  virtual void updateWidgetFromMRMLDisplayNode();
+  void updateWidgetFromMRMLDisplayNode() override;
 
-  /// 
+  ///
   /// Set sliders range
   void setMinimum(double min);
   void setMaximum(double max);

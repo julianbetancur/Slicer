@@ -24,6 +24,8 @@
 // Qt includes
 #include <QObject>
 #include <QStringList>
+class QMimeData;
+class QDropEvent;
 
 // CTK includes
 #include <ctkPimpl.h>
@@ -35,17 +37,26 @@
 /// Forward declarations
 class qSlicerIOManager;
 //class qSlicerFileDialogPrivate;
+class qSlicerIOOptions;
 
 //------------------------------------------------------------------------------
 class Q_SLICER_BASE_QTGUI_EXPORT qSlicerFileDialog : public QObject
 {
   Q_OBJECT
+  Q_ENUMS(IOAction)
+  Q_PROPERTY(QString description READ description)
+
 public:
   typedef QObject Superclass;
-  qSlicerFileDialog(QObject* parent =0);
-  virtual ~qSlicerFileDialog();
+  qSlicerFileDialog(QObject* parent =nullptr);
+  ~qSlicerFileDialog() override;
 
   virtual qSlicerIO::IOFileType fileType()const = 0;
+
+  /// Unique name of the reader/writer
+  /// \sa filetype()
+  virtual QString description()const = 0;
+
   enum IOAction
   {
     Read,
@@ -63,30 +74,67 @@ public:
   static QStringList nameFilters(qSlicerIO::IOFileType fileType =
                                  QString("NoFile"));
 
-//private:
+  /// Accept or ignore mimedata.
+  /// Returns false by default.
+  /// Can be reimplemented in subclass to support drag&drop.
+  /// \sa dropEvent()
+  virtual bool isMimeDataAccepted(const QMimeData*mimeData)const;
+
+  /// Handle drop events: populate the dialog with the dropped mime data.
+  /// Can be reimplemented in subclass to support drag&drop.
+  /// Do nothing by default.
+  /// If it does something, acceptProposedAction() or accept() must be called.
+  /// \sa isMimeDataAccepted()
+  virtual void dropEvent(QDropEvent *event);
+
+  /// Return the list of nodes created by exec().
+  /// To be reimplemented.
+  /// \sa qSlicerFileReader::loadedNodes()
+  virtual QStringList loadedNodes()const;
+private:
 //  Q_DECLARE_PRIVATE(qSlicerFileDialog);
   Q_DISABLE_COPY(qSlicerFileDialog);
 };
+
+Q_DECLARE_METATYPE(qSlicerFileDialog::IOAction)
 
 class qSlicerStandardFileDialogPrivate;
 class ctkFileDialog;
 
 //------------------------------------------------------------------------------
-class Q_SLICER_BASE_QTGUI_EXPORT qSlicerStandardFileDialog : public qSlicerFileDialog
+class Q_SLICER_BASE_QTGUI_EXPORT qSlicerStandardFileDialog
+: public qSlicerFileDialog
 {
   Q_OBJECT
+  Q_PROPERTY(qSlicerIO::IOFileType fileType READ fileType WRITE setFileType)
+  Q_PROPERTY(QString description READ description WRITE setDescription)
+  /// This property controls which action the dialog is doing: read or write.
+  /// Read by default.
+  Q_PROPERTY(IOAction action READ action WRITE setAction)
+
 public:
-  qSlicerStandardFileDialog(QObject* parent=0);
-  virtual ~qSlicerStandardFileDialog();
+  qSlicerStandardFileDialog(QObject* parent=nullptr);
+  ~qSlicerStandardFileDialog() override;
 
-  void setFileType(qSlicerIO::IOFileType fileType);
-  virtual qSlicerIO::IOFileType fileType()const;
+  /// Reimplemented to return the fileType set by setFileType()
+  /// \sa fileType, setFileType()
+  qSlicerIO::IOFileType fileType()const override;
+  virtual void setFileType(qSlicerIO::IOFileType fileType);
 
-  void setAction(qSlicerFileDialog::IOAction dialogAction);
-  virtual qSlicerFileDialog::IOAction action()const;
+  /// Reimplemented to return the description set by setDescription()
+  /// \sa description, setDescription()
+  QString description() const override;
+  virtual void setDescription(const QString& description);
 
-  virtual bool exec(const qSlicerIO::IOProperties& ioProperties =
-                    qSlicerIO::IOProperties());
+  /// Reimplemented to return the IOAction set by setAction()
+  /// \sa action, setAction()
+  qSlicerFileDialog::IOAction action()const override;
+  /// Set the action of the file dialog. To be called by python.
+  /// \sa action, action()
+  void setAction(IOAction action);
+
+  bool exec(const qSlicerIO::IOProperties& ioProperties =
+                    qSlicerIO::IOProperties()) override;
 
   /// Properties availables with IOPorperties: fileMode, multipleFiles, fileType.
   static QStringList getOpenFileName(qSlicerIO::IOProperties ioProperties =
@@ -94,9 +142,14 @@ public:
   static QString getExistingDirectory(qSlicerIO::IOProperties ioProperties =
                                       qSlicerIO::IOProperties());
 
+  /// Return the list of nodes created by exec().
+  QStringList loadedNodes()const override;
+
 protected:
   static ctkFileDialog* createFileDialog(const qSlicerIO::IOProperties& ioProperties =
                                          qSlicerIO::IOProperties());
+
+  qSlicerIOOptions* options(const qSlicerIO::IOProperties& ioProperties)const;
 
 protected:
   QScopedPointer<qSlicerStandardFileDialogPrivate> d_ptr;

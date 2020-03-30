@@ -16,6 +16,9 @@
 // PythonQt includes
 #include <PythonQt.h>
 
+// CTK includes
+#include <ctkErrorLogModel.h>
+
 #include "vtkSlicerConfigure.h" // For Slicer_USE_QtTesting
 
 // CTK includes
@@ -36,7 +39,7 @@
 // NOTE:
 //
 // For decorators it is assumed that the methods will never be called
-// with the self argument as NULL.  The self argument is the first argument
+// with the self argument as nullptr.  The self argument is the first argument
 // for non-static methods.
 //
 
@@ -54,6 +57,8 @@ public:
 #ifdef Slicer_USE_QtTesting
     PythonQt::self()->registerClass(&ctkQtTestingUtility::staticMetaObject);
 #endif
+    PythonQt::self()->registerClass(&ctkErrorLogModel::staticMetaObject);
+    PythonQt::self()->registerClass(&ctkErrorLogTerminalOutput::staticMetaObject);
     // Note: Use registerCPPClassForPythonQt to register pure Cpp classes
     }
 
@@ -66,6 +71,12 @@ public slots:
   qSlicerAbstractModuleWidget* widgetRepresentation(qSlicerAbstractModule* _module)
     {
     return dynamic_cast<qSlicerAbstractModuleWidget*>(_module->widgetRepresentation());
+    }
+
+  //----------------------------------------------------------------------------
+  qSlicerAbstractModuleWidget* createNewWidgetRepresentation(qSlicerAbstractModule* _module)
+    {
+    return dynamic_cast<qSlicerAbstractModuleWidget*>(_module->createNewWidgetRepresentation());
     }
 
   //----------------------------------------------------------------------------

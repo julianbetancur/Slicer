@@ -22,6 +22,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFileInfo>
+#include <QNetworkCookie>
 #include <QSettings>
 #include <QStringList>
 
@@ -73,8 +74,7 @@ qSlicerPersistentCookieJar::qSlicerPersistentCookieJar(QObject * parent)
 
 //-----------------------------------------------------------------------------
 qSlicerPersistentCookieJar::~qSlicerPersistentCookieJar()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerPersistentCookieJar::filePath()const
@@ -100,7 +100,7 @@ QList<QNetworkCookie> qSlicerPersistentCookieJar::cookiesForUrl( const QUrl & ur
   QStringList keys = settings.childKeys();
   foreach(const QString& key, keys)
     {
-    cookieList << QNetworkCookie(key.toLatin1(), settings.value(key).toString().toLatin1());
+    cookieList << QNetworkCookie(key.toUtf8(), settings.value(key).toString().toUtf8());
     }
   return cookieList;
 }

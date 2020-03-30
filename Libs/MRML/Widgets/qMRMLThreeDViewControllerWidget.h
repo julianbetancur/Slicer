@@ -33,6 +33,12 @@ class qMRMLThreeDView;
 // MRML includes
 class vtkMRMLViewNode;
 
+// MRMLLogic includes
+class vtkMRMLViewLogic;
+
+// VTK includes
+class vtkCollection;
+
 class QMRML_WIDGETS_EXPORT qMRMLThreeDViewControllerWidget
   : public qMRMLViewControllerBar
 {
@@ -43,8 +49,8 @@ public:
   typedef qMRMLViewControllerBar Superclass;
 
   /// Constructors
-  explicit qMRMLThreeDViewControllerWidget(QWidget* parent = 0);
-  virtual ~qMRMLThreeDViewControllerWidget();
+  explicit qMRMLThreeDViewControllerWidget(QWidget* parent = nullptr);
+  ~qMRMLThreeDViewControllerWidget() override;
 
   /// Set the label for the 3D view (abbreviation for the view
   /// name)
@@ -53,9 +59,35 @@ public:
   /// Get the label for the view (abbreviation for the view name)
   QString viewLabel()const;
 
+  /// Set the color for the view
+  void setViewColor(const QColor& newViewColor);
+
+  /// Get the color for the view
+  QColor viewColor()const;
+
+  void setQuadBufferStereoSupportEnabled(bool value);
+
+  /// Get ViewLogic
+  vtkMRMLViewLogic* viewLogic()const;
+
+  /// Set \a newViewLogic
+  /// Use if two instances of the controller need to observe the same logic.
+  void setViewLogic(vtkMRMLViewLogic* newViewLogic);
+
+  /// TODO:
+  /// Ideally the view logics should be retrieved by the viewLogic
+  /// until then, we manually set them.
+  void setViewLogics(vtkCollection* logics);
+
 public slots:
+
+  void setMRMLScene(vtkMRMLScene* newScene) override;
+
   void setThreeDView(qMRMLThreeDView* threeDView);
   void setMRMLViewNode(vtkMRMLViewNode* viewNode);
+
+  /// Link/Unlink the view controls and the cameras across all viewes
+  void setViewLink(bool linked);
 
   void setOrthographicModeEnabled(bool enabled);
 
@@ -68,11 +100,16 @@ public slots:
   void spinView(bool enabled);
   void rockView(bool enabled);
   void setAnimationMode(int newAnimationMode);
-  
+
   void resetFocalPoint();
   void set3DAxisVisible(bool visible);
   void set3DAxisLabelVisible(bool visible);
 
+  /// Use or not depth peeling in the first renderer.
+  /// False by default.
+  void setUseDepthPeeling(bool use);
+  /// Show or hide the FPS in the lower right corner.
+  /// False by default.
   void setFPSVisible(bool visible);
 
   /// Utility function to change the color of the background to blue
@@ -89,9 +126,14 @@ public slots:
                           QColor color2 = QColor());
 
   void setStereoType(int newStereoType);
+  void setOrientationMarkerType(int type);
+  void setOrientationMarkerSize(int size);
+  void setRulerType(int type);
+  void setRulerColor(int color);
 
 protected slots:
-  void updateWidgetFromMRML();
+  void updateWidgetFromMRMLView();
+  void updateViewFromMRMLCamera();
 
 private:
   Q_DECLARE_PRIVATE(qMRMLThreeDViewControllerWidget);

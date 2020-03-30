@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -16,7 +16,7 @@
 #include <vtkMRMLSliceViewDisplayableManagerFactory.h>
 #include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
 #include <vtkMRMLViewDisplayableManager.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
@@ -33,7 +33,7 @@
 #include <vtkRegressionTestImage.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
-#include <vtkRenderWindowInteractor.h> 
+#include <vtkRenderWindowInteractor.h>
 #include <vtkSmartPointer.h>
 #include <vtkWindowToImageFilter.h>
 
@@ -89,7 +89,7 @@ int vtkMRMLAnnotationRulerDisplayableManagerTest1(int vtkNotUsed(argc), char* vt
    rw->SetInteractor(ri);
 
    // Set Interactor Style
-   vtkThreeDViewInteractorStyle * iStyle = vtkThreeDViewInteractorStyle::New();
+   vtkMRMLThreeDViewInteractorStyle * iStyle = vtkMRMLThreeDViewInteractorStyle::New();
    ri->SetInteractorStyle(iStyle);
    iStyle->Delete();
 

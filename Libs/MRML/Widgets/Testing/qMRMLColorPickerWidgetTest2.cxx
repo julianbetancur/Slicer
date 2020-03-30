@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include <ctkColorDialog.h>
 
@@ -35,39 +38,37 @@
 #include <vtkMRMLScene.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
-
-// STD includes
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 int qMRMLColorPickerWidgetTest2(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLColorPickerWidget colorPickerWidget;
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorTableNode =
-    vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorTableNode;
   colorTableNode->SetType(vtkMRMLColorTableNode::Labels);
-  scene->AddNode(colorTableNode);
-  
-  vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode =
-    vtkSmartPointer<vtkMRMLFreeSurferProceduralColorNode>::New();
-  colorFreeSurferNode->SetTypeToRedBlue();
-  scene->AddNode(colorFreeSurferNode);
+  scene->AddNode(colorTableNode.GetPointer());
 
-  colorPickerWidget.setMRMLScene(scene);
+  vtkNew<vtkMRMLFreeSurferProceduralColorNode> colorFreeSurferNode;
+  colorFreeSurferNode->SetTypeToRedBlue();
+  scene->AddNode(colorFreeSurferNode.GetPointer());
+
+  colorPickerWidget.setMRMLScene(scene.GetPointer());
 
   // for some reasons it generate a warning if the type is changed.
   colorTableNode->NamesInitialisedOff();
   colorTableNode->SetTypeToCool1();
 
-  vtkSmartPointer<vtkMRMLPETProceduralColorNode> colorPETNode =
-    vtkSmartPointer<vtkMRMLPETProceduralColorNode>::New();
+  vtkNew<vtkMRMLPETProceduralColorNode> colorPETNode;
   colorPETNode->SetTypeToRainbow();
-  scene->AddNode(colorPETNode);
-  
+  scene->AddNode(colorPETNode.GetPointer());
+
   ctkColorDialog::addDefaultTab(&colorPickerWidget, "Extra", SIGNAL(colorSelected(QColor)));
 
   if (argc < 2 || QString(argv[1]) != "-I" )
@@ -75,7 +76,7 @@ int qMRMLColorPickerWidgetTest2(int argc, char * argv [])
     // quits the getColor dialog event loop.
     QTimer::singleShot(200, &app, SLOT(quit()));
     }
-  ctkColorDialog::getColor(Qt::red, 0, "", 0);
+  ctkColorDialog::getColor(Qt::red, nullptr, "", nullptr);
   return EXIT_SUCCESS;
 }
 

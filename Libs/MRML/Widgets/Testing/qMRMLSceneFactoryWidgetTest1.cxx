@@ -21,21 +21,29 @@
 // Qt includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include <qMRMLSceneFactoryWidget.h>
 
 // MRML includes
 #include <vtkMRMLScene.h>
 
+// VTK includes
+#include "qMRMLWidget.h"
+
 // STD includes
 
 int qMRMLSceneFactoryWidgetTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLSceneFactoryWidget   sceneFactory;
   sceneFactory.generateScene();
-  if (sceneFactory.mrmlScene() == 0)
+  if (sceneFactory.mrmlScene() == nullptr)
     {
     std::cerr << "qMRMLSceneFactoryWidget::generateScene() failed" << std::endl;
     return EXIT_FAILURE;
@@ -46,7 +54,7 @@ int qMRMLSceneFactoryWidgetTest1( int argc, char * argv [] )
     return EXIT_FAILURE;
     }
   sceneFactory.generateScene();
-  if (sceneFactory.mrmlScene() == 0)
+  if (sceneFactory.mrmlScene() == nullptr)
     {
     std::cerr << "qMRMLSceneFactoryWidget::generateScene() failed" << std::endl;
     return EXIT_FAILURE;

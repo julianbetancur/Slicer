@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // Volumes includes
 #include "qSlicerDTISliceDisplayWidget.h"
 #include <vtkSlicerVolumesLogic.h>
@@ -29,14 +32,26 @@
 // MRML includes
 #include <vtkMRMLDiffusionTensorVolumeSliceDisplayNode.h>
 #include <vtkMRMLDiffusionTensorDisplayPropertiesNode.h>
+#include <qMRMLWidget.h>
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include <vtkImageData.h>
+#include <vtkNew.h>
+#include <vtkTrivialProducer.h>
+
+// ITK includes
+#include <itkConfigure.h>
+#include <itkFactoryRegistration.h>
 
 //-----------------------------------------------------------------------------
 int qSlicerDTISliceDisplayWidgetTest2( int argc, char * argv[] )
 {
+  itk::itkFactoryRegistration();
+
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   if (argc < 2)
     {
@@ -63,7 +78,9 @@ int qSlicerDTISliceDisplayWidgetTest2( int argc, char * argv[] )
   displayNode->SetAndObserveDiffusionTensorDisplayPropertiesNodeID(propertiesNode->GetID());
   scene->AddNode(displayNode);
   volumeNode->AddAndObserveDisplayNodeID(displayNode->GetID());
-  displayNode->SetSliceImage(volumeNode->GetImageData());
+  vtkNew<vtkTrivialProducer> tp;
+  tp->SetOutput(volumeNode->GetImageData());
+  displayNode->SetSliceImagePort(tp->GetOutputPort());
 
   qSlicerDTISliceDisplayWidget widget;
   widget.setMRMLScene(scene);

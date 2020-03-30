@@ -21,6 +21,9 @@
 // QT includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include <ctkModelTester.h>
 
@@ -28,12 +31,17 @@
 #include "qMRMLSceneFactoryWidget.h"
 #include "qMRMLSceneModel.h"
 
+// VTK includes
+#include "qMRMLWidget.h"
+
 
 // STD includes
 
 int qMRMLModelTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   try
     {
@@ -41,7 +49,7 @@ int qMRMLModelTest1(int argc, char * argv [] )
     ctkModelTester tester(&model);
     tester.setTestDataEnabled(false);
 
-    qMRMLSceneFactoryWidget sceneFactory(0);
+    qMRMLSceneFactoryWidget sceneFactory(nullptr);
     sceneFactory.generateScene();
 
     model.setMRMLScene(sceneFactory.mrmlScene());
@@ -49,25 +57,25 @@ int qMRMLModelTest1(int argc, char * argv [] )
 
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
 

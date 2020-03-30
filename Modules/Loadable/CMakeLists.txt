@@ -1,27 +1,27 @@
 
-include(${Slicer_CMAKE_DIR}/SlicerMacroBuildQtModule.cmake)
+include(${Slicer_CMAKE_DIR}/SlicerMacroBuildLoadableModule.cmake)
 
 set(qtmodules
-  AtlasCreator
   Cameras
+  Units
+  Terminologies
   Colors
-  Transforms
+  SubjectHierarchy
   Annotations
+  Markups
+  Transforms
   Data
   DoubleArrays
-  FetchMI
-  #Measurements
   Models
-  ModelMirror
-  ModelTransform
-  #FiberBundles
+  Plots
   SceneViews
+  Segmentations
   SlicerWelcome
-  TractographyDisplay
+  Tables
+  Texts
   Reformat
   ViewControllers
   Volumes
-  TractographyInteractiveSeeding # tractography depends of Volumes
   VolumeRendering # Volume Rendering depends of Volumes
   )
 if(Slicer_BUILD_CLI_SUPPORT)
@@ -30,35 +30,11 @@ if(Slicer_BUILD_CLI_SUPPORT)
     )
 endif()
 
+include(SlicerCheckModuleEnabled)
+
 foreach(module ${qtmodules})
-  list(FIND Slicer_QTLOADABLEMODULES_DISABLED ${module} _module_disabled)
-  if(${_module_disabled} STREQUAL "-1")
+  slicer_is_loadable_builtin_module_enabled(${module} _build_module)
+  if(_build_module)
     add_subdirectory(${module})
   endif()
-endforeach(module)
-
-if(Slicer_BUILD_CLI_SUPPORT AND Slicer_BUILD_EMSegment)
-  # NOTE: EMSegment source code is checkout from Slicer3 repository using
-  #       "External_EMSegment.cmake".
-  add_subdirectory(
-    ${EMSegment_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/EMSegment
-    )
-endif()
-
-if(Slicer_USE_OpenIGTLink AND Slicer_BUILD_OpenIGTLinkIF)
-  # NOTE: OpenIGTLinkIF source code is checkout from NAMICSandBox repository using
-  #       "External_OpenIGTLinkIF.cmake".
-  add_subdirectory(
-    ${OpenIGTLinkIF_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/OpenIGTLinkIF
-    )
-endif()
-
-if(Slicer_BUILD_MultiVolumeExplorer AND Slicer_BUILD_DICOM_SUPPORT)
-  # NOTE: MultiVolumeExplorer source code is checkout using "External_MultiVolumeExplorer.cmake".
-  add_subdirectory(
-    ${MultiVolumeExplorer_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/MultiVolumeExplorer
-    )
-endif()
+endforeach()

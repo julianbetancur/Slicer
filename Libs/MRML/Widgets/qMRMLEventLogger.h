@@ -31,28 +31,27 @@
 
 class qMRMLEventLoggerPrivate;
 class vtkMRMLScene;
-class vtkObject; 
+class vtkObject;
 
 class QMRML_WIDGETS_EXPORT qMRMLEventLogger: public QObject
 {
   Q_OBJECT
 public:
   typedef QObject Superclass;
-  explicit qMRMLEventLogger(QObject* parent = 0);
-  virtual ~qMRMLEventLogger();
+  explicit qMRMLEventLogger(QObject* parent = nullptr);
+  ~qMRMLEventLogger() override;
 
-  /// 
+  ///
   /// Set the MRML \a scene that should be listened for events
   void setMRMLScene(vtkMRMLScene* scene);
 
-  /// 
+  ///
   /// Return true if the corresponding event if listened by the eventLogger
   bool listeningNodeAddedEvent();
   bool listeningNodeRemovedEvent();
   bool listeningNewSceneEvent();
   bool listeningSceneClosedEvent();
   bool listeningSceneAboutToBeClosedEvent();
-  bool listeningSceneEditedEvent();
   bool listeningMetadataAddedEvent();
   bool listeningImportProgressFeedbackEvent();
   bool listeningSaveProgressFeedbackEvent();
@@ -61,14 +60,13 @@ public:
   bool listeningSceneRestoredEvent();
 
 public slots:
-  /// 
+  ///
   /// Allow to enable or disable the listening of specific event
   void listenNodeAddedEvent(bool listen);
   void listenNodeRemovedEvent(bool listen);
   void listenNewSceneEvent(bool listen);
   void listenSceneClosedEvent(bool listen);
   void listenSceneAboutToBeClosedEvent(bool listen);
-  void listenSceneEditedEvent(bool listen);
   void listenMetadataAddedEvent(bool listen);
   void listenImportProgressFeedbackEvent(bool listen);
   void listenSaveProgressFeedbackEvent(bool listen);
@@ -81,7 +79,6 @@ public slots:
   virtual void onNewSceneEvent();
   virtual void onSceneClosedEvent();
   virtual void onSceneAboutToBeClosedEvent();
-  virtual void onSceneEditedEvent();
   virtual void onMetadataAddedEvent();
   virtual void onImportProgressFeedbackEvent();
   virtual void onSaveProgressFeedbackEvent();
@@ -93,14 +90,13 @@ public slots:
   void setConsoleOutputEnabled(bool enabled);
 
 signals:
-  /// 
+  ///
   /// Emitted when the associated MRML scene event is fired
   void signalNodeAddedEvent(vtkObject* calle, vtkObject* call_data);
   void signalNodeRemovedEvent(vtkObject* caller, vtkObject* call_data);
   void signalNewSceneEvent();
   void signalSceneClosedEvent();
   void signalSceneAboutToBeClosedEvent();
-  void signalSceneEditedEvent();
   void signalMetadataAddedEvent();
   void signalImportProgressFeedbackEvent();
   void signalSaveProgressFeedbackEvent();

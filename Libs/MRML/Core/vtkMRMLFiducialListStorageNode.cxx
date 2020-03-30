@@ -27,16 +27,16 @@ vtkMRMLFiducialListStorageNode::vtkMRMLFiducialListStorageNode()
 {
   // version 2 has the new glyph symbol numbering, which starts at 1
   this->Version = 2;
+  this->DefaultWriteFileExtension = "fcsv";
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLFiducialListStorageNode::~vtkMRMLFiducialListStorageNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLFiducialListStorageNode::PrintSelf(ostream& os, vtkIndent indent)
-{  
+{
   vtkMRMLStorageNode::PrintSelf(os,indent);
 }
 
@@ -51,7 +51,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 {
   std::string fullName = this->GetFullNameFromFileName();
 
-  if (fullName == std::string("")) 
+  if (fullName.empty())
     {
     vtkErrorMacro("vtkMRMLFiducialListStorageNode: File name not specified");
     return 0;
@@ -79,7 +79,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
       // clear out the list
       fiducialListNode->RemoveAllFiducials();
       }
-    
+
     // turn off modified events
 //    int modFlag = fiducialListNode->GetDisableModifiedEvent();
 //    fiducialListNode->DisableModifiedEventOn();
@@ -98,7 +98,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
     while (fstr.good())
       {
       fstr.getline(line, 1024);
-      
+
       // does it start with a #?
       if (line[0] == '#')
         {
@@ -172,17 +172,17 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
             char *ptr;
             char *colours = (char *)(str.c_str());
             ptr = strtok(colours, ",");
-            if (ptr != NULL)
+            if (ptr != nullptr)
               {
               r = atof(ptr);
               }
-            ptr = strtok(NULL, ",");
-            if (ptr != NULL)
+            ptr = strtok(nullptr, ",");
+            if (ptr != nullptr)
               {
               g = atof(ptr);
               }
-            ptr = strtok(NULL, ",");
-            if (ptr != NULL)
+            ptr = strtok(nullptr, ",");
+            if (ptr != nullptr)
               {
               b = atof(ptr);
               }
@@ -261,7 +261,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
             int columnNumber = 0;
             char *columns = (char *)str.c_str();
             char *ptr = strtok(columns, ",");
-            while (ptr != NULL)
+            while (ptr != nullptr)
               {
               if (strcmp(ptr, "label") == 0)
                 {
@@ -287,7 +287,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
                 {
                 visColumn = columnNumber;
                 }
-              ptr = strtok(NULL, ",");
+              ptr = strtok(nullptr, ",");
               columnNumber++;
               }
             // set the total number of columns
@@ -312,7 +312,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
           bool reTokenise = false;
           if (strncmp(line, ",", 1) == 0)
             {
-            ptr = NULL;
+            ptr = nullptr;
             reTokenise = true;
             }
           else
@@ -325,7 +325,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
           int columnNumber = 0;
           while (columnNumber < numColumns)
             {
-            if (ptr != NULL)
+            if (ptr != nullptr)
               {
               if (columnNumber == labelColumn)
                 {
@@ -354,7 +354,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
               }
             if (reTokenise == false)
               {
-              ptr = strtok(NULL, ",");
+              ptr = strtok(nullptr, ",");
               }
             else
               {
@@ -363,7 +363,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
               reTokenise = false;
               }
               columnNumber++;
-            } // end while over columns          
+            } // end while over columns
           int fidIndex = fiducialListNode->AddFiducialWithLabelXYZSelectedVisibility(label.c_str(), x, y, z, sel, vis);
           if (fidIndex == -1)
             {
@@ -403,7 +403,7 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
           }
         }
       else
-        {        
+        {
         vtkDebugMacro("ReadData: no last loaded version number on scene, glyph type = " << glyphType);
         if (this->GetVersion() == -1)
           {
@@ -433,20 +433,20 @@ int vtkMRMLFiducialListStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 int vtkMRMLFiducialListStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
 {
   std::string fullName = this->GetFullNameFromFileName();
-  if (fullName == std::string("")) 
+  if (fullName.empty())
     {
     vtkErrorMacro("vtkMRMLFiducialListStorageNode: File name not specified");
     return 0;
     }
 
   // cast the input node
-  vtkMRMLFiducialListNode *fiducialListNode = NULL;
+  vtkMRMLFiducialListNode *fiducialListNode = nullptr;
   if ( refNode->IsA("vtkMRMLFiducialListNode") )
     {
     fiducialListNode = dynamic_cast <vtkMRMLFiducialListNode *> (refNode);
     }
 
-  if (fiducialListNode == NULL)
+  if (fiducialListNode == nullptr)
     {
     vtkErrorMacro("WriteData: unable to cast input node " << refNode->GetID() << " to a known fiducial list node");
     return 0;
@@ -464,7 +464,7 @@ int vtkMRMLFiducialListStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
     }
 
   // put down a header
-  of << "# Fiducial List file " << (this->GetFileName() != NULL ? this->GetFileName() : "null") << endl;
+  of << "# Fiducial List file " << (this->GetFileName() != nullptr ? this->GetFileName() : "null") << endl;
   of << "# version = " << this->GetVersion() << endl;
   of << "# name = " << fiducialListNode->GetName() << endl;
   of << "# numPoints = " << fiducialListNode->GetNumberOfFiducials() << endl;
@@ -497,12 +497,12 @@ int vtkMRMLFiducialListStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
     of << label;
     of << "," << xyz[0] << "," << xyz[1] << "," << xyz[2];
     of << "," << sel << "," << vis;
-    of << endl;   
+    of << endl;
     }
   of.close();
 
   return 1;
-  
+
 }
 
 //----------------------------------------------------------------------------
@@ -515,10 +515,4 @@ void vtkMRMLFiducialListStorageNode::InitializeSupportedReadFileTypes()
 void vtkMRMLFiducialListStorageNode::InitializeSupportedWriteFileTypes()
 {
   this->SupportedWriteFileTypes->InsertNextValue("Fiducial List CSV (.fcsv)");
-}
-
-//----------------------------------------------------------------------------
-const char* vtkMRMLFiducialListStorageNode::GetDefaultWriteFileExtension()
-{
-  return "fcsv";
 }

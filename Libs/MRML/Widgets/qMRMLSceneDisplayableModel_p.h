@@ -21,7 +21,16 @@
 #ifndef __qMRMLSceneDisplayableModel_p_h
 #define __qMRMLSceneDisplayableModel_p_h
 
-// Qt includes
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
 
 // qMRML includes
 #include "qMRMLSceneDisplayableModel.h"
@@ -32,20 +41,21 @@ class vtkMRMLDisplayNode;
 class vtkMRMLHierarchyNode;
 
 //------------------------------------------------------------------------------
-// qMRMLSceneHierarchyModelPrivate
+// qMRMLSceneDisplayableModelPrivate
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
-class QMRML_WIDGETS_EXPORT qMRMLSceneDisplayableModelPrivate: public qMRMLSceneHierarchyModelPrivate
+class QMRML_WIDGETS_EXPORT qMRMLSceneDisplayableModelPrivate
+  : public qMRMLSceneHierarchyModelPrivate
 {
 protected:
   Q_DECLARE_PUBLIC(qMRMLSceneDisplayableModel);
 public:
   typedef qMRMLSceneHierarchyModelPrivate Superclass;
   qMRMLSceneDisplayableModelPrivate(qMRMLSceneDisplayableModel& object);
-  virtual void init();
+  void init() override;
 
-  virtual vtkMRMLHierarchyNode* CreateHierarchyNode()const;
+  vtkMRMLHierarchyNode* CreateHierarchyNode()const override;
   vtkMRMLDisplayNode* displayNode(vtkMRMLNode* node)const;
 
   int ColorColumn;

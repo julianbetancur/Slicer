@@ -27,11 +27,11 @@ vtkMRMLdGEMRICProceduralColorNode::vtkMRMLdGEMRICProceduralColorNode()
 {
 
   // all this is done in the superclass...
-  //this->Name = NULL;
+  //this->Name = nullptr;
   //this->SetName("");
-  //this->FileName = NULL;
+  //this->FileName = nullptr;
 
-  //this->ColorTransferFunction = NULL;
+  //this->ColorTransferFunction = nullptr;
   //this->ColorTransferFunction = vtkColorTransferFunction::New();
 }
 
@@ -41,7 +41,7 @@ vtkMRMLdGEMRICProceduralColorNode::~vtkMRMLdGEMRICProceduralColorNode()
   if (this->ColorTransferFunction)
     {
     this->ColorTransferFunction->Delete();
-    this->ColorTransferFunction = NULL;
+    this->ColorTransferFunction = nullptr;
     }
 }
 
@@ -70,9 +70,9 @@ void vtkMRMLdGEMRICProceduralColorNode::Copy(vtkMRMLNode *anode)
 //----------------------------------------------------------------------------
 void vtkMRMLdGEMRICProceduralColorNode::PrintSelf(ostream& os, vtkIndent indent)
 {
-  
+
   Superclass::PrintSelf(os,indent);
-  if (this->ColorTransferFunction != NULL)
+  if (this->ColorTransferFunction != nullptr)
     {
     os << indent << "ColorTransferFunction:" << endl;
     this->ColorTransferFunction->PrintSelf(os, indent.GetNextIndent());
@@ -87,7 +87,7 @@ void vtkMRMLdGEMRICProceduralColorNode::UpdateScene(vtkMRMLScene *scene)
 
 //---------------------------------------------------------------------------
 void vtkMRMLdGEMRICProceduralColorNode::ProcessMRMLEvents ( vtkObject *caller,
-                                           unsigned long event, 
+                                           unsigned long event,
                                            void *callData )
 {
   Superclass::ProcessMRMLEvents(caller, event, callData);
@@ -128,15 +128,15 @@ void vtkMRMLdGEMRICProceduralColorNode::SetType(int type)
   vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting Type to " << type << " = " << this->GetTypeAsString());
 
   // is it created yet?
-  if (this->ColorTransferFunction == NULL)
+  if (this->ColorTransferFunction == nullptr)
     {
     this->ColorTransferFunction = vtkColorTransferFunction::New();
     }
-  
+
   // clear it out
   this->ColorTransferFunction->RemoveAllPoints();
   this->ColorTransferFunction->SetColorSpaceToRGB();
-  
+
   // Set up the custom colours here for this type
   if (this->Type == this->dGEMRIC15T)
     {
@@ -204,10 +204,10 @@ void vtkMRMLdGEMRICProceduralColorNode::SetType(int type)
     }
 
   // build it
-  
+
   // invoke a modified event
   this->Modified();
-  
+
   // invoke a type  modified event
   this->InvokeEvent(vtkMRMLProceduralColorNode::TypeModifiedEvent);
 }

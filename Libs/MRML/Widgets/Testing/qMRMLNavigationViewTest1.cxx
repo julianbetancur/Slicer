@@ -22,41 +22,54 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLNavigationView.h"
 #include "qMRMLThreeDView.h"
 
 // MRML includes
-#include <vtkMRMLViewNode.h>
+#include <vtkMRMLInteractionNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSelectionNode.h>
+#include <vtkMRMLViewNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLNavigationViewTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
+  qMRMLWidget::postInitializeApplication();
+
   qMRMLNavigationView navigationView;
   navigationView.setWindowTitle("Navigation view");
 
   qMRMLThreeDView threeDView;
   threeDView.setWindowTitle("ThreeDView");
   navigationView.setRendererToListen(threeDView.renderer());
-  
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  navigationView.setMRMLScene(scene);
-  threeDView.setMRMLScene(scene);
-  
-  vtkMRMLViewNode* viewNode = vtkMRMLViewNode::New();
+
+  vtkNew<vtkMRMLScene> scene;
+  navigationView.setMRMLScene(scene.GetPointer());
+  threeDView.setMRMLScene(scene.GetPointer());
+
+  // vtkMRMLAbstractDisplayableManager requires selection and interaction nodes
+  vtkNew<vtkMRMLSelectionNode> selectionNode;
+  scene->AddNode(selectionNode.GetPointer());
+  vtkNew<vtkMRMLInteractionNode> interactionNode;
+  scene->AddNode(interactionNode.GetPointer());
+
+  vtkNew<vtkMRMLViewNode> viewNode;
   viewNode->SetBoxVisible(true);
-  scene->AddNode(viewNode);
-  viewNode->Delete();
-  
-  threeDView.setMRMLViewNode(viewNode);
-  navigationView.setMRMLViewNode(viewNode);
+  scene->AddNode(viewNode.GetPointer());
+
+  threeDView.setMRMLViewNode(viewNode.GetPointer());
+  navigationView.setMRMLViewNode(viewNode.GetPointer());
 
   navigationView.show();
   threeDView.show();
@@ -66,6 +79,6 @@ int qMRMLNavigationViewTest1(int argc, char * argv [] )
     QTimer::singleShot(200, &app, SLOT(quit()));
     }
 
-  
+
   return app.exec();
 }

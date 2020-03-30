@@ -21,6 +21,17 @@
 #ifndef __qMRMLNodeComboBox_p_h
 #define __qMRMLNodeComboBox_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // CTK includes
 #include <ctkPimpl.h>
 
@@ -29,6 +40,8 @@
 class QComboBox;
 class qMRMLNodeFactory;
 class qMRMLSceneModel;
+
+#include "vtkWeakPointer.h"
 
 // -----------------------------------------------------------------------------
 class qMRMLNodeComboBoxPrivate
@@ -50,19 +63,29 @@ public:
   void updateNoneItem(bool resetRootIndex = true);
   void updateActionItems(bool resetRootIndex = true);
   void updateDelegate(bool force = false);
-  QString nodeTypeLabel()const;
+
+  bool hasPostItem(const QString& name)const;
 
   QComboBox*        ComboBox;
   qMRMLNodeFactory* MRMLNodeFactory;
   qMRMLSceneModel*  MRMLSceneModel;
-  bool              SelectNodeUponCreation;
   bool              NoneEnabled;
   bool              AddEnabled;
   bool              RemoveEnabled;
   bool              EditEnabled;
   bool              RenameEnabled;
-  
-  bool              AutoDefaultText;
+
+  QHash<QString, QString> NodeTypeLabels;
+
+  bool SelectNodeUponCreation;
+  QString NoneDisplay;
+  bool AutoDefaultText;
+
+  // Store requested node or ID if setCurrentNode(ID) is called before a scene was set.
+  QString RequestedNodeID;
+  vtkWeakPointer<vtkMRMLNode> RequestedNode;
+
+  QList<QAction*> UserMenuActions;
 };
 
 #endif

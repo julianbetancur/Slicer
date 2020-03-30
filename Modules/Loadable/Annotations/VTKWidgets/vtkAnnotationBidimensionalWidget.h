@@ -29,20 +29,20 @@ vtkAnnotationBidimensionalWidget
 public:
 
   static vtkAnnotationBidimensionalWidget *New();
-  vtkTypeRevisionMacro(vtkAnnotationBidimensionalWidget, vtkBiDimensionalWidget);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkAnnotationBidimensionalWidget, vtkBiDimensionalWidget);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual void CreateDefaultRepresentation();
+  void CreateDefaultRepresentation() override;
 
 protected:
 
   vtkAnnotationBidimensionalWidget();
-  virtual ~vtkAnnotationBidimensionalWidget();
+  ~vtkAnnotationBidimensionalWidget() override;
 
 private:
 
-  vtkAnnotationBidimensionalWidget(const vtkAnnotationBidimensionalWidget&); /// Not implemented
-  void operator=(const vtkAnnotationBidimensionalWidget&); /// Not Implemented
+  vtkAnnotationBidimensionalWidget(const vtkAnnotationBidimensionalWidget&) = delete;
+  void operator=(const vtkAnnotationBidimensionalWidget&) = delete;
 
 };
 

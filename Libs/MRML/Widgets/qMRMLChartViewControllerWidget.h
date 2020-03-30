@@ -45,8 +45,8 @@ public:
   typedef qMRMLViewControllerBar Superclass;
 
   /// Constructors
-  explicit qMRMLChartViewControllerWidget(QWidget* parent = 0);
-  virtual ~qMRMLChartViewControllerWidget();
+  explicit qMRMLChartViewControllerWidget(QWidget* parent = nullptr);
+  ~qMRMLChartViewControllerWidget() override;
 
   /// Set the label for the chart view (abbreviation for the view
   /// name)
@@ -57,7 +57,7 @@ public:
 
 public slots:
   /// Set the scene
-  virtual void setMRMLScene(vtkMRMLScene* newScene);
+  void setMRMLScene(vtkMRMLScene* newScene) override;
 
   /// Set the ChartView with which this controller interacts
   void setChartView(qMRMLChartView* ChartView);
@@ -82,7 +82,7 @@ public slots:
   /// \sa setTitle
   void showTitle(bool show);
 
-  /// Conrtol the diplay of a label along the X-Axis
+  /// Conrtol the display of a label along the X-Axis
   /// \sa setXAxisLabel
   void showXAxisLabel(bool show);
 
@@ -90,7 +90,7 @@ public slots:
   /// \sa setYAxisLabel
   void showYAxisLabel(bool show);
 
-  /// Set the title. 
+  /// Set the title.
   /// \sa showTitle
   void setTitle(const QString&);
 

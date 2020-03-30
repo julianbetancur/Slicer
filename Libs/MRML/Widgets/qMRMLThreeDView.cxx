@@ -27,7 +27,6 @@
 
 // CTK includes
 #include <ctkAxesWidget.h>
-#include <ctkPopupWidget.h>
 
 // qMRML includes
 #include "qMRMLColors.h"
@@ -35,16 +34,23 @@
 
 // MRMLDisplayableManager includes
 #include <vtkMRMLAbstractDisplayableManager.h>
+#include <vtkMRMLCrosshairDisplayableManager.h>
 #include <vtkMRMLDisplayableManagerGroup.h>
 #include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRML includes
 #include <vtkMRMLViewNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLCameraNode.h>
+#include <vtkMRMLCrosshairNode.h>
 
 // VTK includes
+#include <vtkCallbackCommand.h>
+#include <vtkCollection.h>
 #include <vtkNew.h>
+#include <vtkRenderer.h>
+#include <vtkRenderWindowInteractor.h>
 #include <vtkSmartPointer.h>
 
 //--------------------------------------------------------------------------
@@ -54,11 +60,9 @@
 qMRMLThreeDViewPrivate::qMRMLThreeDViewPrivate(qMRMLThreeDView& object)
   : q_ptr(&object)
 {
-  this->DisplayableManagerGroup = 0;
-  this->MRMLScene = 0;
-  this->MRMLViewNode = 0;
-  this->PinButton = 0;
-  this->PopupWidget = 0;
+  this->DisplayableManagerGroup = nullptr;
+  this->MRMLScene = nullptr;
+  this->MRMLViewNode = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -74,14 +78,9 @@ qMRMLThreeDViewPrivate::~qMRMLThreeDViewPrivate()
 void qMRMLThreeDViewPrivate::init()
 {
   Q_Q(qMRMLThreeDView);
-  q->setRenderEnabled(this->MRMLScene != 0);
+  q->setRenderEnabled(this->MRMLScene != nullptr);
 
-  this->PopupWidget = new ctkPopupWidget;
-  QHBoxLayout* popupLayout = new QHBoxLayout;
-  popupLayout->addWidget(new QToolButton);
-  this->PopupWidget->setLayout(popupLayout);
-
-  vtkNew<vtkThreeDViewInteractorStyle> interactorStyle;
+  vtkNew<vtkMRMLThreeDViewInteractorStyle> interactorStyle;
   q->interactor()->SetInteractorStyle(interactorStyle.GetPointer());
 
   // Set default background color
@@ -102,6 +101,7 @@ void qMRMLThreeDViewPrivate::init()
   q->setYawDirection(ctkVTKRenderView::YawLeft);
 
   this->initDisplayableManagers();
+  interactorStyle->SetDisplayableManagers(this->DisplayableManagerGroup);
 }
 
 //---------------------------------------------------------------------------
@@ -115,12 +115,15 @@ void qMRMLThreeDViewPrivate::initDisplayableManagers()
   displayableManagers << "vtkMRMLCameraDisplayableManager"
                       << "vtkMRMLViewDisplayableManager"
                       << "vtkMRMLModelDisplayableManager"
-                      << "vtkMRMLThreeDReformatDisplayableManager";
+                      << "vtkMRMLThreeDReformatDisplayableManager"
+                      << "vtkMRMLCrosshairDisplayableManager3D"
+                      << "vtkMRMLOrientationMarkerDisplayableManager"
+                      << "vtkMRMLRulerDisplayableManager";
   foreach(const QString& displayableManager, displayableManagers)
     {
-    if(!factory->IsDisplayableManagerRegistered(displayableManager.toLatin1()))
+    if(!factory->IsDisplayableManagerRegistered(displayableManager.toUtf8()))
       {
-      factory->RegisterDisplayableManager(displayableManager.toLatin1());
+      factory->RegisterDisplayableManager(displayableManager.toUtf8());
       }
     }
 
@@ -150,7 +153,7 @@ void qMRMLThreeDViewPrivate::setMRMLScene(vtkMRMLScene* newScene)
 
   this->MRMLScene = newScene;
   q->setRenderEnabled(
-    this->MRMLScene != 0 && !this->MRMLScene->IsBatchProcessing());
+    this->MRMLScene != nullptr && !this->MRMLScene->IsBatchProcessing());
 }
 
 //---------------------------------------------------------------------------
@@ -211,6 +214,7 @@ void qMRMLThreeDViewPrivate::updateWidgetFromMRML()
   q->setSpinEnabled(this->MRMLViewNode->GetAnimationMode() == vtkMRMLViewNode::Spin);
   q->setRockEnabled(this->MRMLViewNode->GetAnimationMode() == vtkMRMLViewNode::Rock);
 
+  q->setUseDepthPeeling(this->MRMLViewNode->GetUseDepthPeeling() != 0);
   q->setFPSVisible(this->MRMLViewNode->GetFPSVisible() != 0);
 }
 
@@ -218,17 +222,80 @@ void qMRMLThreeDViewPrivate::updateWidgetFromMRML()
 // qMRMLThreeDView methods
 
 // --------------------------------------------------------------------------
+namespace
+{
+void ClickCallbackFunction (
+  vtkObject* caller,
+  long unsigned int eventId,
+  void* vtkNotUsed(clientData),
+  void* vtkNotUsed(callData) )
+{
+  vtkRenderWindowInteractor *iren =
+     static_cast<vtkRenderWindowInteractor*>(caller);
+
+  vtkMRMLThreeDViewInteractorStyle* style = vtkMRMLThreeDViewInteractorStyle::SafeDownCast
+    (iren ? iren->GetInteractorStyle() : nullptr);
+  if (!style)
+    {
+    qCritical() << "qMRMLThreeDView::mouseMoveEvent: no valid interactor style.";
+    return;
+    }
+
+  vtkMRMLCameraNode* cam = style->GetCameraNode();
+  if (!cam)
+    {
+    qCritical() << "qMRMLThreeDView::mouseMoveEvent: can not retrieve camera node.";
+    return;
+    }
+
+  switch(eventId)
+    {
+    case vtkCommand::MouseWheelForwardEvent:
+      {
+      cam->InvokeCustomModifiedEvent(vtkMRMLCameraNode::CameraInteractionEvent);
+      }
+    break;
+    case vtkCommand::MouseWheelBackwardEvent:
+      {
+      cam->InvokeCustomModifiedEvent(vtkMRMLCameraNode::CameraInteractionEvent);
+      }
+    break;
+    case vtkCommand::InteractionEvent:
+      {
+      cam->InvokeCustomModifiedEvent(vtkMRMLCameraNode::CameraInteractionEvent);
+      }
+    break;
+    case vtkCommand::KeyPressEvent:
+      {
+      cam->InvokeCustomModifiedEvent(vtkMRMLCameraNode::CameraInteractionEvent);
+      }
+    break;
+    }
+}
+}
+
+// --------------------------------------------------------------------------
 qMRMLThreeDView::qMRMLThreeDView(QWidget* _parent) : Superclass(_parent)
   , d_ptr(new qMRMLThreeDViewPrivate(*this))
 {
   Q_D(qMRMLThreeDView);
   d->init();
+
+  vtkRenderWindowInteractor* renderWindowInteractor = this->interactor();
+
+  vtkSmartPointer<vtkCallbackCommand> clickCallback =
+      vtkSmartPointer<vtkCallbackCommand>::New();
+  clickCallback->SetCallback(ClickCallbackFunction);
+
+  renderWindowInteractor->AddObserver(vtkCommand::MouseWheelForwardEvent, clickCallback);
+  renderWindowInteractor->AddObserver(vtkCommand::MouseWheelBackwardEvent, clickCallback);
+  renderWindowInteractor->AddObserver(vtkCommand::InteractionEvent, clickCallback);
+  renderWindowInteractor->AddObserver(vtkCommand::KeyPressEvent, clickCallback);
 }
 
 // --------------------------------------------------------------------------
 qMRMLThreeDView::~qMRMLThreeDView()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void qMRMLThreeDView::addDisplayableManager(const QString& displayableManagerName)
@@ -237,8 +304,98 @@ void qMRMLThreeDView::addDisplayableManager(const QString& displayableManagerNam
   vtkSmartPointer<vtkMRMLAbstractDisplayableManager> displayableManager;
   displayableManager.TakeReference(
     vtkMRMLDisplayableManagerGroup::InstantiateDisplayableManager(
-      displayableManagerName.toLatin1()));
+      displayableManagerName.toUtf8()));
   d->DisplayableManagerGroup->AddDisplayableManager(displayableManager);
+}
+
+//------------------------------------------------------------------------------
+void qMRMLThreeDView::rotateToViewAxis(unsigned int axisId)
+{
+  vtkMRMLThreeDViewInteractorStyle* style =
+    vtkMRMLThreeDViewInteractorStyle::SafeDownCast(this->interactorStyle());
+  if (!style)
+    {
+    qCritical() << "qMRMLThreeDView::rotateToViewAxis: no valid interactor style.";
+    return;
+    }
+
+  vtkMRMLCameraNode* cam = style->GetCameraNode();
+  if (!cam)
+    {
+    qCritical() << "qMRMLThreeDView::rotateToViewAxis: can not retrieve camera node.";
+    return;
+    }
+
+  switch (axisId)
+    {
+  case 0:
+    cam->RotateTo(vtkMRMLCameraNode::Left);
+    break;
+  case 1:
+    cam->RotateTo(vtkMRMLCameraNode::Right);
+    break;
+  case 2:
+    cam->RotateTo(vtkMRMLCameraNode::Posterior);
+    break;
+  case 3:
+    cam->RotateTo(vtkMRMLCameraNode::Anterior);
+    break;
+  case 4:
+    cam->RotateTo(vtkMRMLCameraNode::Inferior);
+    break;
+  case 5:
+    cam->RotateTo(vtkMRMLCameraNode::Superior);
+    break;
+  default:
+    qWarning() << "qMRMLThreeDView::rotateToViewAxis: " << axisId
+               << " is not a valid axis id (0 to 5 : "
+               << "-X, +X, -Y, +Y, -Z, +Z).";
+    break;
+    }
+}
+
+//------------------------------------------------------------------------------
+void qMRMLThreeDView::rotateToViewAxis(const std::string& axisLabel)
+{
+  Q_D(qMRMLThreeDView);
+  if (!d->MRMLViewNode)
+    {
+    qCritical() << "qMRMLThreeDView::rotateToViewAxis: no valid view node.";
+    return;
+    }
+
+  for (int i = 0; i < vtkMRMLAbstractViewNode::AxisLabelsCount; ++i)
+    {
+    if (axisLabel == std::string(d->MRMLViewNode->GetAxisLabel(i)))
+      {
+      this->rotateToViewAxis(i);
+      return;
+      }
+    }
+  qWarning() << "qMRMLThreeDView::rotateToViewAxis: " << QString(axisLabel.c_str())
+              << "is not a valid axis label.";
+}
+
+//------------------------------------------------------------------------------
+void qMRMLThreeDView
+::resetCamera(bool resetRotation, bool resetTranslation, bool resetDistance)
+{
+  vtkMRMLThreeDViewInteractorStyle* style =
+    vtkMRMLThreeDViewInteractorStyle::SafeDownCast(this->interactorStyle());
+  if (!style)
+    {
+    qCritical() << "qMRMLThreeDView::resetCamera: no valid interactor style.";
+    return;
+    }
+
+  vtkMRMLCameraNode* cam = style->GetCameraNode();
+  if (!cam)
+    {
+    qCritical() << "qMRMLThreeDView::resetCamera: can not retrieve camera node.";
+    return;
+    }
+
+  cam->Reset(resetRotation, resetTranslation, resetDistance, this->renderer());
 }
 
 //------------------------------------------------------------------------------
@@ -249,7 +406,7 @@ void qMRMLThreeDView::setMRMLScene(vtkMRMLScene* newScene)
 
   if (d->MRMLViewNode && newScene != d->MRMLViewNode->GetScene())
     {
-    this->setMRMLViewNode(0);
+    this->setMRMLViewNode(nullptr);
     }
 }
 
@@ -271,7 +428,7 @@ void qMRMLThreeDView::setMRMLViewNode(vtkMRMLViewNode* newViewNode)
 
   d->updateWidgetFromMRML();
   // Enable/disable widget
-  this->setEnabled(newViewNode != 0);
+  this->setEnabled(newViewNode != nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -287,6 +444,7 @@ void qMRMLThreeDView::lookFromViewAxis(const ctkAxesWidget::Axis& axis)
   Q_D(qMRMLThreeDView);
   if (!d->MRMLViewNode)
     {
+    qCritical() << "qMRMLThreeDView::lookFromViewAxis: no valid view node.";
     return;
     }
   double fov = d->MRMLViewNode->GetFieldOfView();
@@ -303,7 +461,7 @@ void qMRMLThreeDView::resetFocalPoint()
   bool savedAxisLabelVisible = true;
   if (d->MRMLViewNode)
     {
-    // Save current visiblity state of Box and AxisLabel
+    // Save current visibility state of Box and AxisLabel
     savedBoxVisibile = d->MRMLViewNode->GetBoxVisible();
     savedAxisLabelVisible = d->MRMLViewNode->GetAxisLabelsVisible();
 
@@ -314,6 +472,16 @@ void qMRMLThreeDView::resetFocalPoint()
     d->MRMLViewNode->SetAxisLabelsVisible(0);
     d->MRMLViewNode->EndModify(wasModifying);
     }
+
+  // Exclude crosshair from focal point computation
+  vtkMRMLCrosshairNode* crosshairNode = vtkMRMLCrosshairDisplayableManager::FindCrosshairNode(d->MRMLScene);
+  int crosshairMode = 0;
+  if (crosshairNode)
+    {
+    crosshairMode = crosshairNode->GetCrosshairMode();
+    crosshairNode->SetCrosshairMode(vtkMRMLCrosshairNode::NoCrosshair);
+    }
+
   // Superclass resets the camera.
   this->Superclass::resetFocalPoint();
 
@@ -328,4 +496,74 @@ void qMRMLThreeDView::resetFocalPoint()
     // update the box/labels bounds.
     d->MRMLViewNode->InvokeEvent(vtkMRMLViewNode::ResetFocalPointRequestedEvent);
     }
+
+  if (crosshairNode)
+    {
+    crosshairNode->SetCrosshairMode(crosshairMode);
+    }
+
+  if (this->renderer())
+    {
+    this->renderer()->ResetCameraClippingRange();
+    }
+}
+
+//------------------------------------------------------------------------------
+void qMRMLThreeDView::getDisplayableManagers(vtkCollection *displayableManagers)
+{
+  Q_D(qMRMLThreeDView);
+
+  if (!displayableManagers)
+    {
+    return;
+    }
+  int num = d->DisplayableManagerGroup->GetDisplayableManagerCount();
+  for (int n = 0; n < num; n++)
+    {
+    displayableManagers->AddItem(d->DisplayableManagerGroup->GetNthDisplayableManager(n));
+    }
+}
+
+//------------------------------------------------------------------------------
+vtkMRMLAbstractDisplayableManager* qMRMLThreeDView::displayableManagerByClassName(const char* className)
+{
+  Q_D(qMRMLThreeDView);
+  return d->DisplayableManagerGroup->GetDisplayableManagerByClassName(className);
+}
+
+// --------------------------------------------------------------------------
+void qMRMLThreeDView::setViewCursor(const QCursor &cursor)
+{
+  this->setCursor(cursor);
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 2)
+  if (this->VTKWidget() != nullptr)
+   {
+    this->VTKWidget()->setQVTKCursor(cursor);
+    }
+#endif
+}
+
+// --------------------------------------------------------------------------
+void qMRMLThreeDView::unsetViewCursor()
+{
+  this->unsetCursor();
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 2)
+  if (this->VTKWidget() != nullptr)
+    {
+    // TODO: it would be better to restore default cursor, but QVTKOpenGLNativeWidget
+    // API does not have an accessor method to the default cursor.
+    this->VTKWidget()->setQVTKCursor(QCursor(Qt::ArrowCursor));
+    }
+#endif
+}
+
+// --------------------------------------------------------------------------
+void qMRMLThreeDView::setDefaultViewCursor(const QCursor &cursor)
+{
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 2)
+  if (this->VTKWidget() != nullptr)
+    {
+    this->VTKWidget()->setDefaultQVTKCursor(cursor);
+    }
+#endif
 }

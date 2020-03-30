@@ -12,38 +12,38 @@ public:
   static vtkMRMLAnnotationSplineNode *New();
   vtkTypeMacro(vtkMRMLAnnotationSplineNode, vtkMRMLAnnotationLinesNode);
   // Description:
-  // Just prints short summary 
-  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  // Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationRuler";};
+  const char* GetNodeTagName() override {return "AnnotationRuler";}
 
   // Description:
   // Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
 
   // Legacy code
@@ -57,7 +57,7 @@ public:
   vtkSetStringMacro(DistanceAnnotationFormat);
 
   // Description:
-  // KP Define - should be part of AnnotationRulerDisplayNode 
+  // KP Define - should be part of AnnotationRulerDisplayNode
   double GetDistanceAnnotationScale();
   void SetDistanceAnnotationScale(double init);
 
@@ -66,7 +66,7 @@ public:
   int GetDistanceAnnotationVisibility();
   void SetDistanceAnnotationVisibility(int flag);
 
-  int SetRuler(vtkIdType line1Id, int sel, int vis);  
+  int SetRuler(vtkIdType line1Id, int sel, int vis);
 
   // Description:
   // get/set the resolution (number of subdivisions) of the line.
@@ -88,7 +88,7 @@ public:
   double *GetDistanceAnnotationTextColour();
   void SetDistanceAnnotationTextColour(double initColor[3]);
 
-  void Initialize(vtkMRMLScene* mrmlScene);
+  void Initialize(vtkMRMLScene* mrmlScene) override;
 
   double GetSplineMeasurement();
   void SetSplineMeasurement(double val);
@@ -104,7 +104,7 @@ public:
 
 protected:
   vtkMRMLAnnotationSplineNode();
-  ~vtkMRMLAnnotationSplineNode();
+  ~vtkMRMLAnnotationSplineNode() override;
   vtkMRMLAnnotationSplineNode(const vtkMRMLAnnotationSplineNode&);
   void operator=(const vtkMRMLAnnotationSplineNode&);
 
@@ -112,7 +112,7 @@ protected:
   // number of subdivisions on the line
   int Resolution;
   char* DistanceAnnotationFormat;
- 
+
   int AddControlPoint(double newControl[3],int selectedFlag, int visibleFlag);
 
   double splineMeasurement;

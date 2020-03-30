@@ -11,8 +11,8 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkSeparateComponentsOfADiffusionTensorImage_txx
-#define __itkSeparateComponentsOfADiffusionTensorImage_txx
+#ifndef itkSeparateComponentsOfADiffusionTensorImage_txx
+#define itkSeparateComponentsOfADiffusionTensorImage_txx
 
 #include "itkSeparateComponentsOfADiffusionTensorImage.h"
 
@@ -24,13 +24,8 @@ SeparateComponentsOfADiffusionTensorImage<TInput, TOutput>
 ::SeparateComponentsOfADiffusionTensorImage()
 {
   this->SetNumberOfRequiredInputs( 1 );
-#if ITK_VERSION_MAJOR < 4
-  this->SetNumberOfOutputs( 6 );
-  const unsigned int numOfIdexedOutputs = this->GetNumberOfOutputs();
-#else
   this->SetNumberOfIndexedOutputs( 6 );
   const unsigned int numOfIdexedOutputs = this->GetNumberOfIndexedOutputs();
-#endif
   this->SetNumberOfRequiredOutputs( 6 );
   for( unsigned int i = 1; i < numOfIdexedOutputs; i++ )  // we skip output0 because it is created by default
     {
@@ -42,15 +37,8 @@ SeparateComponentsOfADiffusionTensorImage<TInput, TOutput>
 
 template <class TInput, class TOutput>
 void
-#if ITK_VERSION_MAJOR < 4
 SeparateComponentsOfADiffusionTensorImage<TInput, TOutput>
-::ThreadedGenerateData( const OutputImageRegionType & outputRegionForThread,
-                        int itkNotUsed(threadId) )
-#else
-SeparateComponentsOfADiffusionTensorImage<TInput, TOutput>
-::ThreadedGenerateData( const OutputImageRegionType &outputRegionForThread,
-                        ThreadIdType itkNotUsed(threadId) )
-#endif
+::DynamicThreadedGenerateData( const OutputImageRegionType &outputRegionForThread)
   {
   InputIteratorType it( this->GetInput(), outputRegionForThread );
 

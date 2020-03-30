@@ -1,7 +1,9 @@
 /// Qt includes
 #include <QDebug>
 #include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QMetaProperty>
 #include <QProgressDialog>
 #include <QSettings>
@@ -20,7 +22,11 @@
 #include "qSlicerAbstractCoreModule.h"
 
 /// MRML includes
+#include <vtkMRMLNode.h>
 #include <vtkMRMLScene.h>
+
+/// VTK includes
+#include <vtkCollection.h>
 
 //-----------------------------------------------------------------------------
 class qSlicerIOManagerPrivate
@@ -33,6 +39,8 @@ protected:
 public:
   qSlicerIOManagerPrivate(qSlicerIOManager& object);
 
+  vtkMRMLScene* currentScene()const;
+
   /// Return true if a dialog is created, false if a dialog already existed
   bool startProgressDialog(int steps = 1);
   void stopProgressDialog();
@@ -42,10 +50,13 @@ public:
                                  qSlicerFileDialog::IOAction,
                                  const qSlicerIO::IOProperties&);
 
+  qSlicerFileDialog* findDialog(qSlicerIO::IOFileType fileType,
+                                qSlicerFileDialog::IOAction)const;
+
   QStringList                       History;
   QList<QUrl>                       Favorites;
-  QMap<QString, qSlicerFileDialog*> ReadDialogs;
-  QMap<QString, qSlicerFileDialog*> WriteDialogs;
+  QList<qSlicerFileDialog*>         ReadDialogs;
+  QList<qSlicerFileDialog*>         WriteDialogs;
 
   QSharedPointer<ctkScreenshotDialog> ScreenshotDialog;
   QProgressDialog*                    ProgressDialog;
@@ -58,7 +69,13 @@ public:
 qSlicerIOManagerPrivate::qSlicerIOManagerPrivate(qSlicerIOManager& object)
   :q_ptr(&object)
 {
-  this->ProgressDialog = 0;
+  this->ProgressDialog = nullptr;
+}
+
+//-----------------------------------------------------------------------------
+vtkMRMLScene* qSlicerIOManagerPrivate::currentScene()const
+{
+  return qSlicerCoreApplication::application()->mrmlScene();
 }
 
 //-----------------------------------------------------------------------------
@@ -71,10 +88,11 @@ bool qSlicerIOManagerPrivate::startProgressDialog(int steps)
     }
   int max = (steps != 1 ? steps : 100);
   this->ProgressDialog = new QProgressDialog("Loading file... ", "Cancel", 0, max);
+  this->ProgressDialog->setWindowTitle(QString("Loading ..."));
   if (steps == 1)
     {
     // We only support cancelling a load action if we can have control over it
-    this->ProgressDialog->setCancelButton(0);
+    this->ProgressDialog->setCancelButton(nullptr);
     }
   this->ProgressDialog->setWindowModality(Qt::WindowModal);
   this->ProgressDialog->setMinimumDuration(1000);
@@ -103,7 +121,7 @@ void qSlicerIOManagerPrivate::stopProgressDialog()
                     vtkMRMLScene::NodeAddedEvent,
                     q, SLOT(updateProgressDialog()));
   delete this->ProgressDialog;
-  this->ProgressDialog = 0;
+  this->ProgressDialog = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -159,6 +177,23 @@ createUniqueDialogName(qSlicerIO::IOFileType fileType,
 }
 
 //-----------------------------------------------------------------------------
+qSlicerFileDialog* qSlicerIOManagerPrivate
+::findDialog(qSlicerIO::IOFileType fileType,
+             qSlicerFileDialog::IOAction action)const
+{
+  const QList<qSlicerFileDialog*>& dialogs =
+    (action == qSlicerFileDialog::Read)? this->ReadDialogs : this->WriteDialogs;
+  foreach(qSlicerFileDialog* dialog, dialogs)
+    {
+    if (dialog->fileType() == fileType)
+      {
+      return dialog;
+      }
+    }
+  return nullptr;
+}
+
+//-----------------------------------------------------------------------------
 // qSlicerIOManager methods
 
 //-----------------------------------------------------------------------------
@@ -193,9 +228,10 @@ bool qSlicerIOManager::openAddSceneDialog()
 }
 
 //-----------------------------------------------------------------------------
-bool qSlicerIOManager::openDialog(qSlicerIO::IOFileType fileType, 
+bool qSlicerIOManager::openDialog(qSlicerIO::IOFileType fileType,
                                   qSlicerFileDialog::IOAction action,
-                                  qSlicerIO::IOProperties properties)
+                                  qSlicerIO::IOProperties properties,
+                                  vtkCollection* loadedNodes)
 {
   Q_D(qSlicerIOManager);
   bool deleteDialog = false;
@@ -204,18 +240,28 @@ bool qSlicerIOManager::openDialog(qSlicerIO::IOFileType fileType,
     QString name = d->createUniqueDialogName(fileType, action, properties);
     properties["objectName"] = name;
     }
-  qSlicerFileDialog* dialog = action == qSlicerFileDialog::Read ? 
-    d->ReadDialogs[fileType] : d->WriteDialogs[fileType];
-  if (dialog == 0)
+  qSlicerFileDialog* dialog = d->findDialog(fileType, action);
+  if (dialog == nullptr)
     {
     deleteDialog = true;
-    qSlicerStandardFileDialog* standardDialog = 
+    qSlicerStandardFileDialog* standardDialog =
       new qSlicerStandardFileDialog(this);
     standardDialog->setFileType(fileType);
     standardDialog->setAction(action);
     dialog = standardDialog;
     }
   bool res = dialog->exec(properties);
+  if (loadedNodes)
+    {
+    foreach(const QString& nodeID, dialog->loadedNodes())
+      {
+      vtkMRMLNode* node = d->currentScene()->GetNodeByID(nodeID.toUtf8());
+      if (node)
+        {
+        loadedNodes->AddItem(node);
+        }
+      }
+    }
   if (deleteDialog)
    {
     delete dialog;
@@ -226,18 +272,73 @@ bool qSlicerIOManager::openDialog(qSlicerIO::IOFileType fileType,
 //---------------------------------------------------------------------------
 void qSlicerIOManager::dragEnterEvent(QDragEnterEvent *event)
 {
-  if (event->mimeData()->hasFormat("text/uri-list"))
+  Q_D(qSlicerIOManager);
+  foreach(qSlicerFileDialog* dialog, d->ReadDialogs)
     {
-    event->acceptProposedAction();
+    if (dialog->isMimeDataAccepted(event->mimeData()))
+      {
+      event->accept();
+      break;
+      }
     }
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerIOManager::dropEvent(QDropEvent *event)
 {
-  qSlicerDataDialog* dataDialog = new qSlicerDataDialog(this);
-  dataDialog->dropEvent(event);
-  dataDialog->exec();
+  Q_D(qSlicerIOManager);
+  QStringList supportedReaders;
+  QStringList genericReaders; // those must be last in the choice menu
+  foreach(qSlicerFileDialog* dialog, d->ReadDialogs)
+    {
+    if (dialog->isMimeDataAccepted(event->mimeData()))
+      {
+      QString supportedReader = dialog->description();
+      if (dialog->fileType() == "NoFile")
+        {
+        genericReaders << supportedReader;
+        }
+      else
+        {
+        supportedReaders << supportedReader;
+        }
+      }
+    }
+  supportedReaders << genericReaders;
+  QString selectedReader;
+  if (supportedReaders.size() > 1)
+    {
+    QString title = tr("Select a reader");
+    QString label = tr("Select a reader to use for your data?");
+    int current = 0;
+    bool editable = false;
+    bool ok = false;
+    selectedReader = QInputDialog::getItem(nullptr, title, label, supportedReaders, current, editable, &ok);
+    if (!ok)
+      {
+      selectedReader = QString();
+      }
+    }
+  else if (supportedReaders.size() ==1)
+    {
+    selectedReader = supportedReaders[0];
+    }
+  if (selectedReader.isEmpty())
+    {
+    return;
+    }
+  foreach(qSlicerFileDialog* dialog, d->ReadDialogs)
+    {
+    if (dialog->description() == selectedReader)
+      {
+      dialog->dropEvent(event);
+      if (event->isAccepted())
+        {
+        dialog->exec();
+        break;
+        }
+      }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -278,24 +379,24 @@ void qSlicerIOManager::registerDialog(qSlicerFileDialog* dialog)
 {
   Q_D(qSlicerIOManager);
   Q_ASSERT(dialog);
+  qSlicerFileDialog* existingDialog =
+    d->findDialog(dialog->fileType(), dialog->action());
+  if (existingDialog)
+    {
+    d->ReadDialogs.removeAll(existingDialog);
+    d->WriteDialogs.removeAll(existingDialog);
+    existingDialog->deleteLater();
+    }
   if (dialog->action() == qSlicerFileDialog::Read)
     {
-    if (d->ReadDialogs[dialog->fileType()])
-      {
-      delete d->ReadDialogs[dialog->fileType()];
-      }
-    d->ReadDialogs[dialog->fileType()] = dialog;
+    d->ReadDialogs.prepend(dialog);
     }
   else if (dialog->action() == qSlicerFileDialog::Write)
     {
-    if (d->WriteDialogs[dialog->fileType()])
-      {
-      delete d->WriteDialogs[dialog->fileType()];
-      }
-    d->WriteDialogs[dialog->fileType()] = dialog;
+    d->WriteDialogs.prepend(dialog);
     }
   else
-    {      
+    {
     Q_ASSERT(dialog->action() == qSlicerFileDialog::Read ||
              dialog->action() == qSlicerFileDialog::Write);
     }
@@ -379,7 +480,7 @@ void qSlicerIOManager::openScreenshotDialog()
   // try opening the Annotation module's screen shot
   qSlicerModuleManager *moduleManager = qSlicerApplication::application()->moduleManager();
 
-  qSlicerAbstractCoreModule *modulePointer = NULL;
+  qSlicerAbstractCoreModule *modulePointer = nullptr;
   if (moduleManager)
     {
     modulePointer = moduleManager->module("Annotations");
@@ -415,7 +516,7 @@ void qSlicerIOManager::openSceneViewsDialog()
     }
 
   qSlicerAbstractCoreModule *modulePointer = moduleManager->module("SceneViews");
-  if (modulePointer == NULL)
+  if (modulePointer == nullptr)
     {
     qWarning() << "qSlicerIOManager::openSceneViewsDialog: Unable to get at the SceneViews module (sceneviews).";
     return;

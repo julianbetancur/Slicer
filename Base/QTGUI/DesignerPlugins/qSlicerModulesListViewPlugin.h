@@ -23,18 +23,19 @@
 
 #include "qSlicerQTGUIAbstractPlugin.h"
 
-class Q_SLICER_BASE_QTGUI_PLUGINS_EXPORT qSlicerModulesListViewPlugin
-  : public qSlicerQTGUIAbstractPlugin
+class Q_SLICER_DESIGNER_PLUGINS_EXPORT qSlicerModulesListViewPlugin
+  : public QObject,
+    public qSlicerQTGUIAbstractPlugin
 {
   Q_OBJECT
 public:
-  qSlicerModulesListViewPlugin(QObject* parent = 0);
+  qSlicerModulesListViewPlugin(QObject* parent = nullptr);
 
-  QWidget *createWidget(QWidget *_parent);
-  QString domXml() const;
-  QString includeFile() const;
-  bool isContainer() const;
-  QString name() const;
+  QWidget *createWidget(QWidget *_parent) override;
+  QString domXml() const override;
+  QString includeFile() const override;
+  bool isContainer() const override;
+  QString name() const override;
 };
 
 #endif

@@ -1,23 +1,27 @@
 import os
-from __main__ import vtk
-from __main__ import qt
-from __main__ import ctk
-from __main__ import slicer
-from EditOptions import EditOptions
-import EditUtil
-import Effect
+import vtk
+import qt
+import ctk
+import slicer
+from . import EffectOptions, EffectTool, EffectLogic, Effect
 
+__all__ = [
+  'MorphologyEffectOptions',
+  'MorphologyEffectTool',
+  'MorphologyEffectLogic',
+  'MorphologyEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
-  MorphologyEffect is a subclass of Effect (for tools that plug into the 
+  MorphologyEffect is a subclass of Effect (for tools that plug into the
   slicer Editor module) and a superclass for tools that
   implement math morphology operations (erode, dilate)
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -26,7 +30,7 @@ comment = """
 # MorphologyEffectOptions - see EditOptions and Effect for superclasses
 #
 
-class MorphologyEffectOptions(Effect.EffectOptions):
+class MorphologyEffectOptions(EffectOptions):
   """ MorphologyEffect-specfic gui
   """
 
@@ -122,8 +126,8 @@ class MorphologyEffectOptions(Effect.EffectOptions):
 #
 # MorphologyEffectTool
 #
- 
-class MorphologyEffectTool(Effect.EffectTool):
+
+class MorphologyEffectTool(EffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -142,13 +146,13 @@ class MorphologyEffectTool(Effect.EffectTool):
 #
 # MorphologyEffectLogic
 #
- 
-class MorphologyEffectLogic(Effect.EffectLogic):
+
+class MorphologyEffectLogic(EffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an MorphologyEffectTool
   or MorphologyEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the MorphologyEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -158,10 +162,10 @@ class MorphologyEffectLogic(Effect.EffectLogic):
     super(MorphologyEffectLogic,self).__init__(sliceLogic)
 
 #
-# The MorphologyEffect class definition 
+# The MorphologyEffect class definition
 #
 
-class MorphologyEffect(Effect.Effect):
+class MorphologyEffect(Effect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """

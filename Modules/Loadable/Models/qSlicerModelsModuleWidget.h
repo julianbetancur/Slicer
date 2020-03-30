@@ -21,6 +21,9 @@
 #ifndef __qSlicerModelsModuleWidget_h
 #define __qSlicerModelsModuleWidget_h
 
+// CTK includes
+#include "ctkVTKObject.h"
+
 // SlicerQt includes
 #include "qSlicerAbstractModuleWidget.h"
 
@@ -28,34 +31,56 @@
 
 class qSlicerModelsModuleWidgetPrivate;
 class vtkMRMLNode;
-class QModelIndex;
+class vtkMRMLSelectionNode;
 
 /// \ingroup Slicer_QtModules_Models
-class Q_SLICER_QTMODULES_MODELS_EXPORT qSlicerModelsModuleWidget
-  : public qSlicerAbstractModuleWidget
+class Q_SLICER_QTMODULES_MODELS_EXPORT qSlicerModelsModuleWidget : public qSlicerAbstractModuleWidget
 {
   Q_OBJECT
+  QVTK_OBJECT
 
 public:
-
   typedef qSlicerAbstractModuleWidget Superclass;
-  qSlicerModelsModuleWidget(QWidget *parent=0);
-  virtual ~qSlicerModelsModuleWidget();
+  qSlicerModelsModuleWidget(QWidget *parent=nullptr);
+  ~qSlicerModelsModuleWidget() override;
+
+  void enter() override;
+  void exit() override;
+  bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
 
 public slots:
-  virtual void setMRMLScene(vtkMRMLScene* scene);
-  
-  void insertHierarchyNode();
-  void deleteMultipleModels();
-  void renameMultipleModels();
-  void onCurrentNodeChanged(vtkMRMLNode* newCurrentNode);
+  void setMRMLScene(vtkMRMLScene* scene) override;
+
+  /// Set current subject hierarchy item IDs.
+  /// The current node (the properties of which the widget displays) will be the one associated
+  /// to the first selected subject hierarchy item.
+  /// When a property changes, then it is applied to all the models in the selection
+  void setDisplaySelectionFromSubjectHierarchyItems(QList<vtkIdType> itemIDs);
+
+  void onClippingConfigurationButtonClicked();
+  void onDisplayNodeChanged();
+  void onClipSelectedModelToggled(bool);
+
+  static void onMRMLSceneEvent(vtkObject* vtk_obj, unsigned long event,
+                               void* client_data, void* call_data);
+
+  /// hide/show all the models in the scene
+  void hideAllModels();
+  void showAllModels();
+
+protected slots:
+  /// Called when a subject hierarchy item is modified.
+  /// Updates current item selection to reflect changes in item (such as display node creation)
+  void onSubjectHierarchyItemModified(vtkObject* caller, void* callData);
+
+  /// Called when the information collapsible button collapsed state is changed.
+  void onInformationSectionCollapsed(bool);
+
+protected:
+  void setup() override;
 
 protected:
   QScopedPointer<qSlicerModelsModuleWidgetPrivate> d_ptr;
-  
-  virtual void setup();
-
-  void updateTreeViewModel();
 
 private:
   Q_DECLARE_PRIVATE(qSlicerModelsModuleWidget);

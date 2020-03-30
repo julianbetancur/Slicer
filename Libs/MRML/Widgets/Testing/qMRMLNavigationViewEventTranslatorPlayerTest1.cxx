@@ -27,6 +27,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -37,11 +40,14 @@
 #include "qMRMLThreeDView.h"
 
 // MRML includes
-#include <vtkMRMLViewNode.h>
+#include <vtkMRMLInteractionNode.h>
 #include <vtkMRMLScene.h>
+#include <vtkMRMLSelectionNode.h>
+#include <vtkMRMLViewNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -61,7 +67,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLNavigationViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -86,9 +94,16 @@ int qMRMLNavigationViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 
   navigationView.setRendererToListen(threeDView.renderer());
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  navigationView.setMRMLScene(scene);
-  threeDView.setMRMLScene(scene);
+  vtkNew<vtkMRMLScene> scene;
+
+  // vtkMRMLAbstractDisplayableManager requires selection and interaction nodes
+  vtkNew<vtkMRMLSelectionNode> selectionNode;
+  scene->AddNode(selectionNode.GetPointer());
+  vtkNew<vtkMRMLInteractionNode> interactionNode;
+  scene->AddNode(interactionNode.GetPointer());
+
+  navigationView.setMRMLScene(scene.GetPointer());
+  threeDView.setMRMLScene(scene.GetPointer());
 
   vtkMRMLViewNode* viewNode = vtkMRMLViewNode::New();
   viewNode->SetBoxVisible(true);
@@ -99,7 +114,11 @@ int qMRMLNavigationViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   navigationView.setMRMLViewNode(viewNode);
 
   etpWidget.addTestCase(&topLevel,
+#ifdef Slicer_VTK_USE_QVTKOPENGLWIDGET
+                        xmlDirectory + "qMRMLNavigationViewEventTranslatorPlayerTest1_QVTKOpenGLWidget.xml",
+#else
                         xmlDirectory + "qMRMLNavigationViewEventTranslatorPlayerTest1.xml",
+#endif
                         &checkFinalWidgetState);
 
   // ------------------------

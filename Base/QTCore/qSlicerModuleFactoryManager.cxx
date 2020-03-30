@@ -22,6 +22,8 @@
 #include "qSlicerModuleFactoryManager.h"
 #include "qSlicerAbstractCoreModule.h"
 
+#include "vtkSlicerConfigure.h" // XXX For modulePaths() function.
+
 // STD includes
 #include <algorithm>
 
@@ -45,8 +47,8 @@ qSlicerModuleFactoryManagerPrivate
 ::qSlicerModuleFactoryManagerPrivate(qSlicerModuleFactoryManager& object)
   : q_ptr(&object)
 {
-  this->AppLogic = 0;
-  this->MRMLScene = 0;
+  this->AppLogic = nullptr;
+  this->MRMLScene = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -81,6 +83,27 @@ int qSlicerModuleFactoryManager::loadModules()
     }
   emit this->modulesLoaded(this->loadedModuleNames());
   return this->loadedModuleNames().count();
+}
+
+//---------------------------------------------------------------------------
+bool qSlicerModuleFactoryManager::loadModules(const QStringList& modules)
+{
+  // Ensure requested modules are instantiated
+  foreach(const QString& moduleKey, modules)
+    {
+    this->instantiateModule(moduleKey);
+    }
+
+  // Load requested modules
+  foreach(const QString& moduleKey, modules)
+    {
+    if (!this->loadModule(moduleKey))
+      {
+      return false;
+      }
+    }
+
+  return true;
 }
 
 //---------------------------------------------------------------------------
@@ -245,14 +268,14 @@ qSlicerAbstractCoreModule* qSlicerModuleFactoryManager::loadedModule(const QStri
     qDebug() << "The module" << name << "has not been registered.";
     qDebug() << "The following modules have been registered:"
              << this->registeredModuleNames();
-    return 0;
+    return nullptr;
     }
   if (!this->isInstantiated(name))
     {
     qDebug() << "The module" << name << "has been registered but not instantiated.";
     qDebug() << "The following modules have been instantiated:"
              << this->instantiatedModuleNames();
-    return 0;
+    return nullptr;
     }
 
   if (!this->isLoaded(name))
@@ -260,7 +283,7 @@ qSlicerAbstractCoreModule* qSlicerModuleFactoryManager::loadedModule(const QStri
     qDebug()<< "The module" << name << "has not been loaded.";
     qDebug() << "The following modules have been loaded:"
              << this->loadedModuleNames();
-    return 0;
+    return nullptr;
     }
   return this->moduleInstance(name);
 }
@@ -277,6 +300,34 @@ vtkSlicerApplicationLogic* qSlicerModuleFactoryManager::appLogic()const
 {
   Q_D(const qSlicerModuleFactoryManager);
   return d->AppLogic;
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerModuleFactoryManager::modulePaths(const QString& basePath)
+{
+  // XXX Each factory should be updated with virtual methods like "hasModulePath(basePath)"
+  //     and "modulePath(basePath)".
+
+  QStringList paths;
+
+  QStringList subPaths;
+#ifdef Slicer_USE_PYTHONQT
+  subPaths << Slicer_QTSCRIPTEDMODULES_LIB_DIR;
+#endif
+#ifdef Slicer_BUILD_CLI_SUPPORT
+  subPaths << Slicer_CLIMODULES_BIN_DIR;
+#endif
+  subPaths << Slicer_QTLOADABLEMODULES_LIB_DIR;
+
+  foreach(const QString& subPath, subPaths)
+    {
+    QString candidatePath = QDir(basePath).filePath(subPath);
+    if (QDir(candidatePath).exists())
+      {
+      paths << candidatePath;
+      }
+    }
+  return paths;
 }
 
 //-----------------------------------------------------------------------------

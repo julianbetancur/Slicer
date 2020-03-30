@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,19 +10,12 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLFreeSurferModelStorageNode.h"
-#include "vtkURIHandler.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLFreeSurferModelStorageNode.h"
 
 int vtkMRMLFreeSurferModelStorageNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLFreeSurferModelStorageNode > node1 = vtkSmartPointer< vtkMRMLFreeSurferModelStorageNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_STORAGE_MRML_METHODS(vtkMRMLFreeSurferModelStorageNode, node1);
-
+  vtkNew<vtkMRMLFreeSurferModelStorageNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

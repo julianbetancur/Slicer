@@ -39,22 +39,18 @@ class QMRML_WIDGETS_EXPORT qMRMLDisplayNodeWidget : public QWidget
   Q_OBJECT
   QVTK_OBJECT
 public:
-  qMRMLDisplayNodeWidget(QWidget *parent=0);
-  virtual ~qMRMLDisplayNodeWidget();
-  
+  qMRMLDisplayNodeWidget(QWidget *parent=nullptr);
+  ~qMRMLDisplayNodeWidget() override;
+
   vtkMRMLDisplayNode* mrmlDisplayNode()const;
-  
+
   bool visibility()const;
   bool selected()const;
   bool clipping()const;
+  bool threeDVisible()const;
   bool sliceIntersectionVisible()const;
-  QColor color()const;
-  double opacity()const;
-  double ambient()const;
-  double diffuse()const;
-  double specular()const;
-  double specularPower()const;
-  bool backfaceCulling()const;
+  int sliceIntersectionThickness()const;
+  double sliceIntersectionOpacity()const;
 
 public slots:
   /// Set the volume node to display
@@ -68,26 +64,25 @@ public slots:
   void setVisibility(bool);
   void setSelected(bool);
   void setClipping(bool);
+  void setThreeDVisible(bool);
   void setSliceIntersectionVisible(bool);
+  void setSliceIntersectionThickness(int);
+  void setSliceIntersectionOpacity(double);
 
-  /// Make checkboxes visible or invisible, for use with display nodes that don't 
-  /// need to control visibility, selected, clipping, slice intersection visibility
+  /// Make checkboxes visible or invisible, for use with display nodes that don't
+  /// need to control visibility, selected, clipping, slice intersection
+  /// visibility, slice intersection thickness
   void setVisibilityVisible(bool);
   void setSelectedVisible(bool);
   void setClippingVisible(bool);
+  void setThreeDVisibleVisible(bool);
   void setSliceIntersectionVisibleVisible(bool);
-
-  /// Set the values on the display node
-  void setColor(const QColor&);
-  void setOpacity(double);
-  void setAmbient(double);
-  void setDiffuse(double);
-  void setSpecular(double);
-  void setSpecularPower(double);
-  void setBackfaceCulling(bool);
+  void setSliceIntersectionThicknessVisible(bool);
+  void setSliceIntersectionOpacityVisible(bool);
 
 protected slots:
   void updateWidgetFromMRML();
+  void updateNodeFromProperty();
 
 protected:
   QScopedPointer<qMRMLDisplayNodeWidgetPrivate> d_ptr;

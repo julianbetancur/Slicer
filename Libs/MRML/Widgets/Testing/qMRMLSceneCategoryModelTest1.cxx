@@ -23,6 +23,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 
 // qMRML includes
@@ -33,19 +36,22 @@
 #include <vtkMRMLScene.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLSceneCategoryModelTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLSceneCategoryModel model;
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  qMRMLNodeFactory nodeFactory(0);
-  nodeFactory.setMRMLScene(scene);
+  vtkNew<vtkMRMLScene> scene;
+  qMRMLNodeFactory nodeFactory(nullptr);
+  nodeFactory.setMRMLScene(scene.GetPointer());
   nodeFactory.createNode("vtkMRMLROINode");
   nodeFactory.addAttribute("Category", "First Category");
   nodeFactory.createNode("vtkMRMLCameraNode");
@@ -53,7 +59,7 @@ int qMRMLSceneCategoryModelTest1(int argc, char * argv [])
   nodeFactory.createNode("vtkMRMLLinearTransformNode");
   nodeFactory.removeAttribute("Category");
   nodeFactory.createNode("vtkMRMLDoubleArrayNode");
-  model.setMRMLScene(scene);
+  model.setMRMLScene(scene.GetPointer());
   nodeFactory.createNode("vtkMRMLScalarVolumeNode");
   nodeFactory.addAttribute("Category", "Second Category");
   nodeFactory.createNode("vtkMRMLSliceNode");
@@ -64,10 +70,10 @@ int qMRMLSceneCategoryModelTest1(int argc, char * argv [])
 
   QStringList scenePreItems =
     QStringList() << "pre 1" << "pre 2" << "separator";
-  model.setPreItems(scenePreItems, 0);
+  model.setPreItems(scenePreItems, nullptr);
   model.setPreItems(scenePreItems, model.mrmlSceneItem());
 
-  if (model.itemFromCategory("Second Category") == 0 ||
+  if (model.itemFromCategory("Second Category") == nullptr ||
       model.itemFromCategory("Second Category") == model.mrmlSceneItem())
     {
     std::cerr << "Wrong category. Item: "
@@ -77,7 +83,7 @@ int qMRMLSceneCategoryModelTest1(int argc, char * argv [])
     }
   model.setPreItems(scenePreItems, model.itemFromCategory("Second Category"));
 
-  QTreeView* view = new QTreeView(0);
+  QTreeView* view = new QTreeView(nullptr);
   view->setModel(&model);
   view->show();
   view->resize(500, 800);

@@ -19,6 +19,7 @@
 
 class vtkImageData;
 class vtkITKArchetypeImageSeriesReader;
+class vtkMRMLVolumeNode;
 
 /// \brief MRML node for representing a volume storage.
 ///
@@ -29,15 +30,15 @@ class VTK_MRML_EXPORT vtkMRMLVolumeArchetypeStorageNode : public vtkMRMLStorageN
 public:
   static vtkMRMLVolumeArchetypeStorageNode *New();
   vtkTypeMacro(vtkMRMLVolumeArchetypeStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Do a temp write to update the file list in this storage node with all
   /// file names that are written when write out the ref node
   /// If move is 1, return the directory that contains the written files and
@@ -45,63 +46,66 @@ public:
   /// write. Otherwise return an empty string.
   std::string UpdateFileList(vtkMRMLNode *refNode, int move = 0);
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "VolumeArchetypeStorage";};
+  const char* GetNodeTagName() override {return "VolumeArchetypeStorage";}
 
-  /// 
+  ///
   /// Center image on read
   vtkGetMacro(CenterImage, int);
   vtkSetMacro(CenterImage, int);
 
-  /// 
+  ///
   /// whether to read single file or the whole series
   vtkGetMacro(SingleFile, int);
   vtkSetMacro(SingleFile, int);
 
-  /// 
+  ///
   /// Whether to use orientation from file
   vtkSetMacro(UseOrientationFromFile, int);
   vtkGetMacro(UseOrientationFromFile, int);
 
-  /// 
-  /// Return a defualt file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
-
   /// Return true if the reference node is supported by the storage node
-  virtual bool CanReadInReferenceNode(vtkMRMLNode* refNode);
-  virtual bool CanWriteFromReferenceNode(vtkMRMLNode* refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode* refNode) override;
+  bool CanWriteFromReferenceNode(vtkMRMLNode* refNode) override;
 
   ///
   /// Configure the storage node for data exchange. This is an
   /// opportunity to optimize the storage node's settings, for
   /// instance to turn off compression.
-  virtual void ConfigureForDataExchange();
+  void ConfigureForDataExchange() override;
+
+  ///
+  /// Provide a uniform way to populate the volume nodes's itk
+  /// metadatadictionary from the reader.  Since itk::MetaDataDictionary
+  /// is not exposed in python, this method allows it to be set indirectly
+  /// using only wrapped types.
+  static void SetMetaDataDictionaryFromReader(vtkMRMLVolumeNode*, vtkITKArchetypeImageSeriesReader*);
 
 protected:
   vtkMRMLVolumeArchetypeStorageNode();
-  ~vtkMRMLVolumeArchetypeStorageNode();
+  ~vtkMRMLVolumeArchetypeStorageNode() override;
   vtkMRMLVolumeArchetypeStorageNode(const vtkMRMLVolumeArchetypeStorageNode&);
   void operator=(const vtkMRMLVolumeArchetypeStorageNode&);
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   vtkITKArchetypeImageSeriesReader* InstantiateVectorVolumeReader(const std::string &fullName);
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 
   int CenterImage;
   int SingleFile;

@@ -1,23 +1,29 @@
 import os
-from __main__ import vtk
-from __main__ import qt
-from __main__ import ctk
-from __main__ import slicer
-from EditOptions import EditOptions
-import EditUtil
-import EditorLib
-import Effect
+import vtk
+import qt
+import ctk
+import slicer
+from . import EditColor
+from . import EditUtil
+from . import HelpButton
+from . import EffectOptions, EffectTool, EffectLogic, Effect
 
+__all__ = [
+  'ChangeLabelEffectOptions',
+  'ChangeLabelEffectTool',
+  'ChangeLabelEffectLogic',
+  'ChangeLabelEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
-  ChangeLabelEffect is a subclass of Effect (for tools that plug into the 
+  ChangeLabelEffect is a subclass of Effect (for tools that plug into the
   slicer Editor module) for changing one label to another
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -26,7 +32,7 @@ comment = """
 # ChangeLabelEffectOptions - see EditOptions and Effect for superclasses
 #
 
-class ChangeLabelEffectOptions(Effect.EffectOptions):
+class ChangeLabelEffectOptions(EffectOptions):
   """ ChangeLabelEffect-specfic gui
   """
 
@@ -41,21 +47,22 @@ class ChangeLabelEffectOptions(Effect.EffectOptions):
 
   def create(self):
     super(ChangeLabelEffectOptions,self).create()
-    import EditColor
-    self.inputColor = EditColor.EditColor(self.frame,'ChangeLabelEffect,inputColor')
+    self.logic.undoRedo = self.undoRedo
+    self.inputColor = EditColor(self.frame,'ChangeLabelEffect,inputColor')
     self.inputColor.label.setText("Input Color:")
     self.inputColor.colorSpin.setToolTip("Set the label value to replace.")
 
-    self.outputColor = EditColor.EditColor(self.frame,'ChangeLabelEffect,outputColor')
+    self.outputColor = EditColor(self.frame,'ChangeLabelEffect,outputColor')
     self.outputColor.label.setText("Output Color:")
     self.outputColor.colorSpin.setToolTip("Set the new label value")
 
     self.apply = qt.QPushButton("Apply", self.frame)
+    self.apply.objectName = self.__class__.__name__ + 'Apply'
     self.apply.setToolTip("Apply current threshold settings to the label map.")
     self.frame.layout().addWidget(self.apply)
     self.widgets.append(self.apply)
 
-    EditorLib.HelpButton(self.frame, "Replace all instances of input color with output color in current label map")
+    HelpButton(self.frame, "Replace all instances of input color with output color in current label map")
 
     self.connections.append( (self.apply, 'clicked()', self.onApply) )
 
@@ -71,7 +78,7 @@ class ChangeLabelEffectOptions(Effect.EffectOptions):
     defined in the leaf classes in EditOptions.py
     in each leaf subclass so that "self" in the observer
     is of the correct type """
-    node = self.editUtil.getParameterNode()
+    node = EditUtil.getParameterNode()
     if node != self.parameterNode:
       if self.parameterNode:
         node.RemoveObserver(self.parameterNodeTag)
@@ -124,8 +131,8 @@ class ChangeLabelEffectOptions(Effect.EffectOptions):
 #
 # ChangeLabelEffectTool
 #
- 
-class ChangeLabelEffectTool(Effect.EffectTool):
+
+class ChangeLabelEffectTool(EffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -144,13 +151,13 @@ class ChangeLabelEffectTool(Effect.EffectTool):
 #
 # ChangeLabelEffectLogic
 #
- 
-class ChangeLabelEffectLogic(Effect.EffectLogic):
+
+class ChangeLabelEffectLogic(EffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an ChangeLabelEffectTool
   or ChangeLabelEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the ChangeLabelEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -164,14 +171,14 @@ class ChangeLabelEffectLogic(Effect.EffectLogic):
     # change the label values based on the parameter node
     #
     if not self.sliceLogic:
-      self.sliceLogic = self.editUtil.getSliceLogic()
-    parameterNode = self.editUtil.getParameterNode()
-    parameterNode = self.editUtil.getParameterNode()
+      self.sliceLogic = EditUtil.getSliceLogic()
+    parameterNode = EditUtil.getParameterNode()
+    parameterNode = EditUtil.getParameterNode()
     inputColor = int(parameterNode.GetParameter("ChangeLabelEffect,inputColor"))
     outputColor = int(parameterNode.GetParameter("ChangeLabelEffect,outputColor"))
 
     change = slicer.vtkImageLabelChange()
-    change.SetInput( self.getScopedLabelInput() )
+    change.SetInputData( self.getScopedLabelInput() )
     change.SetOutput( self.getScopedLabelOutput() )
     change.SetInputLabel( inputColor )
     change.SetOutputLabel( outputColor )
@@ -185,10 +192,10 @@ class ChangeLabelEffectLogic(Effect.EffectLogic):
 
 
 #
-# The ChangeLabelEffect class definition 
+# The ChangeLabelEffect class definition
 #
 
-class ChangeLabelEffect(Effect.Effect):
+class ChangeLabelEffect(Effect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """
@@ -197,7 +204,7 @@ class ChangeLabelEffect(Effect.Effect):
     # name is used to define the name of the icon image resource (e.g. ChangeLabelEffect.png)
     self.name = "ChangeLabelEffect"
     # tool tip is displayed on mouse hover
-    self.toolTip = "ChangeLabelEffect: Change all occurances of one value in the volume to another value"
+    self.toolTip = "ChangeLabelEffect: Change all occurrences of one value in the volume to another value"
 
     self.options = ChangeLabelEffectOptions
     self.tool = ChangeLabelEffectTool

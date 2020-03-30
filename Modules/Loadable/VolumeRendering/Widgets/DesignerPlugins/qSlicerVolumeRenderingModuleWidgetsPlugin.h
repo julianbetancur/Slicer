@@ -22,11 +22,13 @@
 #define __qSlicerVolumeRenderingModuleWidgetsPlugin_h
 
 // Qt includes
-#include <QDesignerCustomWidgetCollectionInterface>
+#include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
 
 // VolumeRendering includes
 #include "qMRMLVolumePropertyNodeWidgetPlugin.h"
 #include "qSlicerPresetComboBoxPlugin.h"
+#include "qSlicerVolumeRenderingPresetComboBoxPlugin.h"
+#include "qSlicerGPUMemoryComboBoxPlugin.h"
 
 // \class Group the plugins in one library
 class Q_SLICER_MODULE_VOLUMERENDERING_WIDGETS_PLUGINS_EXPORT qSlicerVolumeRenderingModuleWidgetsPlugin
@@ -34,14 +36,17 @@ class Q_SLICER_MODULE_VOLUMERENDERING_WIDGETS_PLUGINS_EXPORT qSlicerVolumeRender
   , public QDesignerCustomWidgetCollectionInterface
 {
   Q_OBJECT
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetCollectionInterface")
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface);
 
 public:
-  QList<QDesignerCustomWidgetInterface*> customWidgets() const
+  QList<QDesignerCustomWidgetInterface*> customWidgets() const override
     {
     QList<QDesignerCustomWidgetInterface *> plugins;
     plugins << new qMRMLVolumePropertyNodeWidgetPlugin
-            << new qSlicerPresetComboBoxPlugin;
+            << new qSlicerPresetComboBoxPlugin
+            << new qSlicerVolumeRenderingPresetComboBoxPlugin
+            << new qSlicerGPUMemoryComboBoxPlugin;
     return plugins;
     }
 };

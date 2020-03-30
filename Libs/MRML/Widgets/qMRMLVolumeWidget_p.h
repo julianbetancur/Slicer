@@ -21,8 +21,22 @@
 #ifndef __qMRMLVolumeWidget_p_h
 #define __qMRMLVolumeWidget_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // qMRML includes
 #include "qMRMLVolumeWidget.h"
+
+// VTK includes
+#include <vtkWeakPointer.h>
 
 class ctkPopupWidget;
 class ctkRangeWidget;
@@ -37,7 +51,7 @@ protected:
 
 public:
   qMRMLVolumeWidgetPrivate(qMRMLVolumeWidget& object);
-  virtual ~qMRMLVolumeWidgetPrivate();
+  ~qMRMLVolumeWidgetPrivate() override;
 
   virtual void init();
 
@@ -61,8 +75,8 @@ public slots:
   virtual void setSingleStep(double singleStep);
 
 protected:
-  vtkMRMLScalarVolumeNode* VolumeNode;
-  vtkMRMLScalarVolumeDisplayNode* VolumeDisplayNode;
+  vtkWeakPointer<vtkMRMLScalarVolumeNode> VolumeNode;
+  vtkWeakPointer<vtkMRMLScalarVolumeDisplayNode> VolumeDisplayNode;
   ctkPopupWidget* PopupWidget;
   ctkRangeWidget* RangeWidget;
   double DisplayScalarRange[2];

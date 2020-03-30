@@ -24,7 +24,7 @@
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractDisplayableManager.h"
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLScriptedDisplayableManager :
   public vtkMRMLAbstractDisplayableManager
@@ -32,33 +32,33 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLScriptedDisplayableManager :
 
 public:
   static vtkMRMLScriptedDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLScriptedDisplayableManager,vtkMRMLAbstractDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLScriptedDisplayableManager,vtkMRMLAbstractDisplayableManager);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   void SetPythonSource(const std::string& pythonSource);
 
 protected:
   vtkMRMLScriptedDisplayableManager();
-  virtual ~vtkMRMLScriptedDisplayableManager();
+  ~vtkMRMLScriptedDisplayableManager() override;
 
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
+  void SetMRMLSceneInternal(vtkMRMLScene* newScene) override;
 
-  virtual void ProcessMRMLSceneEvents(vtkObject *caller, unsigned long event, void *callData);
-  virtual void ProcessMRMLNodesEvents(vtkObject *caller, unsigned long event, void *callData);
+  void ProcessMRMLSceneEvents(vtkObject *caller, unsigned long event, void *callData) override;
+  void ProcessMRMLNodesEvents(vtkObject *caller, unsigned long event, void *callData) override;
 
-  virtual void Create();
+  void Create() override;
 
-  virtual void RemoveMRMLObservers();
+  void RemoveMRMLObservers() override;
 
-  virtual void UpdateFromMRML();
+  void UpdateFromMRML() override;
 
-  virtual void OnInteractorStyleEvent(int eventid);
+  void OnInteractorStyleEvent(int eventid) override;
 
-  virtual void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller);
-  
+  void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller) override;
+
 private:
-  vtkMRMLScriptedDisplayableManager(const vtkMRMLScriptedDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLScriptedDisplayableManager&);                   // Not Implemented
+  vtkMRMLScriptedDisplayableManager(const vtkMRMLScriptedDisplayableManager&) = delete;
+  void operator=(const vtkMRMLScriptedDisplayableManager&) = delete;
 
   class vtkInternal;
   vtkInternal * Internal;

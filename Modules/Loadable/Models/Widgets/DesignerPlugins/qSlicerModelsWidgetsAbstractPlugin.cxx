@@ -22,31 +22,30 @@
 
 //-----------------------------------------------------------------------------
 qSlicerModelsWidgetsAbstractPlugin::qSlicerModelsWidgetsAbstractPlugin()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerModelsWidgetsAbstractPlugin::group() const
-{ 
+{
   return "Slicer [Models Widgets]";
 }
 
 //-----------------------------------------------------------------------------
 QIcon qSlicerModelsWidgetsAbstractPlugin::icon() const
 {
-  return QIcon(); 
+  return QIcon();
 }
 
 //-----------------------------------------------------------------------------
 QString qSlicerModelsWidgetsAbstractPlugin::toolTip() const
-{ 
-  return QString(); 
+{
+  return QString();
 }
 
 //-----------------------------------------------------------------------------
 QString qSlicerModelsWidgetsAbstractPlugin::whatsThis() const
 {
-  return QString(); 
+  return QString();
 }
 
 

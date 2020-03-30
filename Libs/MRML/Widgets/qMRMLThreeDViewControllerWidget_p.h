@@ -21,18 +21,34 @@
 #ifndef __qMRMLThreeDViewControllerWidget_p_h
 #define __qMRMLThreeDViewControllerWidget_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // qMRML includes
 #include "qMRMLThreeDViewControllerWidget.h"
 #include "qMRMLViewControllerBar_p.h"
 #include "ui_qMRMLThreeDViewControllerWidget.h"
 
+// MRMLLogic includes
+#include <vtkMRMLViewLogic.h>
+
 // VTK includes
+#include <vtkSmartPointer.h>
 #include <vtkWeakPointer.h>
 
 class QAction;
 class ctkButtonGroup;
 class ctkSignalMapper;
 class qMRMLSceneViewMenu;
+class vtkMRMLCameraNode;
 class vtkMRMLViewNode;
 class QString;
 
@@ -45,21 +61,31 @@ class qMRMLThreeDViewControllerWidgetPrivate
 public:
   typedef qMRMLViewControllerBarPrivate Superclass;
   qMRMLThreeDViewControllerWidgetPrivate(qMRMLThreeDViewControllerWidget& object);
-  virtual ~qMRMLThreeDViewControllerWidgetPrivate();
+  ~qMRMLThreeDViewControllerWidgetPrivate() override;
 
-  virtual void init();
+  void init() override;
 
-  vtkWeakPointer<vtkMRMLViewNode>  ViewNode;
-  qMRMLThreeDView*                 ThreeDView;
+  vtkMRMLViewLogic* viewNodeLogic(vtkMRMLViewNode* node);
 
-  ctkSignalMapper*                 StereoTypesMapper;
-  ctkButtonGroup*                  AnimateViewButtonGroup;
+  vtkWeakPointer<vtkMRMLViewNode>     ViewNode;
+  vtkWeakPointer<vtkMRMLCameraNode>   CameraNode;
+  qMRMLThreeDView*                    ThreeDView;
 
-  QString                          ThreeDViewLabel;
-  QToolButton*                     CenterToolButton;
+  vtkSmartPointer<vtkMRMLViewLogic>   ViewLogic;
+  vtkCollection*                      ViewLogics;
+
+  ctkSignalMapper*                    StereoTypesMapper;
+  ctkButtonGroup*                     AnimateViewButtonGroup;
+  ctkSignalMapper*                    OrientationMarkerTypesMapper;
+  ctkSignalMapper*                    OrientationMarkerSizesMapper;
+  ctkSignalMapper*                    RulerTypesMapper;
+  ctkSignalMapper*                    RulerColorMapper;
+
+  QString                             ThreeDViewLabel;
+  QToolButton*                        CenterToolButton;
 
 protected:
-  virtual void setupPopupUi();
+  void setupPopupUi() override;
 };
 
 #endif

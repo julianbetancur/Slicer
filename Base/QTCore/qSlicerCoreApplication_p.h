@@ -21,10 +21,25 @@
 #ifndef __qSlicerCoreApplication_p_h
 #define __qSlicerCoreApplication_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
+#include <QPointer>
 #include <QProcessEnvironment>
 #include <QSettings>
 #include <QSharedPointer>
+
+// CTK includes
+#include <ctkErrorLogAbstractModel.h>
 
 // SlicerQt includes
 #include "qSlicerBaseQTCoreExport.h"
@@ -53,7 +68,15 @@ public:
 
   virtual void init();
 
-  /// Instanciate settings object
+  /// Terminates the calling process "immediately".
+  void quickExit(int exitCode);
+
+  /// Set up the local and remote data input/output for this application.
+  /// Use this as a template for creating stand alone scenes, then call
+  /// vtkSlicerApplicationLogic::SetMRMLSceneDataIO to hook it into a scene.
+  virtual void initDataIO();
+
+  /// Instantiate settings object
   virtual QSettings* newSettings();
   QSettings* instantiateSettings(bool useTmp);
 
@@ -62,9 +85,6 @@ public:
 
   /// Given the program name, should return Slicer Home Directory
   QString discoverSlicerHomeDirectory();
-
-  /// Set environment variable
-  void setEnvironmentVariable(const QString& key, const QString& value);
 
 #ifdef Slicer_USE_PYTHONQT
   void setPythonOsEnviron(const QString& key, const QString& value);
@@ -83,18 +103,21 @@ public:
   /// \sa QCoreApplication::applicationDirPath
   QString discoverSlicerBinDirectory();
 
-  /// Set 'ITKFactoriesDir' variable using 'ITK_AUTOLOAD_PATH' environment variable
-  QString discoverITKFactoriesDirectory();
-
-  /// Set PYTHONHOME and PYTHONPATH environment variables is not already set.
-  void setPythonEnvironmentVariables();
-
-  /// Set TCL_LIBRARY, TK_LIBRARY and TCLLIBPATH environment variable is not already set.
-  void setTclEnvironmentVariables();
-
 #ifdef Slicer_BUILD_EXTENSIONMANAGER_SUPPORT
   QString defaultExtensionsInstallPathForMacOSX()const;
 #endif
+
+  /// \brief Return true if application was started using CTKAppLauncher
+  ///
+  /// Value is currently hardcoded:
+  ///
+  ///         | Build tree | Install tree
+  /// --------| -----------|---------------
+  /// Linux   |  true      |  true
+  /// MacOSX  |  true      |  false
+  /// Windows |  true      |  true
+  ///
+  bool isUsingLauncher()const;
 
   /// Convenient function used to create a \a path.
   /// If it fails, print an error message using given \a description
@@ -113,12 +136,12 @@ public:
   vtkSmartPointer<vtkDataIOManagerLogic>      DataIOManagerLogic;
 
   QString                                     SlicerHome;
-  QString                                     ITKFactoriesDir;
   /// On windows platform, after the method 'discoverSlicerBinDirectory' has been called,
   /// IntDir should be set to either Debug,
   /// Release, RelWithDebInfo, MinSizeRel or any other custom build type.
   QString                                     IntDir;
 
+  QSettings*                                  DefaultSettings;
   QSettings*                                  UserSettings;
   QSettings*                                  RevisionUserSettings;
 
@@ -131,8 +154,8 @@ public:
   /// CoreCommandOptions - It should exist only one instance of the CoreCommandOptions
   QSharedPointer<qSlicerCoreCommandOptions>   CoreCommandOptions;
 
-  /// CoreCommandOptions - It should exist only one instance of the CoreCommandOptions
-  QSharedPointer<ctkErrorLogModel>            ErrorLogModel;
+  /// ErrorLogModel - It should exist only one instance of the ErrorLogModel
+  QSharedPointer<ctkErrorLogAbstractModel> ErrorLogModel;
 
   /// ReturnCode flag
   int                                         ReturnCode;
@@ -140,6 +163,7 @@ public:
 #ifdef Slicer_USE_PYTHONQT
   /// CorePythonManager - It should exist only one instance of the CorePythonManager
   QSharedPointer<qSlicerCorePythonManager>    CorePythonManager;
+  QPointer<ctkPythonConsole> PythonConsole; // it may be owned by a widget, so we cannot refer to it by a strong pointer
 #endif
 
 #ifdef Slicer_BUILD_EXTENSIONMANAGER_SUPPORT
@@ -148,14 +172,17 @@ public:
 
   QProcessEnvironment                         Environment;
 
-#if defined(Slicer_USE_PYTHONQT) && defined(Q_WS_WIN)
-  QHash<QString, QString>                     EnvironmentVariablesCache;
-#endif
-
 #ifdef Slicer_BUILD_DICOM_SUPPORT
   /// Application-wide database instance
-  ctkDICOMDatabase*                           DICOMDatabase;
+  QSharedPointer<ctkDICOMDatabase>            DICOMDatabase;
 #endif
+
+  QHash<int, QByteArray>                      LoadedResources;
+  int                                         NextResourceHandle;
+
+  /// Associated modules for each node type.
+  /// Key: node class name; values: module names.
+  QMultiMap<QString, QString> ModulesForNodes;
 };
 
 #endif

@@ -1,23 +1,30 @@
 import os
-from __main__ import vtk
-from __main__ import ctk
-from __main__ import qt
-from __main__ import slicer
-from EditOptions import EditOptions
-from EditorLib import EditorLib
-import LabelEffect
+import vtk
+import ctk
+import qt
+import slicer
 
+from . import EditUtil
+from . import HelpButton
+from . import LabelEffectOptions, LabelEffectTool, LabelEffectLogic, LabelEffect
+
+__all__ = [
+  'DrawEffectOptions',
+  'DrawEffectTool',
+  'DrawEffectLogic',
+  'DrawEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
   DrawEffect is a subclass of LabelEffect
   that implements the interactive paintbrush tool
   in the slicer editor
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -26,7 +33,7 @@ comment = """
 # DrawEffectOptions - see LabelEffect, EditOptions and Effect for superclasses
 #
 
-class DrawEffectOptions(LabelEffect.LabelEffectOptions):
+class DrawEffectOptions(LabelEffectOptions):
   """ DrawEffect-specfic gui
   """
 
@@ -40,11 +47,12 @@ class DrawEffectOptions(LabelEffect.LabelEffectOptions):
     super(DrawEffectOptions,self).create()
 
     self.apply = qt.QPushButton("Apply", self.frame)
+    self.apply.objectName = self.__class__.__name__ + 'Apply'
     self.apply.setToolTip("Apply current outline.\nUse the 'a' or 'Enter' hotkey to apply in slice window")
     self.frame.layout().addWidget(self.apply)
     self.widgets.append(self.apply)
 
-    EditorLib.HelpButton(self.frame, "Use this tool to draw an outline.\n\nLeft Click: add point.\nLeft Drag: add multiple points.\nx: delete last point.\na: apply outline.")
+    HelpButton(self.frame, "Use this tool to draw an outline.\n\nLeft Click: add point.\nLeft Drag: add multiple points.\nx: delete last point.\na: apply outline.")
 
     self.connections.append( (self.apply, 'clicked()', self.onApply) )
 
@@ -60,9 +68,9 @@ class DrawEffectOptions(LabelEffect.LabelEffectOptions):
 
   # note: this method needs to be implemented exactly as-is
   # in each leaf subclass so that "self" in the observer
-  # is of the correct type 
+  # is of the correct type
   def updateParameterNode(self, caller, event):
-    node = self.editUtil.getParameterNode()
+    node = EditUtil.getParameterNode()
     if node != self.parameterNode:
       if self.parameterNode:
         node.RemoveObserver(self.parameterNodeTag)
@@ -86,8 +94,8 @@ class DrawEffectOptions(LabelEffect.LabelEffectOptions):
 #
 # DrawEffectTool
 #
- 
-class DrawEffectTool(LabelEffect.LabelEffectTool):
+
+class DrawEffectTool(LabelEffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -98,8 +106,14 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
   """
 
   def __init__(self, sliceWidget):
+
+    # keep a flag since events such as sliceNode modified
+    # may come during superclass construction, which will
+    # invoke our processEvents method
+    self.initialized = False
+
     super(DrawEffectTool,self).__init__(sliceWidget)
-    
+
     # create a logic instance to do the non-gui work
     self.logic = DrawEffectLogic(self.sliceWidget.sliceLogic())
 
@@ -115,13 +129,15 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
 
     self.mapper = vtk.vtkPolyDataMapper2D()
     self.actor = vtk.vtkActor2D()
-    self.mapper.SetInput(self.polyData)
+    self.mapper.SetInputData(self.polyData)
     self.actor.SetMapper(self.mapper)
     property_ = self.actor.GetProperty()
     property_.SetColor(1,1,0)
     property_.SetLineWidth(1)
     self.renderer.AddActor2D( self.actor )
     self.actors.append( self.actor )
+
+    self.initialized = True
 
   def cleanup(self):
     """
@@ -141,10 +157,13 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
     handle events from the render window interactor
     """
 
-    # TODO: might need preProcessEvent method like DrawEffect.tcl
-    # TODO: might need grabID
+    if super(DrawEffectTool,self).processEvent(caller,event):
+      return
 
-    # events from the interactory
+    if not self.initialized:
+      return
+
+    # events from the interactor
     if event == "LeftButtonPressEvent":
       self.actionState = "drawing"
       self.cursorOff()
@@ -180,7 +199,7 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
 
     # events from the slice node
     if caller and caller.IsA('vtkMRMLSliceNode'):
-      # 
+      #
       # make sure all points are on the current slice plane
       # - if the SliceToRAS has been modified, then we're on a different plane
       #
@@ -264,7 +283,7 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
     if not self.activeSlice:
       self.activeSlice = currentSlice
       self.setLineMode("solid")
-    
+
     # don't allow adding points on except on the active slice (where
     # first point was laid down)
     if self.activeSlice != currentSlice: return
@@ -281,7 +300,7 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
     lines.SetNumberOfCells(1)
 
   def deleteLastPoint(self):
-    """unwind through addPoint list back to empy polydata"""
+    """unwind through addPoint list back to empty polydata"""
 
     pcount = self.rasPoints.GetNumberOfPoints()
     if pcount <= 0: return
@@ -299,13 +318,13 @@ class DrawEffectTool(LabelEffect.LabelEffectTool):
 #
 # DrawEffectLogic
 #
- 
-class DrawEffectLogic(LabelEffect.LabelEffectLogic):
+
+class DrawEffectLogic(LabelEffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an DrawEffectTool
   or DrawEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the DrawEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -316,10 +335,10 @@ class DrawEffectLogic(LabelEffect.LabelEffectLogic):
 
 
 #
-# The DrawEffect class definition 
+# The DrawEffect class definition
 #
 
-class DrawEffect(LabelEffect.LabelEffect):
+class DrawEffect(LabelEffect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """
@@ -328,16 +347,8 @@ class DrawEffect(LabelEffect.LabelEffect):
     # name is used to define the name of the icon image resource (e.g. DrawEffect.png)
     self.name = "DrawEffect"
     # tool tip is displayed on mouse hover
-    self.toolTip = "Draw: circular paint brush for label map editing"
+    self.toolTip = "Draw: draw outlines - apply with right click or 'a' key"
 
     self.options = DrawEffectOptions
     self.tool = DrawEffectTool
     self.logic = DrawEffectLogic
-
-""" Test:
-
-sw = slicer.app.layoutManager().sliceWidget('Red')
-import EditorLib
-pet = EditorLib.DrawEffectTool(sw)
-
-"""

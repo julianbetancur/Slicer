@@ -19,9 +19,14 @@
 ==============================================================================*/
 
 // Qt includes
+#include <QDebug>
 #include <QMenu>
 #include <QInputDialog>
+#include <QTimer>
 #include <QToolButton>
+
+// CTK includes
+#include <ctkMessageBox.h>
 
 // qMRML includes
 #include "qMRMLCaptureToolBar.h"
@@ -44,6 +49,7 @@ class qMRMLCaptureToolBarPrivate
   Q_DECLARE_PUBLIC(qMRMLCaptureToolBar);
 protected:
   qMRMLCaptureToolBar* const q_ptr;
+  bool timeOutFlag;
 public:
   qMRMLCaptureToolBarPrivate(qMRMLCaptureToolBar& object);
   void init();
@@ -70,9 +76,10 @@ public slots:
 qMRMLCaptureToolBarPrivate::qMRMLCaptureToolBarPrivate(qMRMLCaptureToolBar& object)
   : q_ptr(&object)
 {
-  this->ScreenshotAction = 0;
-  this->SceneViewAction = 0;
-  this->SceneViewMenu = 0;
+  this->ScreenshotAction = nullptr;
+  this->SceneViewAction = nullptr;
+  this->SceneViewMenu = nullptr;
+  this->timeOutFlag = false;
 }
 
 // --------------------------------------------------------------------------
@@ -80,8 +87,8 @@ void qMRMLCaptureToolBarPrivate::updateWidgetFromMRML()
 {
   Q_Q(qMRMLCaptureToolBar);
   // Enable buttons
-  q->setEnabled(this->MRMLScene != 0);
-  this->ScreenshotAction->setEnabled(this->ActiveMRMLThreeDViewNode != 0);
+  q->setEnabled(this->MRMLScene != nullptr);
+  this->ScreenshotAction->setEnabled(this->ActiveMRMLThreeDViewNode != nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -92,9 +99,9 @@ void qMRMLCaptureToolBarPrivate::init()
   // Screenshot button
   this->ScreenshotAction = new QAction(q);
   this->ScreenshotAction->setIcon(QIcon(":/Icons/ViewCapture.png"));
-  this->ScreenshotAction->setText(q->tr("Screenshot"));
-  this->ScreenshotAction->setToolTip(q->tr(
-    "Capture a screenshot of the full layout, 3D view or slice views. Use File, Save to save the image."));
+  this->ScreenshotAction->setText(qMRMLCaptureToolBar::tr("Screenshot"));
+  this->ScreenshotAction->setToolTip(qMRMLCaptureToolBar::tr(
+    "Capture a screenshot of the full layout, 3D view or slice views. Use File, Save to save the image. Edit in the Annotations module."));
   QObject::connect(this->ScreenshotAction, SIGNAL(triggered()),
                    q, SIGNAL(screenshotButtonClicked()));
   q->addAction(this->ScreenshotAction);
@@ -102,17 +109,17 @@ void qMRMLCaptureToolBarPrivate::init()
   // Scene View buttons
   this->SceneViewAction = new QAction(q);
   this->SceneViewAction->setIcon(QIcon(":/Icons/ViewCamera.png"));
-  this->SceneViewAction->setText(q->tr("Scene view"));
-  this->SceneViewAction->setToolTip(q->tr("Capture and name a scene view."));
+  this->SceneViewAction->setText(qMRMLCaptureToolBar::tr("Scene view"));
+  this->SceneViewAction->setToolTip(qMRMLCaptureToolBar::tr("Capture and name a scene view."));
   QObject::connect(this->SceneViewAction, SIGNAL(triggered()),
                    q, SIGNAL(sceneViewButtonClicked()));
   q->addAction(this->SceneViewAction);
 
   // Scene view menu
   QToolButton* sceneViewMenuButton = new QToolButton(q);
-  sceneViewMenuButton->setText(q->tr("Restore view"));
+  sceneViewMenuButton->setText(qMRMLCaptureToolBar::tr("Restore view"));
   sceneViewMenuButton->setIcon(QIcon(":/Icons/ViewCameraSelect.png"));
-  sceneViewMenuButton->setToolTip(QObject::tr("Restore or delete saved scene views."));
+  sceneViewMenuButton->setToolTip(qMRMLCaptureToolBar::tr("Restore or delete saved scene views."));
   this->SceneViewMenu = new qMRMLSceneViewMenu(sceneViewMenuButton);
   sceneViewMenuButton->setMenu(this->SceneViewMenu);
   sceneViewMenuButton->setPopupMode(QToolButton::InstantPopup);
@@ -138,6 +145,7 @@ void qMRMLCaptureToolBarPrivate::setMRMLScene(vtkMRMLScene* newScene)
                       this, SLOT(OnMRMLSceneEndBatchProcessing()));
 
 */
+
   this->MRMLScene = newScene;
 
   this->SceneViewMenu->setMRMLScene(newScene);
@@ -166,8 +174,8 @@ void qMRMLCaptureToolBarPrivate::createSceneView()
 
   // Ask user for a name
   bool ok = false;
-  QString sceneViewName = QInputDialog::getText(q, QObject::tr("SceneView Name"),
-                                                QObject::tr("SceneView Name:"), QLineEdit::Normal,
+  QString sceneViewName = QInputDialog::getText(q, qMRMLCaptureToolBar::tr("SceneView Name"),
+                                                qMRMLCaptureToolBar::tr("SceneView Name:"), QLineEdit::Normal,
                                                 "View", &ok);
   if (!ok || sceneViewName.isEmpty())
     {
@@ -206,8 +214,7 @@ qMRMLCaptureToolBar::qMRMLCaptureToolBar(QWidget* _parent)
 
 //---------------------------------------------------------------------------
 qMRMLCaptureToolBar::~qMRMLCaptureToolBar()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qMRMLCaptureToolBar::setMRMLScene(vtkMRMLScene* scene)
@@ -223,4 +230,20 @@ void qMRMLCaptureToolBar::setActiveMRMLThreeDViewNode(
   Q_D(qMRMLCaptureToolBar);
   d->ActiveMRMLThreeDViewNode = newActiveMRMLThreeDViewNode;
   d->updateWidgetFromMRML();
+}
+
+// --------------------------------------------------------------------------
+bool qMRMLCaptureToolBar::popupsTimeOut() const
+{
+  Q_D(const qMRMLCaptureToolBar);
+
+  return d->timeOutFlag;
+}
+
+// --------------------------------------------------------------------------
+void qMRMLCaptureToolBar::setPopupsTimeOut(bool flag)
+{
+  Q_D(qMRMLCaptureToolBar);
+
+  d->timeOutFlag = flag;
 }

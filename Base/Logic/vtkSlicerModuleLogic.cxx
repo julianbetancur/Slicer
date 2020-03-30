@@ -10,19 +10,20 @@
 // SlicerLogic includes
 #include "vtkSlicerModuleLogic.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
+
 //----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkSlicerModuleLogic, "$Revision$");
 vtkStandardNewMacro(vtkSlicerModuleLogic);
 
 //----------------------------------------------------------------------------
 vtkSlicerModuleLogic::vtkSlicerModuleLogic()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkSlicerModuleLogic::~vtkSlicerModuleLogic()
 {
-  this->SetMRMLApplicationLogic(0);
+  this->SetMRMLApplicationLogic(nullptr);
 }
 
 //----------------------------------------------------------------------------

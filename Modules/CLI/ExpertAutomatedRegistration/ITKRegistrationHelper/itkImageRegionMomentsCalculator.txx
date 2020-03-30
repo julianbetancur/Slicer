@@ -14,8 +14,8 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef _itkImageRegionMomentsCalculator_txx
-#define _itkImageRegionMomentsCalculator_txx
+#ifndef itkImageRegionMomentsCalculator_txx
+#define itkImageRegionMomentsCalculator_txx
 #include "itkImageRegionMomentsCalculator.h"
 
 #include "vnl/algo/vnl_real_eigensystem.h"
@@ -25,7 +25,7 @@
 namespace itk
 {
 
-class ITK_EXPORT InvalidImageRegionMomentsError : public ExceptionObject
+class InvalidImageRegionMomentsError : public ExceptionObject
 {
 public:
   /*
@@ -33,7 +33,7 @@ public:
    */
   InvalidImageRegionMomentsError(const char *file, unsigned int lineNumber) : ExceptionObject(file, lineNumber)
   {
-    this->SetDescription("No valid image moments are availble.");
+    this->SetDescription("No valid image moments are available.");
   }
 
   /*
@@ -41,7 +41,7 @@ public:
    */
   InvalidImageRegionMomentsError(const std::string& file, unsigned int lineNumber) : ExceptionObject(file, lineNumber)
   {
-    this->SetDescription("No valid image moments are availble.");
+    this->SetDescription("No valid image moments are available.");
   }
 
   itkTypeMacro(InvalidImageRegionMomentsError, ExceptionObject);
@@ -50,18 +50,18 @@ public:
 // ----------------------------------------------------------------------
 // Construct without computing moments
 template <class TImage>
-ImageRegionMomentsCalculator<TImage>::ImageRegionMomentsCalculator(void)
+ImageRegionMomentsCalculator<TImage>::ImageRegionMomentsCalculator()
 {
   m_Valid = false;
-  m_Image = NULL;
-  m_SpatialObjectMask = NULL;
-  m_M0 = NumericTraits<ScalarType>::Zero;
-  m_M1.Fill(NumericTraits<typename VectorType::ValueType>::Zero);
-  m_M2.Fill(NumericTraits<typename MatrixType::ValueType>::Zero);
-  m_Cg.Fill(NumericTraits<typename VectorType::ValueType>::Zero);
-  m_Cm.Fill(NumericTraits<typename MatrixType::ValueType>::Zero);
-  m_Pm.Fill(NumericTraits<typename VectorType::ValueType>::Zero);
-  m_Pa.Fill(NumericTraits<typename MatrixType::ValueType>::Zero);
+  m_Image = nullptr;
+  m_SpatialObjectMask = nullptr;
+  m_M0 = NumericTraits<ScalarType>::ZeroValue();
+  m_M1.Fill(NumericTraits<typename VectorType::ValueType>::ZeroValue());
+  m_M2.Fill(NumericTraits<typename MatrixType::ValueType>::ZeroValue());
+  m_Cg.Fill(NumericTraits<typename VectorType::ValueType>::ZeroValue());
+  m_Cm.Fill(NumericTraits<typename MatrixType::ValueType>::ZeroValue());
+  m_Pm.Fill(NumericTraits<typename VectorType::ValueType>::ZeroValue());
+  m_Pa.Fill(NumericTraits<typename MatrixType::ValueType>::ZeroValue());
   m_UseRegionOfInterest = false;
   m_RegionOfInterestPoint1.Fill(0);
   m_RegionOfInterestPoint2.Fill(0);
@@ -101,11 +101,11 @@ template <class TImage>
 void
 ImageRegionMomentsCalculator<TImage>::Compute()
 {
-  m_M0 = NumericTraits<ScalarType>::Zero;
-  m_M1.Fill(NumericTraits<typename VectorType::ValueType>::Zero);
-  m_M2.Fill(NumericTraits<typename MatrixType::ValueType>::Zero);
-  m_Cg.Fill(NumericTraits<typename VectorType::ValueType>::Zero);
-  m_Cm.Fill(NumericTraits<typename MatrixType::ValueType>::Zero);
+  m_M0 = NumericTraits<ScalarType>::ZeroValue();
+  m_M1.Fill(NumericTraits<typename VectorType::ValueType>::ZeroValue());
+  m_M2.Fill(NumericTraits<typename MatrixType::ValueType>::ZeroValue());
+  m_Cg.Fill(NumericTraits<typename VectorType::ValueType>::ZeroValue());
+  m_Cm.Fill(NumericTraits<typename MatrixType::ValueType>::ZeroValue());
 
   typedef typename ImageType::IndexType IndexType;
 
@@ -200,7 +200,7 @@ ImageRegionMomentsCalculator<TImage>::Compute()
     }
 
   // Compute principal moments and axes
-  vnl_symmetric_eigensystem<double> eigen( m_Cm.GetVnlMatrix() );
+  vnl_symmetric_eigensystem<double> eigen( m_Cm.GetVnlMatrix().as_ref() );
   vnl_diag_matrix<double>           pm = eigen.D;
   for( unsigned int i = 0; i < ImageDimension; i++ )
     {
@@ -210,9 +210,9 @@ ImageRegionMomentsCalculator<TImage>::Compute()
 
   // Add a final reflection if needed for a proper rotation,
   // by multiplying the last row by the determinant
-  vnl_real_eigensystem                  eigenrot( m_Pa.GetVnlMatrix() );
-  vnl_diag_matrix<vcl_complex<double> > eigenval = eigenrot.D;
-  vcl_complex<double>                   det( 1.0, 0.0 );
+  vnl_real_eigensystem                  eigenrot( m_Pa.GetVnlMatrix().as_ref() );
+  vnl_diag_matrix<std::complex<double> > eigenval = eigenrot.D;
+  std::complex<double>                   det( 1.0, 0.0 );
   for( unsigned int i = 0; i < ImageDimension; i++ )
     {
     det *= eigenval( i, i );
@@ -323,7 +323,7 @@ ImageRegionMomentsCalculator<TImage>::GetPrincipalAxes() const
 // Get principal axes to physical axes transform
 template <class TImage>
 typename ImageRegionMomentsCalculator<TImage>::AffineTransformPointer
-ImageRegionMomentsCalculator<TImage>::GetPrincipalAxesToPhysicalAxesTransform(void) const
+ImageRegionMomentsCalculator<TImage>::GetPrincipalAxesToPhysicalAxesTransform() const
 {
   typename AffineTransformType::MatrixType matrix;
   typename AffineTransformType::OffsetType offset;
@@ -349,7 +349,7 @@ ImageRegionMomentsCalculator<TImage>::GetPrincipalAxesToPhysicalAxesTransform(vo
 
 template <class TImage>
 typename ImageRegionMomentsCalculator<TImage>::AffineTransformPointer
-ImageRegionMomentsCalculator<TImage>::GetPhysicalAxesToPrincipalAxesTransform(void) const
+ImageRegionMomentsCalculator<TImage>::GetPhysicalAxesToPrincipalAxesTransform() const
 {
   typename AffineTransformType::MatrixType matrix;
   typename AffineTransformType::OffsetType offset;

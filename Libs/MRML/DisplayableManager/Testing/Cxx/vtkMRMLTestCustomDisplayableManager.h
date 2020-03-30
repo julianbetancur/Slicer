@@ -26,14 +26,14 @@
 
 class vtkMRMLCameraNode;
 
-class vtkMRMLTestCustomDisplayableManager : 
+class vtkMRMLTestCustomDisplayableManager :
   public vtkMRMLAbstractDisplayableManager
 {
 
 public:
   static vtkMRMLTestCustomDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLTestCustomDisplayableManager,vtkMRMLAbstractDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLTestCustomDisplayableManager,vtkMRMLAbstractDisplayableManager);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   // For testing
   static int NodeAddedCountThreeDView;
@@ -42,20 +42,20 @@ public:
 protected:
 
   vtkMRMLTestCustomDisplayableManager();
-  virtual ~vtkMRMLTestCustomDisplayableManager();
+  ~vtkMRMLTestCustomDisplayableManager() override;
 
   virtual void AdditionnalInitializeStep();
-  virtual void OnInteractorStyleEvent(int eventid);
+  void OnInteractorStyleEvent(int eventid) override;
 
-  virtual void Create();
+  void Create() override;
 
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
 
 private:
 
-  vtkMRMLTestCustomDisplayableManager(const vtkMRMLTestCustomDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLTestCustomDisplayableManager&);                     // Not Implemented
-  
+  vtkMRMLTestCustomDisplayableManager(const vtkMRMLTestCustomDisplayableManager&) = delete;
+  void operator=(const vtkMRMLTestCustomDisplayableManager&) = delete;
+
   class vtkInternal;
   vtkInternal * Internal;
 

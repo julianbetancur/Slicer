@@ -22,7 +22,7 @@
 #define __vtkMRMLLightBoxRendererManagerProxy_h
 
 // MRMLDisplayableManager include
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 #include "vtkMRMLAbstractLogic.h"
 
 class vtkRenderer;
@@ -34,20 +34,20 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLLightBoxRendererManagerProxy
 {
 public:
   static vtkMRMLLightBoxRendererManagerProxy* New();
-  vtkTypeRevisionMacro(vtkMRMLLightBoxRendererManagerProxy,
+  vtkTypeMacro(vtkMRMLLightBoxRendererManagerProxy,
                        vtkMRMLAbstractLogic);
 
   /// Method to query the mapping from an id of a LightBox frame to
   /// the Renderer for that frame
-  virtual vtkRenderer *GetRenderer(int vtkNotUsed(id)) { return NULL; };
+  virtual vtkRenderer *GetRenderer(int vtkNotUsed(id)) { return nullptr; };
 
 protected:
   vtkMRMLLightBoxRendererManagerProxy() ;
-  virtual ~vtkMRMLLightBoxRendererManagerProxy() ;
+  ~vtkMRMLLightBoxRendererManagerProxy() override ;
 
 private:
-  vtkMRMLLightBoxRendererManagerProxy(const vtkMRMLLightBoxRendererManagerProxy&); // Not implemented
-  void operator=(const vtkMRMLLightBoxRendererManagerProxy&);                    // Not implemented
+  vtkMRMLLightBoxRendererManagerProxy(const vtkMRMLLightBoxRendererManagerProxy&) = delete;
+  void operator=(const vtkMRMLLightBoxRendererManagerProxy&) = delete;
 
 
 };

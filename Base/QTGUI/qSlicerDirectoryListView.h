@@ -27,6 +27,8 @@
 // QtGUI includes
 #include "qSlicerBaseQTGUIExport.h"
 
+class QDragEnterEvent;
+class QDropEvent;
 class qSlicerDirectoryListViewPrivate;
 
 class Q_SLICER_BASE_QTGUI_EXPORT qSlicerDirectoryListView : public QWidget
@@ -38,10 +40,10 @@ public:
   typedef QWidget Superclass;
 
   /// Constructor
-  explicit qSlicerDirectoryListView(QWidget* parent = 0);
+  explicit qSlicerDirectoryListView(QWidget* parent = nullptr);
 
   /// Destructor
-  virtual ~qSlicerDirectoryListView();
+  ~qSlicerDirectoryListView() override;
 
   /// Return True if the \a path has already been added
   bool hasDirectory(const QString& path)const;
@@ -49,6 +51,9 @@ public:
   QStringList directoryList(bool absolutePath = false)const;
 
   QStringList selectedDirectoryList(bool absolutePath = false)const;
+
+  void dragEnterEvent(QDragEnterEvent *event) override;
+  void dropEvent(QDropEvent *event) override;
 
 public slots:
 
@@ -86,7 +91,7 @@ protected:
 private:
   Q_DECLARE_PRIVATE(qSlicerDirectoryListView);
   Q_DISABLE_COPY(qSlicerDirectoryListView);
-  
+
 };
 
 #endif

@@ -16,7 +16,7 @@
 #define __vtkITKImageToImageFilterF2F2_h
 
 #include "vtkITKImageToImageFilter.h"
-#include "vtkImageToImageFilter.h"
+#include "vtkImageAlgorithm.h"
 #include "vtkImageAppendComponents.h"
 #include "itkImageToImageFilter.h"
 #include "itkSplitImageFilter.h"
@@ -24,6 +24,7 @@
 #include "itkVTKImageExport.h"
 #include "itkVTKImageImport.h"
 #include "vtkITKUtility.h"
+#include <vtkVersion.h>
 
 class VTK_ITK_EXPORT vtkITKImageToImageFilterF2F2 : public vtkITKImageToImageFilter
 {
@@ -36,7 +37,7 @@ public:
     os << m_Filter;
   };
 
-  /// 
+  ///
   /// Set the Input of the filter.
   virtual void SetInput1(vtkImageData *Input)
   {
@@ -44,14 +45,14 @@ public:
   };
   virtual void SetInput2(vtkImageData *Input)
   {
-    this->vtkProcessObject::SetNthInput(1, Input);
-    this->vtkExporter1->SetInput(Input);
+    this->vtkImageAlgorithm::SetInput(1, Input);
+    this->vtkExporter1->SetInputData(Input);
   };
-  
+
   virtual vtkImageData *GetOutput() { return this->append->GetOutput(); };
 
 protected:
-  
+
   /// To/from ITK
   typedef itk::Vector<float,2> InputImagePixelType;
   typedef itk::Vector<float,2> OutputImagePixelType;
@@ -72,13 +73,13 @@ protected:
 
   typedef itk::ImageToImageFilter<InputImageType,OutputImageType> GenericFilterType;
   GenericFilterType::Pointer m_Filter;
-  
+
   vtkImageImport* vtkImporter1;
   vtkImageExport* vtkExporter1;
   vtkImageAppendComponents* append;
   SplitFilterType::Pointer split1, split;
   JoinFilterType::Pointer join;
-  
+
   vtkITKImageToImageFilterF2F2 ( GenericFilterType* filter ) : vtkITKImageToImageFilter ()
   {
     this->vtkImporter1 = vtkImageImport::New();
@@ -101,10 +102,10 @@ protected:
     join = JoinFilterType::New();
     join->SetInput1 ( this->itkImporter->GetOutput() );
     join->SetInput2 ( this->itkImporter->GetOutput() );
-    
+
     m_Filter->SetInput ( join->GetOutput() );
     /// m_Filter->DebugOn();
-    
+
     split = SplitFilterType::New();
     /// split->SetInput ( join->GetOutput() );
     split->SetInput ( m_Filter->GetOutput() );
@@ -143,7 +144,7 @@ protected:
     this->vtkImporter1->Delete();
     this->append->Delete();
   };
-  
+
 private:
   vtkITKImageToImageFilterF2F2(const vtkITKImageToImageFilterF2F2&);  /// Not implemented.
   void operator=(const vtkITKImageToImageFilterF2F2&);  /// Not implemented.

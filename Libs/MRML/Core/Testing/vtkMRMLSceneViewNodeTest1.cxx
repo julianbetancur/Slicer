@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,53 +10,55 @@
 
 =========================================================================auto=*/
 
+// MRML includes
 #include "vtkMRMLCoreTestingMacros.h"
-#include "vtkMRMLSceneViewNode.h"
 #include "vtkMRMLScene.h"
+#include "vtkMRMLSceneViewNode.h"
 
+// VTK includes
+#include <vtkCollection.h>
 #include <vtkImageData.h>
-
+#include <vtkNew.h>
 
 int vtkMRMLSceneViewNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLSceneViewNode > node1 = vtkSmartPointer< vtkMRMLSceneViewNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-  
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLSceneViewNode, node1); 
+  vtkNew<vtkMRMLSceneViewNode> node1;
 
   // test with null scene
-  node1->UpdateSnapshotScene(NULL);
+  node1->StoreScene();
   node1->SetAbsentStorageFileNames();
-  
+  vtkCollection *col = node1->GetNodesByClass(nullptr);
+  CHECK_NULL(col);
+
   // make a scene and test again
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  node1->UpdateSnapshotScene(scene);
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
+  node1->StoreScene();
 
-  vtkMRMLScene *nodes = node1->GetNodes();
-  std::cout << "GetNodes returned " << (nodes == NULL ? "null" : "not null") << std::endl;
+  vtkMRMLScene *storedScene = node1->GetStoredScene();
+  std::cout << "GetStoredScene returned " << (storedScene == nullptr ? "null" : "not null") << std::endl;
 
   node1->SetAbsentStorageFileNames();
 
-  TEST_SET_GET_STRING(node1, SceneViewDescription);
+  TEST_SET_GET_STRING( node1.GetPointer(), SceneViewDescription);
 
-  node1->SetScreenShot(NULL);
+  node1->SetScreenShot(nullptr);
   vtkImageData *nullImage = node1->GetScreenShot();
-  if (nullImage != NULL)
-    {
-    std::cerr << "Error setting/getting a null screen shot" << std::endl;
-    return EXIT_FAILURE;
-    }
+  CHECK_NULL(nullImage);
+
   vtkImageData *imageData = vtkImageData::New();
   node1->SetScreenShot(imageData);
   imageData->Delete();
   imageData = node1->GetScreenShot();
 
-  
-  TEST_SET_GET_INT_RANGE(node1, ScreenShotType, 0, 4);
-  
-  // scene->AddNode(node1);
+  TEST_SET_GET_INT_RANGE( node1.GetPointer(), ScreenShotType, 0, 4);
 
+  col = node1->GetNodesByClass("vtkMRMLNode");
+  CHECK_NOT_NULL(col);
+
+  col->RemoveAllItems();
+  col->Delete();
 
   return EXIT_SUCCESS;
 }

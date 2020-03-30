@@ -1,11 +1,29 @@
 project(qSlicerBaseQTCLI)
 
 #
-# Third party library
+# Dependencies
 #
 
-# Required to define ModuleDescriptionParser_INCLUDE_DIRS
+#
+# ModuleDescriptionParser
+#
 find_package(SlicerExecutionModel REQUIRED ModuleDescriptionParser)
+
+#
+# ITK - Import ITK targets required by ModuleDescriptionParser
+#
+set(${PROJECT_NAME}_ITK_COMPONENTS
+  ${ModuleDescriptionParser_ITK_COMPONENTS}
+  )
+find_package(ITK 4.6 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+
+#
+# VTK
+#
+if(Slicer_USE_PYTHONQT AND NOT VTK_WRAP_PYTHON)
+  message(FATAL_ERROR "Since Slicer_USE_PYTHONQT is ON, VTK_WRAP_PYTHON is expected to be ON. "
+                      "Re-configure VTK with python wrapping.")
+endif()
 
 #
 # See CMake/SlicerMacroBuildBaseQtLibrary.cmake for details
@@ -70,9 +88,10 @@ set(KIT_resources
 
 # Additional Target libraries (QT libs already included)
 set(KIT_target_libraries
+  # ${QT_LIBRARIES} # Not needed: All dependencies are transitively satisfied by other targets
   qSlicerBaseQTCore
   qSlicerBaseQTGUI
-  ModuleDescriptionParser
+  ModuleDescriptionParser ${ITK_LIBRARIES}
   MRMLCLI
   )
 
@@ -98,13 +117,16 @@ SlicerMacroBuildBaseQtLibrary(
   WRAP_PYTHONQT
   )
 
-# Plugin
-#add_subdirectory(Plugins)
+if(Slicer_BUILD_QT_DESIGNER_PLUGINS)
+  add_subdirectory(DesignerPlugins)
+endif()
 
 # --------------------------------------------------------------------------
 # Python Wrapping
 # --------------------------------------------------------------------------
 if(VTK_WRAP_PYTHON)
+  include(vtkMacroKitPythonWrap)
+
   vtkMacroKitPythonWrap(
     KIT_NAME ${PROJECT_NAME}
     KIT_SRCS ${KIT_VTK_SRCS}
@@ -113,6 +135,12 @@ if(VTK_WRAP_PYTHON)
     KIT_PYTHON_LIBRARIES SlicerBaseLogicPythonD
     )
   set_property(GLOBAL APPEND PROPERTY Slicer_TARGETS ${PROJECT_NAME}Python ${PROJECT_NAME}PythonD)
+  # Folder
+  set_target_properties(${PROJECT_NAME}Python PROPERTIES FOLDER "Core-Base")
+  set_target_properties(${PROJECT_NAME}PythonD PROPERTIES FOLDER "Core-Base")
+  if(TARGET ${PROJECT_NAME}Hierarchy)
+    set_target_properties(${PROJECT_NAME}Hierarchy PROPERTIES FOLDER "Core-Base")
+  endif()
 endif()
 
 # --------------------------------------------------------------------------

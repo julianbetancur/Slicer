@@ -14,8 +14,8 @@ class VTK_ITK_EXPORT vtkITKWandImageFilter : public vtkSimpleImageToImageFilter
 {
 public:
   static vtkITKWandImageFilter *New();
-  vtkTypeRevisionMacro(vtkITKWandImageFilter, vtkSimpleImageToImageFilter);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkITKWandImageFilter, vtkSimpleImageToImageFilter);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// Methods to set/get seeds.  Seeds are specified in IJK (not XYZ).
   vtkSetVector3Macro(Seed, int);
@@ -25,19 +25,19 @@ public:
   /// dynamic range
   vtkSetClampMacro(DynamicRangePercentage, double, 0.0, 1.0);
   vtkGetMacro(DynamicRangePercentage, double);
-  
+
 protected:
   vtkITKWandImageFilter();
-  ~vtkITKWandImageFilter();
+  ~vtkITKWandImageFilter() override;
 
-  virtual void SimpleExecute(vtkImageData* input, vtkImageData* output);
+  void SimpleExecute(vtkImageData* input, vtkImageData* output) override;
 
   int Seed[3];
   double DynamicRangePercentage;
-  
+
 private:
-  vtkITKWandImageFilter(const vtkITKWandImageFilter&);  /// Not implemented.
-  void operator=(const vtkITKWandImageFilter&);  /// Not implemented.
+  vtkITKWandImageFilter(const vtkITKWandImageFilter&) = delete;
+  void operator=(const vtkITKWandImageFilter&) = delete;
 };
 
 #endif

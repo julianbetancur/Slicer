@@ -25,11 +25,6 @@
 #include <vtkObjectFactory.h>
 
 //----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkMRMLSliceViewDisplayableManagerFactory, "$Revision: 13859 $");
-
-//----------------------------------------------------------------------------
-// Needed when we don't use the vtkStandardNewMacro.
-vtkInstantiatorNewMacro(vtkMRMLSliceViewDisplayableManagerFactory);
 
 //----------------------------------------------------------------------------
 // vtkMRMLSliceViewDisplayableManagerFactory methods
@@ -39,7 +34,7 @@ vtkInstantiatorNewMacro(vtkMRMLSliceViewDisplayableManagerFactory);
 vtkMRMLSliceViewDisplayableManagerFactory* vtkMRMLSliceViewDisplayableManagerFactory::New()
 {
   vtkMRMLSliceViewDisplayableManagerFactory* instance = Self::GetInstance();
-  instance->Register(0);
+  instance->Register(nullptr);
   return instance;
 }
 
@@ -56,6 +51,9 @@ vtkMRMLSliceViewDisplayableManagerFactory* vtkMRMLSliceViewDisplayableManagerFac
     if(!Self::Instance)
       {
       Self::Instance = new vtkMRMLSliceViewDisplayableManagerFactory;
+#ifdef VTK_HAS_INITIALIZE_OBJECT_BASE
+      Self::Instance->InitializeObjectBase();
+#endif
       }
     }
   // return the instance
@@ -70,8 +68,7 @@ vtkMRMLSliceViewDisplayableManagerFactory::
 
 //----------------------------------------------------------------------------
 vtkMRMLSliceViewDisplayableManagerFactory::~vtkMRMLSliceViewDisplayableManagerFactory()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLSliceViewDisplayableManagerFactory::PrintSelf(ostream& os, vtkIndent indent)

@@ -22,27 +22,26 @@
 #define __qSlicerQTGUIAbstractPlugin_h
 
 // QT includes
-#include <QDesignerCustomWidgetInterface>
-#include <QObject>
+#include <QtGlobal>
+#include <QtUiPlugin/QDesignerCustomWidgetInterface>
 
 // QTGUI includes
-#include "qSlicerBaseQTGUIPluginsExport.h"
+#include "qSlicerBaseQTGUIDesignerPluginsExport.h"
 
-class Q_SLICER_BASE_QTGUI_PLUGINS_EXPORT qSlicerQTGUIAbstractPlugin 
-  : public QObject
-  , public QDesignerCustomWidgetInterface
+class Q_SLICER_DESIGNER_PLUGINS_EXPORT qSlicerQTGUIAbstractPlugin
+  : public QDesignerCustomWidgetInterface
 {
-  Q_OBJECT
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetInterface")
   Q_INTERFACES(QDesignerCustomWidgetInterface);
 public:
 
-  qSlicerQTGUIAbstractPlugin(QObject* parent = 0);
+  qSlicerQTGUIAbstractPlugin();
   // Don't reimplement this method.
-  QString group() const;
+  QString group() const override;
   // You can reimplement these methods
-  virtual QIcon icon() const;
-  virtual QString toolTip() const;
-  virtual QString whatsThis() const;
+  QIcon icon() const override;
+  QString toolTip() const override;
+  QString whatsThis() const override;
 };
 
 #endif

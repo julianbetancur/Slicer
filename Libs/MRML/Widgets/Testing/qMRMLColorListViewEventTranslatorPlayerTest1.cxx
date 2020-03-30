@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -41,7 +44,8 @@
 #include <vtkMRMLPETProceduralColorNode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -61,7 +65,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLColorListViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -73,11 +79,10 @@ int qMRMLColorListViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   // Test case 1
   qMRMLColorListView* widget = new qMRMLColorListView();
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorTableNode =
-    vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorTableNode;
   colorTableNode->SetType(vtkMRMLColorTableNode::Labels);
 
-  widget->setMRMLColorNode(colorTableNode);
+  widget->setMRMLColorNode(colorTableNode.GetPointer());
 
   colorTableNode->NamesInitialisedOff();
   colorTableNode->SetTypeToCool1();

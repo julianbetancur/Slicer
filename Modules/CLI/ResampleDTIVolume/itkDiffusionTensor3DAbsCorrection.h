@@ -11,8 +11,8 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DAbsCorrectionFilter_h
-#define __itkDiffusionTensor3DAbsCorrectionFilter_h
+#ifndef itkDiffusionTensor3DAbsCorrection_h
+#define itkDiffusionTensor3DAbsCorrection_h
 
 #include "itkUnaryFunctorImageFilter.h"
 #include "vnl/vnl_math.h"
@@ -72,8 +72,7 @@ public:
     Matrix<double, 3, 3>       matcorrect;
     typename DiffusionTensor3DExtended<double>::EigenValuesArrayType eigenValues;
     typename DiffusionTensor3DExtended<double>::EigenVectorsMatrixType eigenVectors;
-    DiffusionTensor3DExtended<double> tensorDouble;
-    tensorDouble = ( DiffusionTensor3DExtended<TInput> )A;
+    DiffusionTensor3DExtended<double> tensorDouble( A );
     tensorDouble.ComputeEigenAnalysis( eigenValues, eigenVectors );
     for( int i = 0; i < 3; i++ )
       {
@@ -109,6 +108,9 @@ public:
   typedef SmartPointer<Self>       Pointer;
   typedef SmartPointer<const Self> ConstPointer;
 
+  /** Run-time type information (and related methods). */
+  itkTypeMacro(DiffusionTensor3DAbsCorrectionFilter, UnaryFunctorImageFilter);
+
   /** Method for creation through the object factory. */
   itkNewMacro( Self );
 
@@ -127,7 +129,7 @@ protected:
   DiffusionTensor3DAbsCorrectionFilter()
   {
   }
-  virtual ~DiffusionTensor3DAbsCorrectionFilter()
+  ~DiffusionTensor3DAbsCorrectionFilter() override
   {
   }
 private:

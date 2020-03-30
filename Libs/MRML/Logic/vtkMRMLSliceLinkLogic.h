@@ -13,7 +13,7 @@
 =========================================================================auto=*/
 
 ///  vtkMRMLSliceLinkLogic - slicer logic class for linked slice manipulation
-/// 
+///
 /// This class manages the logic associated with linking the controls
 /// of multiple slice and slice composite nodes. It listens to the
 /// MRML scene for new slice and slice composite nodes and observes
@@ -36,49 +36,52 @@
 class vtkMRMLSliceNode;
 class vtkMRMLSliceCompositeNode;
 
-class VTK_MRML_LOGIC_EXPORT vtkMRMLSliceLinkLogic : public vtkMRMLAbstractLogic 
+class VTK_MRML_LOGIC_EXPORT vtkMRMLSliceLinkLogic : public vtkMRMLAbstractLogic
 {
 public:
-  
+
   /// The Usual VTK class functions
   static vtkMRMLSliceLinkLogic *New();
-  vtkTypeRevisionMacro(vtkMRMLSliceLinkLogic,vtkMRMLAbstractLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLSliceLinkLogic,vtkMRMLAbstractLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
 protected:
 
   vtkMRMLSliceLinkLogic();
-  virtual ~vtkMRMLSliceLinkLogic();
+  ~vtkMRMLSliceLinkLogic() override;
 
   // On a change in scene, we need to manage the observations.
-  virtual void SetMRMLSceneInternal(vtkMRMLScene * newScene);
+  void SetMRMLSceneInternal(vtkMRMLScene * newScene) override;
 
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* node);
-  virtual void OnMRMLNodeModified(vtkMRMLNode* node);
-  virtual void OnMRMLSceneStartBatchProcess();
-  virtual void OnMRMLSceneEndBatchProcess();
-  virtual void OnMRMLSceneStartImport();
-  virtual void OnMRMLSceneEndImport();
-  virtual void OnMRMLSceneStartRestore();
-  virtual void OnMRMLSceneEndRestore();
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  void OnMRMLSceneNodeRemoved(vtkMRMLNode* node) override;
+  void OnMRMLNodeModified(vtkMRMLNode* node) override;
+  void OnMRMLSceneStartBatchProcess() override;
+  void OnMRMLSceneEndBatchProcess() override;
+  void OnMRMLSceneStartImport() override;
+  void OnMRMLSceneEndImport() override;
+  void OnMRMLSceneStartRestore() override;
+  void OnMRMLSceneEndRestore() override;
 
   // Used internally to control whether we are in the process of
   // broadcasting events. PIMPL it?
   void BroadcastingEventsOn();
   void BroadcastingEventsOff();
   int GetBroadcastingEvents();
- 
-  /// Broadcast a slice node to other slice nodes. 
+
+  /// Broadcast a slice node to other slice nodes.
   void BroadcastSliceNodeEvent(vtkMRMLSliceNode *sliceNode);
 
   /// Broadcast a slice composite node to other slice composite nodes
   void BroadcastSliceCompositeNodeEvent(vtkMRMLSliceCompositeNode *compositeNode);
 
+  /// Returns true if orientation of the slices match. Slice position and scaling is ignored.
+  bool IsOrientationMatching(vtkMRMLSliceNode *sliceNode1, vtkMRMLSliceNode *sliceNode2, double comparisonTolerance = 0.001);
+
 private:
 
-  vtkMRMLSliceLinkLogic(const vtkMRMLSliceLinkLogic&);
-  void operator=(const vtkMRMLSliceLinkLogic&);
+  vtkMRMLSliceLinkLogic(const vtkMRMLSliceLinkLogic&) = delete;
+  void operator=(const vtkMRMLSliceLinkLogic&) = delete;
 
   vtkMRMLSliceCompositeNode* GetCompositeNode(vtkMRMLSliceNode*);
   void BroadcastLastRotation(vtkMRMLSliceNode*, vtkMRMLSliceNode*);

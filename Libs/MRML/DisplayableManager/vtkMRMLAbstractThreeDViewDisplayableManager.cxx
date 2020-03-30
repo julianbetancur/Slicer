@@ -22,29 +22,29 @@
 #include "vtkMRMLAbstractThreeDViewDisplayableManager.h"
 
 // MRML includes
+#include "vtkMRMLThreeDViewInteractorStyle.h"
 #include <vtkMRMLViewNode.h>
 
 // VTK includes
+#include <vtkObjectFactory.h>
+#include <vtkRenderWindowInteractor.h>
 
 // STD includes
 #include <cassert>
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLAbstractThreeDViewDisplayableManager);
-vtkCxxRevisionMacro(vtkMRMLAbstractThreeDViewDisplayableManager, "$Revision: 13525 $");
 
 //----------------------------------------------------------------------------
 // vtkMRMLAbstractThreeDViewDisplayableManager methods
 
 //----------------------------------------------------------------------------
 vtkMRMLAbstractThreeDViewDisplayableManager::vtkMRMLAbstractThreeDViewDisplayableManager()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkMRMLAbstractThreeDViewDisplayableManager::~vtkMRMLAbstractThreeDViewDisplayableManager()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLAbstractThreeDViewDisplayableManager::PrintSelf(ostream& os, vtkIndent indent)
@@ -67,5 +67,101 @@ void vtkMRMLAbstractThreeDViewDisplayableManager::OnMRMLDisplayableNodeModifiedE
 vtkMRMLViewNode * vtkMRMLAbstractThreeDViewDisplayableManager::GetMRMLViewNode()
 {
   return vtkMRMLViewNode::SafeDownCast(this->GetMRMLDisplayableNode());
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLAbstractThreeDViewDisplayableManager::PassThroughInteractorStyleEvent(int eventid)
+{
+  vtkMRMLThreeDViewInteractorStyle* interactorStyle = vtkMRMLThreeDViewInteractorStyle::SafeDownCast(
+              this->GetInteractor()->GetInteractorStyle());
+
+  if (interactorStyle)
+  {
+
+  switch(eventid)
+    {
+    case vtkCommand::ExposeEvent:
+      interactorStyle->OnExpose();
+      break;
+
+    case vtkCommand::ConfigureEvent:
+      interactorStyle->OnConfigure();
+      break;
+
+    case vtkCommand::EnterEvent:
+      interactorStyle->OnEnter();
+      break;
+
+    case vtkCommand::LeaveEvent:
+        interactorStyle->OnLeave();
+      break;
+
+    case vtkCommand::TimerEvent:
+        interactorStyle->OnTimer();
+      break;
+
+    case vtkCommand::MouseMoveEvent:
+        interactorStyle->OnMouseMove();
+      break;
+
+    case vtkCommand::LeftButtonPressEvent:
+        interactorStyle->OnLeftButtonDown();
+      break;
+
+    case vtkCommand::LeftButtonReleaseEvent:
+        interactorStyle->OnLeftButtonUp();
+        break;
+
+    case vtkCommand::MiddleButtonPressEvent:
+        interactorStyle->OnMiddleButtonDown();
+      break;
+
+    case vtkCommand::MiddleButtonReleaseEvent:
+        interactorStyle->OnMiddleButtonUp();
+      break;
+
+    case vtkCommand::RightButtonPressEvent:
+        interactorStyle->OnRightButtonDown();
+      break;
+
+    case vtkCommand::RightButtonReleaseEvent:
+        interactorStyle->OnRightButtonUp();
+      break;
+
+    case vtkCommand::MouseWheelForwardEvent:
+        interactorStyle->OnMouseWheelForward();
+      break;
+
+    case vtkCommand::MouseWheelBackwardEvent:
+        interactorStyle->OnMouseWheelBackward();
+      break;
+
+    case vtkCommand::KeyPressEvent:
+        interactorStyle->OnKeyDown();
+        interactorStyle->OnKeyPress();
+      break;
+
+    case vtkCommand::KeyReleaseEvent:
+        interactorStyle->OnKeyUp();
+        interactorStyle->OnKeyRelease();
+      break;
+
+    case vtkCommand::CharEvent:
+        interactorStyle->OnChar();
+      break;
+
+    case vtkCommand::DeleteEvent:
+      interactorStyle->SetInteractor(nullptr);
+      break;
+
+    case vtkCommand::TDxMotionEvent:
+    case vtkCommand::TDxButtonPressEvent:
+    case vtkCommand::TDxButtonReleaseEvent:
+      interactorStyle->DelegateTDxEvent(eventid,nullptr);
+      break;
+    }
+
+    return;
+  }
 }
 

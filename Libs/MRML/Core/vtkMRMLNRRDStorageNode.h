@@ -17,7 +17,7 @@
 
 #include "vtkMRMLStorageNode.h"
 class vtkDoubleArray;
-class vtkNRRDReader;
+class vtkTeemNRRDReader;
 
 /// \brief MRML node for representing a volume storage.
 ///
@@ -28,68 +28,73 @@ class VTK_MRML_EXPORT vtkMRMLNRRDStorageNode : public vtkMRMLStorageNode
   public:
   static vtkMRMLNRRDStorageNode *New();
   vtkTypeMacro(vtkMRMLNRRDStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "NRRDStorage";};
+  const char* GetNodeTagName() override {return "NRRDStorage";}
 
-  /// 
+  ///
   /// Center image on read
   vtkGetMacro(CenterImage, int);
   vtkSetMacro(CenterImage, int);
 
-  /// 
+  ///
   /// Access the nrrd header fields to create a diffusion gradient table
-  int ParseDiffusionInformation(vtkNRRDReader *reader,vtkDoubleArray *grad,vtkDoubleArray *bvalues);
-
-  /// 
-  /// Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
+  int ParseDiffusionInformation(vtkTeemNRRDReader *reader,vtkDoubleArray *grad,vtkDoubleArray *bvalues);
 
   /// Return true if the node can be read in.
-  virtual bool CanReadInReferenceNode(vtkMRMLNode *refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode *refNode) override;
 
   ///
   /// Configure the storage node for data exchange. This is an
   /// opportunity to optimize the storage node's settings, for
   /// instance to turn off compression.
-  virtual void ConfigureForDataExchange();
+  void ConfigureForDataExchange() override;
+
+  /// Compression parameter corresponding to minimum compression (fast)
+  std::string GetCompressionParameterFastest() { return "gzip_fastest"; };
+  /// Compression parameter corresponding to normal compression
+  std::string GetCompressionParameterNormal() { return "gzip_normal"; };
+  /// Compression parameter corresponding to maximum compression (slow)
+  std::string GetCompressionParameterMinimumSize() { return "gzip_minimum_size"; };
 
 protected:
   vtkMRMLNRRDStorageNode();
-  ~vtkMRMLNRRDStorageNode();
+  ~vtkMRMLNRRDStorageNode() override;
   vtkMRMLNRRDStorageNode(const vtkMRMLNRRDStorageNode&);
   void operator=(const vtkMRMLNRRDStorageNode&);
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedReadFileTypes();
+  void InitializeSupportedReadFileTypes() override;
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
+
+  /// Convert compression parameter string to gzip compression level
+  int GetGzipCompressionLevelFromCompressionParameter(std::string parameter);
 
   int CenterImage;
-
 };
 
 #endif

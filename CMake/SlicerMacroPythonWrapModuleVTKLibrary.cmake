@@ -24,11 +24,27 @@
 #
 
 macro(SlicerMacroPythonWrapModuleVTKLibrary)
-  SLICER_PARSE_ARGUMENTS(PYTHONWRAPMODULEVTKLIBRARY
-    "NAME;SRCS;WRAPPED_TARGET_LIBRARIES;RELATIVE_PYTHON_DIR"
-    ""
+  set(options
+    )
+  set(oneValueArgs
+    NAME
+    RELATIVE_PYTHON_DIR
+    )
+  set(multiValueArgs
+    SRCS
+    WRAPPED_TARGET_LIBRARIES
+    )
+  cmake_parse_arguments(PYTHONWRAPMODULEVTKLIBRARY
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
     )
+
+  if(Slicer_USE_PYTHONQT AND NOT VTK_WRAP_PYTHON)
+    message(FATAL_ERROR "Since Slicer_USE_PYTHONQT is ON, VTK_WRAP_PYTHON is expected to be ON. "
+                        "Re-configure VTK with python wrapping.")
+  endif()
 
   # --------------------------------------------------------------------------
   # Sanity checks
@@ -47,18 +63,12 @@ macro(SlicerMacroPythonWrapModuleVTKLibrary)
     endif()
   endforeach()
 
-  set(VTK_PYTHON_WRAPPED_LIBRARIES)
-  foreach(lib ${VTK_LIBRARIES})
-    list(APPEND VTK_PYTHON_WRAPPED_LIBRARIES ${lib}PythonD)
-  endforeach()
-
   set(Slicer_Libs_VTK_PYTHON_WRAPPED_LIBRARIES)
   foreach(lib ${Slicer_Libs_VTK_WRAPPED_LIBRARIES})
     list(APPEND Slicer_Libs_VTK_PYTHON_WRAPPED_LIBRARIES ${lib}PythonD)
   endforeach()
 
   set(PYTHONWRAPMODULEVTKLIBRARY_Wrapped_LIBRARIES
-    ${VTK_PYTHON_WRAPPED_LIBRARIES}
     ${Slicer_Libs_VTK_PYTHON_WRAPPED_LIBRARIES}
     ${PYTHONWRAPMODULEVTKLIBRARY_WRAPPED_TARGET_LIBRARIES}
     )
@@ -70,29 +80,5 @@ macro(SlicerMacroPythonWrapModuleVTKLibrary)
     KIT_INSTALL_LIB_DIR ${Slicer_INSTALL_QTLOADABLEMODULES_LIB_DIR}
     KIT_PYTHON_LIBRARIES ${PYTHONWRAPMODULEVTKLIBRARY_Wrapped_LIBRARIES}
     )
-
-  # Generate "Python/<lib_name>.py" file
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/Python/${PYTHONWRAPMODULEVTKLIBRARY_RELATIVE_PYTHON_DIR}/${lib_name}.py "
-\"\"\" This module loads all the classes from the ${lib_name} library into its
-namespace.\"\"\"
-
-from ${lib_name}Python import *
-")
-
-  file(GLOB PYFILES
-    RELATIVE "${CMAKE_CURRENT_BINARY_DIR}/Python"
-    "${CMAKE_CURRENT_BINARY_DIR}/Python/${PYTHONWRAPMODULEVTKLIBRARY_RELATIVE_PYTHON_DIR}/*.py")
-  if(PYFILES)
-    include(ctkMacroCompilePythonScript)
-    ctkMacroCompilePythonScript(
-      TARGET_NAME ${lib_name}
-      SCRIPTS "${PYFILES}"
-      RESOURCES ""
-      SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Python
-      DESTINATION_DIR ${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_PYTHON_LIB_DIR}
-      INSTALL_DIR ${Slicer_INSTALL_QTLOADABLEMODULES_PYTHON_LIB_DIR}
-      NO_INSTALL_SUBDIR
-      )
-  endif()
 
 endmacro()

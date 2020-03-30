@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,42 +10,42 @@
 
 =========================================================================auto=*/
 
+// MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLModelStorageNode.h"
 #include "vtkMRMLStorableNode.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
 
-#include "vtkMRMLCoreTestingMacros.h"
-
-#include "vtkMRMLModelStorageNode.h"
-
+//---------------------------------------------------------------------------
 class vtkMRMLStorableNodeTestHelper1 : public vtkMRMLStorableNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLStorableNodeTestHelper1 *New(){return new vtkMRMLStorableNodeTestHelper1;};
+  static vtkMRMLStorableNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLStorableNodeTestHelper1,vtkMRMLStorableNode);
+  vtkTypeMacro(vtkMRMLStorableNodeTestHelper1,vtkMRMLStorableNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLStorableNodeTestHelper1;
+    return vtkMRMLStorableNodeTestHelper1::New();
     }
-  virtual const char* GetNodeTagName()
+  const char* GetNodeTagName() override
     {
     return "vtkMRMLStorableNodeTestHelper1";
     }
 
   // for testing purposes, return a valid storage node,
-  // vtkMRMLStorageNode::New returns NULL
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode() { return vtkMRMLModelStorageNode::New(); }
+  // vtkMRMLStorageNode::New returns nullptr
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override { return vtkMRMLModelStorageNode::New(); }
 };
- 
+vtkStandardNewMacro(vtkMRMLStorableNodeTestHelper1);
+
+//---------------------------------------------------------------------------
 int vtkMRMLStorableNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLStorableNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLStorableNodeTestHelper1 >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_STORABLE_MRML_METHODS(vtkMRMLStorableNodeTestHelper1, node1);
-  
+  vtkNew<vtkMRMLStorableNodeTestHelper1> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

@@ -22,7 +22,7 @@
 #include <QPixmap>
 
 // CTK includes
-#include <ctkVTKScalarsToColorsUtils.h>
+#include <ctkVTKWidgetsUtils.h>
 
 // qMRML includes
 #include "qMRMLSceneColorTableModel.h"
@@ -42,7 +42,7 @@ public:
     ColorGradient();
     void updatePixmap(vtkScalarsToColors* scalarsToColors);
 
-    unsigned long MTime;
+    vtkMTimeType  MTime;
     QPixmap       Pixmap;
   };
 
@@ -63,7 +63,7 @@ void qMRMLSceneColorTableModelPrivate::ColorGradient::updatePixmap(vtkScalarsToC
       scalarsToColors->GetNumberOfAvailableColors() <= 0)
     {
     return;
-    } 
+    }
   this->Pixmap = QPixmap::fromImage(ctk::scalarsToColorsImage( scalarsToColors, this->Pixmap.size() ));
   this->MTime = scalarsToColors->GetMTime();
 }
@@ -79,8 +79,7 @@ qMRMLSceneColorTableModel::qMRMLSceneColorTableModel(QObject *vparent)
 
 //------------------------------------------------------------------------------
 qMRMLSceneColorTableModel::~qMRMLSceneColorTableModel()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void qMRMLSceneColorTableModel::updateItemFromNode(QStandardItem* item, vtkMRMLNode* node, int column)

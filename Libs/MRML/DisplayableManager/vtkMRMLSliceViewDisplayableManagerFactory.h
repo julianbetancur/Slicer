@@ -27,7 +27,7 @@
 // VTK includes
 #include <vtkSingleton.h>
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkRenderer;
 
@@ -40,9 +40,9 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLSliceViewDisplayableManagerFacto
 {
 public:
 
-  vtkTypeRevisionMacro(vtkMRMLSliceViewDisplayableManagerFactory,
+  vtkTypeMacro(vtkMRMLSliceViewDisplayableManagerFactory,
                        vtkMRMLDisplayableManagerFactory);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// This is a singleton pattern New.  There will only be ONE
   /// reference to a vtkMRMLSliceViewDisplayableManagerFactory object per process. Clients that
@@ -56,19 +56,23 @@ public:
 protected:
 
   vtkMRMLSliceViewDisplayableManagerFactory();
-  virtual ~vtkMRMLSliceViewDisplayableManagerFactory();
+  ~vtkMRMLSliceViewDisplayableManagerFactory() override;
 
   VTK_SINGLETON_DECLARE(vtkMRMLSliceViewDisplayableManagerFactory);
 
 private:
 
-  vtkMRMLSliceViewDisplayableManagerFactory(const vtkMRMLSliceViewDisplayableManagerFactory&);
-  void operator=(const vtkMRMLSliceViewDisplayableManagerFactory&);
+  vtkMRMLSliceViewDisplayableManagerFactory(const vtkMRMLSliceViewDisplayableManagerFactory&) = delete;
+  void operator=(const vtkMRMLSliceViewDisplayableManagerFactory&) = delete;
 
 };
 
+#ifndef __VTK_WRAP__
+//BTX
 VTK_SINGLETON_DECLARE_INITIALIZER(VTK_MRML_DISPLAYABLEMANAGER_EXPORT,
                                   vtkMRMLSliceViewDisplayableManagerFactory);
+//ETX
+#endif // __VTK_WRAP__
 
 #endif
 

@@ -1,16 +1,12 @@
 project(MRMLDisplayableManager)
 
 #-----------------------------------------------------------------------------
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.13.4)
 #-----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
-# See http://cmake.org/cmake/help/cmake-2-8-docs.html#section_Policies for details
-#-----------------------------------------------------------------------------
-if(POLICY CMP0017)
-  cmake_policy(SET CMP0017 OLD)
-endif()
-
+# --------------------------------------------------------------------------
+# Options
+# --------------------------------------------------------------------------
 if(Slicer_USE_PYTHONQT AND VTK_WRAP_PYTHON)
   set(MRMLDisplayableManager_USE_PYTHON ON)
 else()
@@ -22,6 +18,18 @@ if(NOT DEFINED BUILD_SHARED_LIBS)
 endif()
 
 # --------------------------------------------------------------------------
+# Dependencies
+# --------------------------------------------------------------------------
+
+#
+# VTK
+#
+if(Slicer_USE_PYTHONQT AND NOT VTK_WRAP_PYTHON)
+  message(FATAL_ERROR "Since Slicer_USE_PYTHONQT is ON, VTK_WRAP_PYTHON is expected to be ON. "
+                      "Re-configure VTK with python wrapping.")
+endif()
+
+# --------------------------------------------------------------------------
 # Include dirs
 # --------------------------------------------------------------------------
 set(include_dirs
@@ -29,6 +37,7 @@ set(include_dirs
   ${CMAKE_CURRENT_BINARY_DIR}
   ${MRMLCore_INCLUDE_DIRS}
   ${MRMLLogic_INCLUDE_DIRS}
+  ${FreeSurfer_INCLUDE_DIRS}
   )
 if(MRMLDisplayableManager_USE_PYTHON)
   list(APPEND include_dirs ${PYTHON_INCLUDE_DIR})
@@ -70,8 +79,14 @@ set(DisplayableManager_SRCS
 
   # DisplayableManager associated with SliceView
   vtkMRMLCrosshairDisplayableManager.cxx
+  vtkMRMLCrosshairDisplayableManager3D.cxx
   vtkMRMLModelSliceDisplayableManager.cxx
   vtkMRMLVolumeGlyphSliceDisplayableManager.cxx
+
+  # DisplayableManager common between ThreeDView and SliceView
+  vtkMRMLOrientationMarkerDisplayableManager.cxx
+  vtkMRMLRulerDisplayableManager.cxx
+  vtkMRMLScalarBarDisplayableManager.cxx
   )
 
 set(KIT_SRCS
@@ -79,17 +94,29 @@ set(KIT_SRCS
   vtkMRMLAbstractDisplayableManager.cxx
   vtkMRMLDisplayableManagerGroup.cxx
   vtkMRMLDisplayableManagerFactory.cxx
-  
+
+  vtkMRMLInteractionEventData.cxx
+
   # ThreeDView factory and DisplayableManager
   vtkMRMLAbstractThreeDViewDisplayableManager.cxx
   vtkMRMLThreeDViewDisplayableManagerFactory.cxx
-  
+
   # SliceView factory and DisplayableManager
   vtkMRMLAbstractSliceViewDisplayableManager.cxx
   vtkMRMLSliceViewDisplayableManagerFactory.cxx
 
-  vtkSliceViewInteractorStyle.cxx
-  vtkThreeDViewInteractorStyle.cxx
+  vtkMRMLViewInteractorStyle.cxx
+  vtkMRMLSliceViewInteractorStyle.cxx
+  vtkMRMLThreeDViewInteractorStyle.cxx
+
+  # Widgets
+  vtkMRMLAbstractWidget.cxx
+  vtkMRMLAbstractWidgetRepresentation.cxx
+  vtkMRMLCameraWidget.cxx
+  vtkMRMLSliceIntersectionWidget.cxx
+  vtkMRMLSliceIntersectionRepresentation2D.cxx
+  vtkMRMLRubberBandWidgetRepresentation.cxx
+  vtkMRMLWindowLevelWidget.cxx
 
   # Proxy classes
   vtkMRMLLightBoxRendererManagerProxy.cxx
@@ -97,9 +124,6 @@ set(KIT_SRCS
 
 set_source_files_properties(
   vtkMRMLDisplayableManagerGroup.cxx
-  vtkMRMLDisplayableManagerFactory.cxx
-  vtkMRMLThreeDViewDisplayableManagerFactory.cxx
-  vtkMRMLSliceViewDisplayableManagerFactory.cxx
   WRAP_EXCLUDE
   )
 
@@ -113,15 +137,20 @@ if(MRMLDisplayableManager_USE_PYTHON)
     )
 endif()
 
-# Create the instantiator for DisplayableManager classes.
-set(VTK_USE_INSTANTIATOR_NEW 1)
-VTK_MAKE_INSTANTIATOR3("${PROJECT_NAME}Instantiator"
-  DisplayableManagerInstantiator_SRCS
-  "${DisplayableManager_SRCS}"
-  "VTK_MRML_DISPLAYABLEMANAGER_EXPORT"
-  ${PROJECT_BINARY_DIR}
-  "vtk${PROJECT_NAME}Win32Header.h")
+# --------------------------------------------------------------------------
+set(lib_name ${PROJECT_NAME})
 
+# --------------------------------------------------------------------------
+# Create the instantiator for DisplayableManager classes.
+# --------------------------------------------------------------------------
+include(SlicerConfigureDisplayableManagerObjectFactory)
+SlicerConfigureDisplayableManagerObjectFactory(
+  TARGET_NAME ${lib_name}
+  SRCS "${DisplayableManager_SRCS}"
+  EXPORT_MACRO "VTK_MRML_DISPLAYABLEMANAGER_EXPORT"
+  EXPORT_HEADER "vtk${PROJECT_NAME}Export.h"
+  OUTPUT_SRCS_VAR DisplayableManagerInstantiator_SRCS
+  )
 set(srcs
   ${KIT_SRCS}
   ${DisplayableManagerInstantiator_SRCS}
@@ -130,37 +159,47 @@ set(srcs
 # --------------------------------------------------------------------------
 # Build library
 # --------------------------------------------------------------------------
-set(lib_name ${PROJECT_NAME})
 add_library(${lib_name} ${srcs})
-
-set(VTK_LIBRARIES
-  #vtkCommon # Provided by MRMLCore, MRMLLogic
-  #vtkFiltering # Provided by MRMLCore, MRMLLogic
-  #vtkGraphics # Provided by MRMLCore, MRMLLogic
-  #vtkHybrid # Provided by MRMLCore
-  #vtkIO # Provided by MRMLCore
-  #vtkRendering # Provided by MRMLCore, MRMLLogic
-  vtkWidgets
-  )
 
 set(libs
   ${VTK_LIBRARIES}
   MRMLCore
   MRMLLogic
- )
+  FreeSurfer
+  )
 
 if(MRMLDisplayableManager_USE_PYTHON)
+  set(VTK_COMMON_PYTHON_LIBRARY
+    vtkWrappingPythonCore # For vtkPythonUtil
+    )
   list(APPEND libs
-    vtkCommonPythonD # For vtkPythonUtils
+    ${VTK_COMMON_PYTHON_LIBRARY} # For vtkPythonUtils
     ${PYTHON_LIBRARY} # At some point, VTK should be updated to expose VTK_PYTHON_LIBRARY
     )
 endif()
 
 target_link_libraries(${lib_name} ${libs})
 
+if(${lib_name}_AUTOINIT)
+  set_property(TARGET ${lib_name}
+    APPEND PROPERTY COMPILE_DEFINITIONS
+    "${lib_name}_AUTOINIT=1(${lib_name})"
+    )
+endif()
+
 # Apply user-defined properties to the library target.
 if(Slicer_LIBRARY_PROPERTIES)
   set_target_properties(${lib_name} PROPERTIES ${Slicer_LIBRARY_PROPERTIES})
+endif()
+
+# --------------------------------------------------------------------------
+# Folder
+# --------------------------------------------------------------------------
+if(NOT DEFINED ${PROJECT_NAME}_FOLDER)
+  set(${PROJECT_NAME}_FOLDER ${PROJECT_NAME})
+endif()
+if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+  set_target_properties(${lib_name} PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
 endif()
 
 # --------------------------------------------------------------------------
@@ -191,6 +230,8 @@ install(TARGETS ${lib_name}
 # Python Wrapping
 # --------------------------------------------------------------------------
 if(MRMLDisplayableManager_USE_PYTHON)
+  include(vtkMacroKitPythonWrap)
+
   vtkMacroKitPythonWrap(
     KIT_NAME ${lib_name}
     KIT_SRCS ${KIT_SRCS}
@@ -200,6 +241,14 @@ if(MRMLDisplayableManager_USE_PYTHON)
     )
   # Export target
   export(TARGETS ${lib_name}Python ${lib_name}PythonD APPEND FILE ${${PROJECT_NAME}_EXPORT_FILE})
+  # Folder
+  if(NOT "${${PROJECT_NAME}_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name}Python PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    set_target_properties(${lib_name}PythonD PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    if(TARGET ${lib_name}Hierarchy)
+      set_target_properties(${lib_name}Hierarchy PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
+    endif()
+  endif()
 
   add_subdirectory(Python)
 endif()

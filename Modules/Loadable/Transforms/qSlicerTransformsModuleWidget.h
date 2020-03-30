@@ -39,32 +39,51 @@ class Q_SLICER_QTMODULES_TRANSFORMS_EXPORT qSlicerTransformsModuleWidget :
 public:
 
   typedef qSlicerAbstractModuleWidget Superclass;
-  qSlicerTransformsModuleWidget(QWidget *parent=0);
-  virtual ~qSlicerTransformsModuleWidget();
+  qSlicerTransformsModuleWidget(QWidget *parent=nullptr);
+  ~qSlicerTransformsModuleWidget() override;
 
   /// Reimplemented for internal reasons
-  void setMRMLScene(vtkMRMLScene* scene);
+  void setMRMLScene(vtkMRMLScene* scene) override;
+
+  bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
 
 public slots:
-  /// Set the matrix to identity, the sliders are reset to the position 0
+
+  /// Set the transform to identity. Only for linear transforms.
+  /// The sliders are reset to the position 0.
   void identity();
 
-  /// Invert the matrix. The sliders are reset to the position 0.
+  /// Invert the transform.
   void invert();
 
+  /// Split composite transform to its components
+  void split();
+
 protected:
-  virtual void setup();
+
+  void setup() override;
 
 protected slots:
-  void onCoordinateReferenceButtonPressed(int id);
+
+  void onTranslateFirstButtonPressed(bool checked);
   void onNodeSelected(vtkMRMLNode* node);
-  void onTranslationRangeChanged(double newMin, double newMax);
+  void onMRMLTransformNodeModified(vtkObject* caller);
+
+  void copyTransform();
+  void pasteTransform();
 
   void transformSelectedNodes();
   void untransformSelectedNodes();
+  void hardenSelectedNodes();
+
+  void onDisplaySectionClicked(bool);
+  void onTransformableSectionClicked(bool);
+
+  void updateConvertButtonState();
+  void convert();
 
 protected:
-  /// 
+  ///
   /// Convenient method to return the coordinate system currently selected
   int coordinateReference()const;
 

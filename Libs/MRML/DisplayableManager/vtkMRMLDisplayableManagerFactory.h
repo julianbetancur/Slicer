@@ -24,7 +24,7 @@
 // VTK includes
 #include <vtkObject.h>
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkRenderer;
 class vtkMRMLApplicationLogic;
@@ -32,14 +32,14 @@ class vtkMRMLDisplayableManagerGroup;
 
 /// \brief Factory where displayable manager classes are registered.
 ///
-/// A displayable manager class is responsible to represente a 
+/// A displayable manager class is responsible to represent a
 /// MRMLDisplayable node in a renderer.
 class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLDisplayableManagerFactory : public vtkObject
 {
 public:
   static vtkMRMLDisplayableManagerFactory* New();
-  vtkTypeRevisionMacro(vtkMRMLDisplayableManagerFactory,vtkObject);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLDisplayableManagerFactory,vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   enum
   {
@@ -71,8 +71,8 @@ public:
 
   /// Return name of the nth registered displayable manager
   std::string GetRegisteredDisplayableManagerName(int n);
-  
-  /// Instantiate registrered DisplayableManagers
+
+  /// Instantiate registered DisplayableManagers
   /// It returns a vtkMRMLDisplayableManagerGroup representing a list of DisplayableManager
   /// Internally, the factory keep track of all the Group and will invoke the ModifiedEvent
   /// of each group.
@@ -86,7 +86,7 @@ public:
 protected:
 
   vtkMRMLDisplayableManagerFactory();
-  virtual ~vtkMRMLDisplayableManagerFactory();
+  ~vtkMRMLDisplayableManagerFactory() override;
 
   class vtkInternal;
   vtkInternal* Internal;
@@ -94,9 +94,9 @@ protected:
   typedef vtkMRMLDisplayableManagerFactory Self;
 
 private:
-  
-  vtkMRMLDisplayableManagerFactory(const vtkMRMLDisplayableManagerFactory&);
-  void operator=(const vtkMRMLDisplayableManagerFactory&);
+
+  vtkMRMLDisplayableManagerFactory(const vtkMRMLDisplayableManagerFactory&) = delete;
+  void operator=(const vtkMRMLDisplayableManagerFactory&) = delete;
 
 };
 

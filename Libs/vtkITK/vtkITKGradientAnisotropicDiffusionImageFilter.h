@@ -25,7 +25,7 @@ class VTK_ITK_EXPORT vtkITKGradientAnisotropicDiffusionImageFilter : public vtkI
 {
  public:
   static vtkITKGradientAnisotropicDiffusionImageFilter *New();
-  vtkTypeRevisionMacro(vtkITKGradientAnisotropicDiffusionImageFilter, vtkITKImageToImageFilterFF);
+  vtkTypeMacro(vtkITKGradientAnisotropicDiffusionImageFilter, vtkITKImageToImageFilterFF);
 
   double GetTimeStep ()
   {
@@ -39,20 +39,12 @@ class VTK_ITK_EXPORT vtkITKGradientAnisotropicDiffusionImageFilter : public vtkI
 
   unsigned int GetNumberOfIterations ()
   {
-#if (ITK_VERSION_MAJOR == 1 && ITK_VERSION_MINOR == 2 && ITK_VERSION_PATCH == 0)
-    DelegateITKOutputMacro ( GetIterations );
-#else
     DelegateITKOutputMacro ( GetNumberOfIterations );
-#endif
   };
 
   void SetNumberOfIterations( unsigned int value )
   {
-#if (ITK_VERSION_MAJOR == 1 && ITK_VERSION_MINOR == 2 && ITK_VERSION_PATCH == 0)
-    DelegateITKInputMacro ( SetIterations, value );
-#else
     DelegateITKInputMacro ( SetNumberOfIterations, value );
-#endif
   };
 
   void SetTimeStep ( double value )
@@ -68,13 +60,13 @@ class VTK_ITK_EXPORT vtkITKGradientAnisotropicDiffusionImageFilter : public vtkI
 protected:
   typedef itk::GradientAnisotropicDiffusionImageFilter<Superclass::InputImageType,Superclass::InputImageType> ImageFilterType;
   vtkITKGradientAnisotropicDiffusionImageFilter() : Superclass ( ImageFilterType::New() ){};
-  ~vtkITKGradientAnisotropicDiffusionImageFilter() {};
+  ~vtkITKGradientAnisotropicDiffusionImageFilter() override  = default;
   ImageFilterType* GetImageFilterPointer() { return dynamic_cast<ImageFilterType*> ( m_Filter.GetPointer() ); }
 
-  
+
 private:
-  vtkITKGradientAnisotropicDiffusionImageFilter(const vtkITKGradientAnisotropicDiffusionImageFilter&);  /// Not implemented.
-  void operator=(const vtkITKGradientAnisotropicDiffusionImageFilter&);  /// Not implemented.
+  vtkITKGradientAnisotropicDiffusionImageFilter(const vtkITKGradientAnisotropicDiffusionImageFilter&) = delete;
+  void operator=(const vtkITKGradientAnisotropicDiffusionImageFilter&) = delete;
 };
 
 #endif

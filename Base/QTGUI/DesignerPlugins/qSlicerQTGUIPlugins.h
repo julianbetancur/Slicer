@@ -21,28 +21,31 @@
 #ifndef __qSlicerQTGUIPlugins_h
 #define __qSlicerQTGUIPlugins_h
 
-// QT includes
-#include <QDesignerCustomWidgetCollectionInterface>
+// Qt includes
+#include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
 
 // QtGUI includes
 #include "qSlicerWidgetPlugin.h"
+#include "qSlicerDirectoryListViewPlugin.h"
 #include "qSlicerModulePanelPlugin.h"
 #include "qSlicerModulesListViewPlugin.h"
 #include "qSlicerMouseModeToolBarPlugin.h"
 
 // \class Group the plugins in one library
-class Q_SLICER_BASE_QTGUI_PLUGINS_EXPORT qSlicerQTGUIPlugins
+class Q_SLICER_DESIGNER_PLUGINS_EXPORT qSlicerQTGUIPlugins
   : public QObject
   , public QDesignerCustomWidgetCollectionInterface
 {
   Q_OBJECT
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetCollectionInterface")
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface);
 
 public:
-  QList<QDesignerCustomWidgetInterface*> customWidgets() const
+  QList<QDesignerCustomWidgetInterface*> customWidgets() const override
     {
     QList<QDesignerCustomWidgetInterface *> plugins;
     plugins << new qSlicerWidgetPlugin;
+    plugins << new qSlicerDirectoryListViewPlugin;
     plugins << new qSlicerModulePanelPlugin;
     plugins << new qSlicerModulesListViewPlugin;
     plugins << new qSlicerMouseModeToolBarPlugin;

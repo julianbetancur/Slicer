@@ -19,7 +19,7 @@
 #define __qMRMLChartView_h
 
 // Qt includes
-#include <QWebView>
+#include <QWebEngineView>
 
 #include "qMRMLWidgetsExport.h"
 
@@ -37,16 +37,17 @@ class vtkMRMLScene;
 /// subject to being made opaque, so that qMRMLChartView is merely a
 /// subclass of QWidget and internally a variety of implementations
 /// for charting may be provided.
-class QMRML_WIDGETS_EXPORT qMRMLChartView : public QWebView
+class QMRML_WIDGETS_EXPORT qMRMLChartView :
+    public QWebEngineView
 {
   Q_OBJECT
 public:
   /// Superclass typedef
-  typedef QWebView Superclass;
-  
+  typedef QWebEngineView Superclass;
+
   /// Constructors
-  explicit qMRMLChartView(QWidget* parent = 0);
-  virtual ~qMRMLChartView();
+  explicit qMRMLChartView(QWidget* parent = nullptr);
+  ~qMRMLChartView() override;
 
   /// Return a pointer on the current MRML scene
   vtkMRMLScene* mrmlScene() const;
@@ -61,8 +62,8 @@ public:
   /// Get the application color logic. 0 by default.
   vtkMRMLColorLogic* colorLogic()const;
 
-  // Redefine the sizeHint so layouts work properly.
-  virtual QSize sizeHint() const;
+  /// Redefine the sizeHint so layouts work properly.
+  QSize sizeHint() const override;
 
 public slots:
 

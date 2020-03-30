@@ -37,7 +37,7 @@ class qMRMLNodeFactoryPrivate
 public:
   qMRMLNodeFactoryPrivate()
     {
-    this->MRMLScene = 0;
+    this->MRMLScene = nullptr;
     }
   vtkMRMLScene * MRMLScene;
   QHash<QString, QString> BaseNames;
@@ -53,8 +53,7 @@ qMRMLNodeFactory::qMRMLNodeFactory(QObject* _parent)
 
 //------------------------------------------------------------------------------
 qMRMLNodeFactory::~qMRMLNodeFactory()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 CTK_SET_CPP(qMRMLNodeFactory, vtkMRMLScene*, setMRMLScene, MRMLScene);
@@ -64,28 +63,28 @@ CTK_GET_CPP(qMRMLNodeFactory, vtkMRMLScene*, mrmlScene, MRMLScene);
 vtkMRMLNode* qMRMLNodeFactory::createNode(const QString& className)
 {
   Q_D(qMRMLNodeFactory);
-  
+
   if (!d->MRMLScene || className.isEmpty())
     {
-    return 0; 
+    return nullptr;
     }
-  vtkSmartPointer<vtkMRMLNode> node; 
-  node.TakeReference( d->MRMLScene->CreateNodeByClass( className.toLatin1() ) );
+  vtkSmartPointer<vtkMRMLNode> node;
+  node.TakeReference( d->MRMLScene->CreateNodeByClass( className.toUtf8() ) );
 
   Q_ASSERT_X(node, "createNode",
-             QString("Failed to create node of type [%1]").arg(className).toLatin1());
+             QString("Failed to create node of type [%1]").arg(className).toUtf8());
 
-  if (node == 0)
+  if (node == nullptr)
     {
-    return 0;
+    return nullptr;
     }
-  
+
   emit this->nodeInstantiated(node);
   // Optionally adding the node into a scene must be done only in
   // signal nodeInitialized. It's a bit arbitrary and feel free to remove
   // the restriction.
-  Q_ASSERT(node->GetScene() == 0);
-  
+  Q_ASSERT(node->GetScene() == nullptr);
+
   QString baseName;
   if (d->BaseNames.contains(className) &&
       !d->BaseNames[className].isEmpty())
@@ -94,9 +93,9 @@ vtkMRMLNode* qMRMLNodeFactory::createNode(const QString& className)
     }
   else
     {
-    baseName = d->MRMLScene->GetTagByClassName(className.toLatin1());
+    baseName = d->MRMLScene->GetTagByClassName(className.toUtf8());
     }
-  node->SetName(d->MRMLScene->GetUniqueNameByString(baseName.toLatin1()));
+  node->SetName(d->MRMLScene->GetUniqueNameByString(baseName.toUtf8()));
 
   // Set node attributes
   // Attributes must be set before adding the node into the scene as the node
@@ -106,8 +105,8 @@ vtkMRMLNode* qMRMLNodeFactory::createNode(const QString& className)
   // it's visibility
   foreach (const QString& attributeName, d->Attributes.keys())
     {
-    node->SetAttribute(attributeName.toLatin1(),
-                       d->Attributes[attributeName].toLatin1());
+    node->SetAttribute(attributeName.toUtf8(),
+                       d->Attributes[attributeName].toUtf8());
     }
 
   emit this->nodeInitialized(node);
@@ -117,12 +116,12 @@ vtkMRMLNode* qMRMLNodeFactory::createNode(const QString& className)
     {
     vtkMRMLNode* nodeAdded = d->MRMLScene->AddNode(node);
     Q_ASSERT(nodeAdded == node ||
-             node->GetSingletonTag() != 0);
+             node->GetSingletonTag() != nullptr);
     node = nodeAdded;
     }
   emit this->nodeAdded(node);
 
-  return node; 
+  return node;
 }
 
 //------------------------------------------------------------------------------
@@ -137,7 +136,7 @@ vtkMRMLNode* qMRMLNodeFactory::createNode(vtkMRMLScene* scene, const QString& cl
     {
     factory->addAttribute(key, attributes.value(key));
     }
-  // Instanciate and return the requested node
+  // Instantiate and return the requested node
   return factory->createNode(className);
 }
 
@@ -173,5 +172,10 @@ void qMRMLNodeFactory::setBaseName(const QString& className, const QString& base
 QString qMRMLNodeFactory::baseName(const QString& className)const
 {
   Q_D(const qMRMLNodeFactory);
-  return d->BaseNames.contains(className) ? d->BaseNames[className] : QString();
+  if (!d->BaseNames.contains(className))
+    {
+    qWarning("qMRMLNodeFactory::baseName failed: class name %s not found", qPrintable(className));
+    return QString();
+    }
+  return d->BaseNames[className];
 }

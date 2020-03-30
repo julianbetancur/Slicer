@@ -21,13 +21,21 @@
 #include <qMRMLListWidget.h>
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
+// VTK includes
+#include "qMRMLWidget.h"
+
 // STD includes
 
 int qMRMLListWidgetTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLListWidget   mrmlItem;
-  
+
   return EXIT_SUCCESS;
 }

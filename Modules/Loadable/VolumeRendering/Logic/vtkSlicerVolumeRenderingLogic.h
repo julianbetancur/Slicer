@@ -18,7 +18,6 @@
 // VolumeRendering includes
 #include "vtkSlicerVolumeRenderingModuleLogicExport.h"
 class vtkMRMLVolumeRenderingDisplayNode;
-class vtkMRMLVolumeRenderingScenarioNode;
 
 // Slicer includes
 #include "vtkSlicerModuleLogic.h"
@@ -33,9 +32,11 @@ class vtkMRMLViewNode;
 class vtkMRMLVolumeDisplayNode;
 class vtkMRMLVolumeNode;
 class vtkMRMLVolumePropertyNode;
+class vtkMRMLShaderPropertyNode;
 
 // VTK includes
 class vtkColorTransferFunction;
+class vtkLookupTable;
 class vtkPiecewiseFunction;
 class vtkScalarsToColors;
 class vtkVolumeProperty;
@@ -43,8 +44,6 @@ class vtkVolumeProperty;
 // STD includes
 #include <map>
 #include <vector>
-
-class vtkStringArray;
 
 /// \ingroup Slicer_QtModules_VolumeRendering
 /// Collection of utility methods to control the Volume Rendering nodes.
@@ -62,8 +61,8 @@ class VTK_SLICER_VOLUMERENDERING_MODULE_LOGIC_EXPORT vtkSlicerVolumeRenderingLog
 public:
 
   static vtkSlicerVolumeRenderingLogic *New();
-  vtkTypeRevisionMacro(vtkSlicerVolumeRenderingLogic,vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkSlicerVolumeRenderingLogic,vtkSlicerModuleLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// Inform the logic and observers that a rendering method (class deriving
   /// from vtkMRMLVolumeRenderingDisplayNode) is available.
@@ -87,6 +86,17 @@ public:
   vtkSetMacro(UseLinearRamp, bool);
   vtkGetMacro(UseLinearRamp, bool);
 
+  /// Create and set up all nodes needed for volume rendering for a given volume node:
+  /// - Display node according to the selected rendering method
+  /// - Volume property node for display options
+  /// - ROI node for cropping
+  /// When dealing with a volume node that may not have been shown in volume rendering before,
+  /// it's enough to call this function to prepare them for that. After this, only SetVisibility
+  /// needs to be called on its display node for showing it.
+  /// Does not create new nodes if they exist already.
+  /// \return Volume rendering display node for the given volume
+  vtkMRMLVolumeRenderingDisplayNode* CreateDefaultVolumeRenderingNodes(vtkMRMLVolumeNode* volumeNode);
+
   /// Create a volume rendering display node.
   /// The node to instantiate will be of type \a renderingType if not null,
   /// \a DefaultRenderingMethod if not null or
@@ -98,7 +108,7 @@ public:
   /// You are responsible for deleting the node (read more about it in the
   /// section \ref GetNewCreate).
   /// \sa DefaultRenderingMethod
-  vtkMRMLVolumeRenderingDisplayNode* CreateVolumeRenderingDisplayNode(const char* renderingClassName = 0);
+  vtkMRMLVolumeRenderingDisplayNode* CreateVolumeRenderingDisplayNode(const char* renderingClassName = nullptr);
 
   /// Observe the volume rendering display node to copy the volume display
   /// node if needed.
@@ -120,8 +130,12 @@ public:
   /// \sa AddVolumeRenderingDisplayNode, AddAllVolumeRenderingDisplayNodes
   void RemoveAllVolumeRenderingDisplayNodes();
 
+  /// Re-create all volume rendering display nodes of the requested type.
+  /// Common properties of the display nodes are propagated.
+  void ChangeVolumeRenderingMethod(const char* displayNodeClassName = nullptr);
+
   /// Applies the properties (window level, threshold and color function) of
-  /// a volume display node to the volume rendering displaynode.
+  /// a volume display node to the volume rendering display node.
   /// If displayNode is 0, it uses the first display node.
   /// It's a utility method that internally calls
   /// CopyScalarDisplayToVolumeRenderingDisplayNode() or
@@ -131,7 +145,7 @@ public:
   /// \sa CopyLabelMapDisplayToVolumeRenderingDisplayNode()
   void CopyDisplayToVolumeRenderingDisplayNode(
     vtkMRMLVolumeRenderingDisplayNode* node,
-    vtkMRMLVolumeDisplayNode* displayNode = 0);
+    vtkMRMLVolumeDisplayNode* displayNode = nullptr);
 
   /// Applies the properties (window level, threshold and color function) of
   /// the scalar display node to the volume rendering displaynode.
@@ -140,7 +154,7 @@ public:
   /// \sa CopyLabelMapDisplayToVolumeRenderingDisplayNode()
   void CopyScalarDisplayToVolumeRenderingDisplayNode(
     vtkMRMLVolumeRenderingDisplayNode* volumeRenderingDisplayNode,
-    vtkMRMLScalarVolumeDisplayNode* scalarDisplayNode = 0);
+    vtkMRMLScalarVolumeDisplayNode* scalarDisplayNode = nullptr);
 
   /// Applies the properties (threshold ) of
   /// the labelmap display node to the volume rendering displaynode.
@@ -149,18 +163,18 @@ public:
   /// \sa CopyScalarDisplayToVolumeRenderingDisplayNode()
   void CopyLabelMapDisplayToVolumeRenderingDisplayNode(
     vtkMRMLVolumeRenderingDisplayNode* volumeRenderingDisplayNode,
-    vtkMRMLLabelMapVolumeDisplayNode* labelMapDisplayNode = 0);
+    vtkMRMLLabelMapVolumeDisplayNode* labelMapDisplayNode = nullptr);
 
   /// Applies a threshold to a volume property
-  /// \a scalarRange is the entire range of the transfer function
-  /// \a threshold is the range where the threshold is applied
-  /// \a node is the container of the transfer function to save
-  /// \a linearRamp controls the shape of the threshold:
+  /// \arg \b scalarRange is the entire range of the transfer function
+  /// \arg \b threshold is the range where the threshold is applied
+  /// \arg \b node is the container of the transfer function to save
+  /// \arg \b linearRamp controls the shape of the threshold:
   /// \verbatim
   ///  true:            false:    _
   ///        __/|__            __| |__
   /// \endverbatim
-  /// \a stayUpAtUpperLimit controls whether the threshold not maxed out:
+  /// \arg \b stayUpAtUpperLimit controls whether the threshold not maxed out:
   /// \verbatim
   ///  true:    ______  false:
   ///        __/               __/|_____
@@ -210,19 +224,13 @@ public:
     vtkScalarsToColors* lut, vtkVolumeProperty* node);
 
   /// Update DisplayNode from VolumeNode,
-  /// If needed create vtkMRMLVolumePropertyNode and vtkMRMLAnnotationROINode
-  /// and initialize them from VolumeNode
-  void UpdateDisplayNodeFromVolumeNode(vtkMRMLVolumeRenderingDisplayNode *paramNode,
+  /// Can pass a VolumePropertyNode and a AnnotationROINode to be the display node.
+  /// If they are nullptr and the display node does not already have any, new ones
+  /// will be created then set and observed to the display node.
+  void UpdateDisplayNodeFromVolumeNode(vtkMRMLVolumeRenderingDisplayNode *displayNode,
                                        vtkMRMLVolumeNode *volumeNode,
-                                       vtkMRMLVolumePropertyNode **propNode,
-                                       vtkMRMLAnnotationROINode **roiNode);
-  /// Utility function that calls UpdateDisplayNodeFromVolumeNode()
-  inline void UpdateDisplayNodeFromVolumeNode(vtkMRMLVolumeRenderingDisplayNode *paramNode,
-                                              vtkMRMLVolumeNode *volumeNode);
-
-  /// \deprecated
-  /// Create and add into the scene a vtkMRMLVolumeRenderingScenarioNode
-  vtkMRMLVolumeRenderingScenarioNode* CreateScenarioNode();
+                                       vtkMRMLVolumePropertyNode *propNode = nullptr,
+                                       vtkMRMLAnnotationROINode *roiNode = nullptr);
 
   /// Remove ViewNode from VolumeRenderingDisplayNode for a VolumeNode,
   void RemoveViewFromVolumeDisplayNodes(vtkMRMLVolumeNode *volumeNode,
@@ -249,12 +257,6 @@ public:
 
   void UpdateTranferFunctionRangeFromImage(vtkMRMLVolumeRenderingDisplayNode* vspNode);
 
-  //void UpdateFgTranferFunctionRangeFromImage(vtkMRMLVolumeRenderingDisplayNode* vspNode);
-
-  //void UpdateVolumePropertyFromImageData(vtkMRMLVolumeRenderingDisplayNode* vspNode);
-
-  //void SetupFgVolumePropertyFromImageData(vtkMRMLVolumeRenderingDisplayNode* vspNode);
-
   /// Utility function that modifies the ROI node of the display node
   /// to fit the boundaries of the volume node
   /// \sa vtkMRMLVolumeRenderingDisplayNode::GetROINode
@@ -264,6 +266,10 @@ public:
   /// \sa vtkMRMLVolumePropertyStorageNode
   vtkMRMLVolumePropertyNode* AddVolumePropertyFromFile (const char* filename);
 
+  /// Load from file and add into the scene a shader property.
+  /// \sa vtkMRMLShaderPropertyStorageNode
+  vtkMRMLShaderPropertyNode* AddShaderPropertyFromFile (const char* filename);
+
   /// Return the scene containing the volume rendering presets.
   /// If there is no presets scene, a scene is created and presets are loaded
   /// into.
@@ -271,6 +277,33 @@ public:
   /// module share directory
   /// \sa vtkMRMLVolumePropertyNode, GetModuleShareDirectory()
   vtkMRMLScene* GetPresetsScene();
+  
+  /// Add a preset to the preset scene.
+  /// If the optional icon image is specified then that will be used to
+  /// in preset selector widgets. The icon is stored as a volume node
+  /// in the preset scene.
+  /// \sa GetPresetsScene(), GetIconVolumeReferenceRole()
+  void AddPreset(vtkMRMLVolumePropertyNode* preset, vtkImageData* icon = nullptr);
+  
+  /// Removes a preset and its associated icon (if specified) from the preset scene.
+  /// \sa GetPresetsScene(), GetIconVolumeReferenceRole()
+  void RemovePreset(vtkMRMLVolumePropertyNode* preset);
+
+  /// Use custom presets scene
+  /// \return Nonzero if successfully loaded
+  int LoadCustomPresetsScene(const char* sceneFilePath);
+  
+  /// This node reference role name allows linking from a preset node to a volume
+  /// node that contains an icon for the preset node.
+  /// For example, the icon is used for representing the node in qSlicerPresetComboBox.
+  static const char* GetIconVolumeReferenceRole() { return "IconVolume"; };
+
+  /// Return the preset \a presetName contained in the presets scene
+  /// loaded using \a GetPresetsScene().
+  /// If no presets are found, return 0.
+  /// If multiple presets are found, the first one is returned.
+  /// \sa GetPresetsScene(), vtkMRMLVolumePropertyNode
+  vtkMRMLVolumePropertyNode* GetPresetByName(const char *presetName);
 
   /// Utility function that checks if the piecewise functions are equal
   /// Returns true if different
@@ -284,15 +317,17 @@ public:
 
 protected:
   vtkSlicerVolumeRenderingLogic();
-  virtual ~vtkSlicerVolumeRenderingLogic();
+  ~vtkSlicerVolumeRenderingLogic() override;
 
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* scene);
+  void SetMRMLSceneInternal(vtkMRMLScene* scene) override;
   // Register local MRML nodes
-  virtual void RegisterNodes();
+  void RegisterNodes() override;
 
-  void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  void OnMRMLSceneNodeRemoved(vtkMRMLNode* node);
-  void OnMRMLNodeModified(vtkMRMLNode* node);
+  /// Reimplemented to initialize display nodes in the scene.
+  void ObserveMRMLScene() override;
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  void OnMRMLSceneNodeRemoved(vtkMRMLNode* node) override;
+  void OnMRMLNodeModified(vtkMRMLNode* node) override;
 
   // Update from
   void UpdateVolumeRenderingDisplayNode(vtkMRMLVolumeRenderingDisplayNode* node);
@@ -305,6 +340,7 @@ protected:
   /// \sa SetDefaultRenderingMethod(), GetDefaultRenderingMethod(),
   /// CreateVolumeRenderingDisplayNode()
   char* DefaultRenderingMethod;
+
   bool UseLinearRamp;
 
   typedef std::vector<vtkMRMLNode*> DisplayNodesType;
@@ -314,18 +350,8 @@ protected:
   vtkMRMLScene* PresetsScene;
 
 private:
-  vtkSlicerVolumeRenderingLogic(const vtkSlicerVolumeRenderingLogic&); // Not implemented
-  void operator=(const vtkSlicerVolumeRenderingLogic&);               // Not implemented
+  vtkSlicerVolumeRenderingLogic(const vtkSlicerVolumeRenderingLogic&) = delete;
+  void operator=(const vtkSlicerVolumeRenderingLogic&) = delete;
 };
-
-//----------------------------------------------------------------------------
-void vtkSlicerVolumeRenderingLogic
-::UpdateDisplayNodeFromVolumeNode(vtkMRMLVolumeRenderingDisplayNode *paramNode,
-                                  vtkMRMLVolumeNode *volumeNode)
-{
-  vtkMRMLVolumePropertyNode *propNode = NULL;
-  vtkMRMLAnnotationROINode *roiNode = NULL;
-  this->UpdateDisplayNodeFromVolumeNode(paramNode, volumeNode, &propNode, &roiNode);
-}
 
 #endif

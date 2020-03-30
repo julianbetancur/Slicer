@@ -23,15 +23,37 @@
 #
 
 macro(SlicerMacroBuildModuleQtLibrary)
-  SLICER_PARSE_ARGUMENTS(MODULEQTLIBRARY
-    "NAME;EXPORT_DIRECTIVE;SRCS;MOC_SRCS;UI_SRCS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES"
-    "WRAP_PYTHONQT;NO_INSTALL"
+  set(options
+    WRAP_PYTHONQT
+    NO_INSTALL
+    )
+  set(oneValueArgs
+    NAME
+    EXPORT_DIRECTIVE
+    FOLDER
+    )
+  set(multiValueArgs
+    SRCS
+    MOC_SRCS
+    UI_SRCS
+    INCLUDE_DIRECTORIES
+    TARGET_LIBRARIES
+    RESOURCES
+    )
+  cmake_parse_arguments(MODULEQTLIBRARY
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
     )
 
   # --------------------------------------------------------------------------
   # Sanity checks
   # --------------------------------------------------------------------------
+  if(MODULEQTLIBRARY_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown keywords given to SlicerMacroBuildModuleQtLibrary(): \"${MODULEQTLIBRARY_UNPARSED_ARGUMENTS}\"")
+  endif()
+
   set(expected_defined_vars NAME EXPORT_DIRECTIVE)
   foreach(var ${expected_defined_vars})
     if(NOT DEFINED MODULEQTLIBRARY_${var})
@@ -45,11 +67,26 @@ macro(SlicerMacroBuildModuleQtLibrary)
   set(lib_name ${MODULEQTLIBRARY_NAME})
 
   # --------------------------------------------------------------------------
+  # Set <MODULEQTLIBRARY_NAME>_INCLUDE_DIRS
+  # --------------------------------------------------------------------------
+  set(_include_dirs
+    ${${MODULEQTLIBRARY_NAME}_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  # Since module developer may have already set the variable to some
+  # specific values in the module CMakeLists.txt, we make sure to
+  # consider the already set variable and remove duplicates.
+  list(REMOVE_DUPLICATES _include_dirs)
+  set(${MODULEQTLIBRARY_NAME}_INCLUDE_DIRS
+    ${_include_dirs}
+    CACHE INTERNAL "${MODULEQTLIBRARY_NAME} include directories" FORCE)
+
+  # --------------------------------------------------------------------------
   # Include dirs
   # --------------------------------------------------------------------------
   include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}
+    ${${MODULEQTLIBRARY_NAME}_INCLUDE_DIRS}
     ${MODULEQTLIBRARY_INCLUDE_DIRECTORIES}
     )
 
@@ -76,18 +113,19 @@ macro(SlicerMacroBuildModuleQtLibrary)
   # Sources
   #-----------------------------------------------------------------------------
   set(MODULEQTLIBRARY_MOC_OUTPUT)
-  QT4_WRAP_CPP(MODULEQTLIBRARY_MOC_OUTPUT ${MODULEQTLIBRARY_MOC_SRCS})
   set(MODULEQTLIBRARY_UI_CXX)
-  QT4_WRAP_UI(MODULEQTLIBRARY_UI_CXX ${MODULEQTLIBRARY_UI_SRCS})
   set(MODULEQTLIBRARY_QRC_SRCS)
-  if(DEFINED MODULEQTLIBRARY_RESOURCES)
-    QT4_ADD_RESOURCES(MODULEQTLIBRARY_QRC_SRCS ${MODULEQTLIBRARY_RESOURCES})
-  endif()
-
   if(NOT EXISTS ${Slicer_LOGOS_RESOURCE})
     message("Warning, Slicer_LOGOS_RESOURCE doesn't exist: ${Slicer_LOGOS_RESOURCE}")
   endif()
-  QT4_ADD_RESOURCES(MODULEQTLIBRARY_QRC_SRCS ${Slicer_LOGOS_RESOURCE})
+
+    set(_moc_options OPTIONS -DSlicer_HAVE_QT5)
+    QT5_WRAP_CPP(MODULEQTLIBRARY_MOC_OUTPUT ${MODULEQTLIBRARY_MOC_SRCS} ${_moc_options})
+    QT5_WRAP_UI(MODULEQTLIBRARY_UI_CXX ${MODULEQTLIBRARY_UI_SRCS})
+    if(DEFINED MODULEQTLIBRARY_RESOURCES AND NOT MODULEQTLIBRARY_RESOURCES STREQUAL "")
+      QT5_ADD_RESOURCES(MODULEQTLIBRARY_QRC_SRCS ${MODULEQTLIBRARY_RESOURCES})
+    endif()
+    QT5_ADD_RESOURCES(MODULEQTLIBRARY_QRC_SRCS ${Slicer_LOGOS_RESOURCE})
 
   set_source_files_properties(
     ${MODULEQTLIBRARY_UI_CXX}
@@ -129,6 +167,10 @@ macro(SlicerMacroBuildModuleQtLibrary)
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_LIB_DIR}"
     )
   set_target_properties(${lib_name} PROPERTIES LABELS ${lib_name})
+
+  if(NOT "${MODULEQTLIBRARY_FOLDER}" STREQUAL "")
+    set_target_properties(${lib_name} PROPERTIES FOLDER ${MODULEQTLIBRARY_FOLDER})
+  endif()
 
   target_link_libraries(${lib_name}
     ${MODULEQTLIBRARY_TARGET_LIBRARIES}
@@ -186,7 +228,7 @@ macro(SlicerMacroBuildModuleQtLibrary)
       set(MODULEQTLIBRARY_NO_INSTALL_OPTION "NO_INSTALL")
     endif()
     ctkMacroBuildLibWrapper(
-      NAMESPACE "org.slicer.module"
+      NAMESPACE "osm" # Use "osm" instead of "org.slicer.module" to avoid build error on windows
       TARGET ${lib_name}
       SRCS "${MODULEQTLIBRARY_SRCS}"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${Slicer_QTLOADABLEMODULES_BIN_DIR}"
@@ -196,6 +238,9 @@ macro(SlicerMacroBuildModuleQtLibrary)
       INSTALL_LIB_DIR ${Slicer_INSTALL_QTLOADABLEMODULES_LIB_DIR}
       ${MODULEQTLIBRARY_NO_INSTALL_OPTION}
       )
+    if(NOT "${MODULEQTLIBRARY_FOLDER}" STREQUAL "")
+      set_target_properties(${lib_name}PythonQt PROPERTIES FOLDER ${MODULEQTLIBRARY_FOLDER})
+    endif()
   endif()
 
 endmacro()

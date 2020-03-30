@@ -28,6 +28,8 @@
 // MRML includes
 #include "qMRMLNodeComboBox.h"
 #include "qMRMLSliceControllerWidget.h"
+#include <vtkMRMLColorLogic.h>
+#include <vtkMRMLLabelMapVolumeNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLSliceCompositeNode.h>
@@ -35,7 +37,10 @@
 #include <vtkMRMLSliceNode.h>
 
 // VTK includes
+#include <vtkMatrix3x3.h>
+#include <vtkMatrix4x4.h>
 #include <vtkNew.h>
+#include <vtkStringArray.h>
 
 // ----------------------------------------------------------------------------
 class qMRMLSliceControllerWidgetTester: public QObject
@@ -63,8 +68,9 @@ private slots:
   void testSetLabelVolume();
   void testSetLabelVolume_data();
 
-  void testChangeLabelMapToScalarVolume();
   void testSetLabelVolumeWithNoLinkedControl();
+
+  void testUpdateSliceOrientationSelector();
 };
 
 // ----------------------------------------------------------------------------
@@ -72,8 +78,19 @@ void qMRMLSliceControllerWidgetTester::init()
 {
   this->MRMLScene = vtkMRMLScene::New();
 
+  // Add default color nodes
+  vtkNew<vtkMRMLColorLogic> colorLogic;
+  colorLogic->SetMRMLScene(this->MRMLScene);
+  // need to set it back to nullptr, otherwise the logic removes the nodes that it added when it is destructed
+  colorLogic->SetMRMLScene(nullptr);
+
   vtkNew<vtkMRMLSliceNode> sliceNode;
   sliceNode->SetLayoutName("Red");
+  vtkNew<vtkMatrix3x3> axialSliceToRAS;
+  vtkMRMLSliceNode::InitializeAxialMatrix(axialSliceToRAS.GetPointer());
+
+  sliceNode->AddSliceOrientationPreset("Axial", axialSliceToRAS.GetPointer());
+  sliceNode->SetOrientation("Axial");
   this->MRMLScene->AddNode(sliceNode.GetPointer());
 
   vtkNew<vtkMRMLScalarVolumeNode> volumeNode1;
@@ -88,9 +105,8 @@ void qMRMLSliceControllerWidgetTester::init()
   volumeNode3->SetName("Volume 3");
   this->MRMLScene->AddNode(volumeNode3.GetPointer());
 
-  vtkNew<vtkMRMLScalarVolumeNode> labelmapNode1;
+  vtkNew<vtkMRMLLabelMapVolumeNode> labelmapNode1;
   labelmapNode1->SetName("Labelmap 1");
-  labelmapNode1->SetLabelMap(1);
   this->MRMLScene->AddNode(labelmapNode1.GetPointer());
 
   this->MRMLSliceNode = sliceNode.GetPointer();
@@ -106,7 +122,7 @@ void qMRMLSliceControllerWidgetTester::cleanup()
 void qMRMLSliceControllerWidgetTester::testDefaults()
 {
   qMRMLSliceControllerWidget sliceControllerWidget;
-  void* nullPtr = 0;
+  void* nullPtr = nullptr;
   QCOMPARE(reinterpret_cast<void*>(sliceControllerWidget.mrmlScene()), nullPtr);
   QCOMPARE(reinterpret_cast<void*>(sliceControllerWidget.mrmlSliceNode()), nullPtr);
 
@@ -116,8 +132,8 @@ void qMRMLSliceControllerWidgetTester::testDefaults()
   QCOMPARE(sliceControllerWidget.sliceViewLabel(), QString());
   QCOMPARE(sliceControllerWidget.sliceViewColor(), QColor());
 
-  QVERIFY(sliceControllerWidget.sliceLogic() != 0);
-  QCOMPARE(sliceControllerWidget.imageData(), nullPtr);
+  QVERIFY(sliceControllerWidget.sliceLogic() != nullptr);
+  QCOMPARE(sliceControllerWidget.imageDataConnection(), nullPtr);
   QCOMPARE(sliceControllerWidget.mrmlSliceCompositeNode(), nullPtr);
 
   QCOMPARE(sliceControllerWidget.isLinked(), false);
@@ -129,10 +145,11 @@ void qMRMLSliceControllerWidgetTester::testDefaults()
 void qMRMLSliceControllerWidgetTester::testSetMRMLSliceNode()
 {
   qMRMLSliceControllerWidget sliceControllerWidget;
-  void* nullPtr = 0;
+  void* nullPtr = nullptr;
 
-  // \todo The following should be set automatically from setMRMLSliceNode
   sliceControllerWidget.setSliceViewLabel("R");
+  QCOMPARE(sliceControllerWidget.sliceViewLabel(), QString(""));
+
   sliceControllerWidget.setSliceViewColor(Qt::red);
 
   sliceControllerWidget.setMRMLScene(this->MRMLScene);
@@ -140,15 +157,18 @@ void qMRMLSliceControllerWidgetTester::testSetMRMLSliceNode()
 
   QCOMPARE(sliceControllerWidget.mrmlScene(), this->MRMLScene);
   QCOMPARE(sliceControllerWidget.mrmlSliceNode(), this->MRMLSliceNode);
-  QVERIFY(sliceControllerWidget.sliceLogic() != 0);
-  QCOMPARE(sliceControllerWidget.imageData(), nullPtr);
+  QVERIFY(sliceControllerWidget.sliceLogic() != nullptr);
+  QCOMPARE(sliceControllerWidget.imageDataConnection(), nullPtr);
 
   QCOMPARE(sliceControllerWidget.mrmlSliceCompositeNode()->GetBackgroundVolumeID(), nullPtr);
   QCOMPARE(sliceControllerWidget.mrmlSliceCompositeNode()->GetForegroundVolumeID(), nullPtr);
   QCOMPARE(sliceControllerWidget.mrmlSliceCompositeNode()->GetLabelVolumeID(), nullPtr);
 
   QCOMPARE(sliceControllerWidget.sliceViewName(), QString("Red"));
+
+  sliceControllerWidget.setSliceViewLabel("R");
   QCOMPARE(sliceControllerWidget.sliceViewLabel(), QString("R"));
+
   QCOMPARE(sliceControllerWidget.sliceViewColor(), QColor(Qt::red));
 
   QCOMPARE(sliceControllerWidget.isLinked(), false);
@@ -163,13 +183,13 @@ void qMRMLSliceControllerWidgetTester::testSetBackgroundVolume()
   sliceControllerWidget.setMRMLScene(this->MRMLScene);
 
   QFETCH(QString, volumeNodeID);
-  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toLatin1());
-  sliceControllerWidget.mrmlSliceCompositeNode()->SetBackgroundVolumeID(volumeNode ? volumeNode->GetID() : 0);
+  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toUtf8());
+  sliceControllerWidget.mrmlSliceCompositeNode()->SetBackgroundVolumeID(volumeNode ? volumeNode->GetID() : nullptr);
 
   QFETCH(QString, expectedVolumeNodeID);
   qMRMLNodeComboBox* comboBox =
     qobject_cast<qMRMLNodeComboBox*>(sliceControllerWidget.findChild<qMRMLNodeComboBox*>("BackgroundComboBox"));
-  QCOMPARE(comboBox->currentNodeId(), expectedVolumeNodeID);
+  QCOMPARE(comboBox->currentNodeID(), expectedVolumeNodeID);
 
   //sliceControllerWidget.show();
   //qApp->exec();
@@ -185,7 +205,7 @@ void qMRMLSliceControllerWidgetTester::testSetBackgroundVolume_data()
   QTest::newRow("volume1") << "vtkMRMLScalarVolumeNode1" << "vtkMRMLScalarVolumeNode1";
   QTest::newRow("volume2") << "vtkMRMLScalarVolumeNode2" << "vtkMRMLScalarVolumeNode2";
   QTest::newRow("volume3") << "vtkMRMLScalarVolumeNode3" << "vtkMRMLScalarVolumeNode3";
-  QTest::newRow("labelmap1") << "vtkMRMLScalarVolumeNode4" << "vtkMRMLScalarVolumeNode4";
+  QTest::newRow("labelmap1") << "vtkMRMLLabelMapVolumeNode1" << "vtkMRMLLabelMapVolumeNode1";
 }
 
 // ----------------------------------------------------------------------------
@@ -195,13 +215,13 @@ void qMRMLSliceControllerWidgetTester::testSetForegroundVolume()
   sliceControllerWidget.setMRMLScene(this->MRMLScene);
 
   QFETCH(QString, volumeNodeID);
-  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toLatin1());
-  sliceControllerWidget.mrmlSliceCompositeNode()->SetForegroundVolumeID(volumeNode ? volumeNode->GetID() : 0);
+  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toUtf8());
+  sliceControllerWidget.mrmlSliceCompositeNode()->SetForegroundVolumeID(volumeNode ? volumeNode->GetID() : nullptr);
 
   QFETCH(QString, expectedVolumeNodeID);
   qMRMLNodeComboBox* comboBox =
     qobject_cast<qMRMLNodeComboBox*>(sliceControllerWidget.findChild<qMRMLNodeComboBox*>("ForegroundComboBox"));
-  QCOMPARE(comboBox->currentNodeId(), expectedVolumeNodeID);
+  QCOMPARE(comboBox->currentNodeID(), expectedVolumeNodeID);
 
   //sliceControllerWidget.show();
   //qApp->exec();
@@ -217,7 +237,7 @@ void qMRMLSliceControllerWidgetTester::testSetForegroundVolume_data()
   QTest::newRow("volume1") << "vtkMRMLScalarVolumeNode1" << "vtkMRMLScalarVolumeNode1";
   QTest::newRow("volume2") << "vtkMRMLScalarVolumeNode2" << "vtkMRMLScalarVolumeNode2";
   QTest::newRow("volume3") << "vtkMRMLScalarVolumeNode3" << "vtkMRMLScalarVolumeNode3";
-  QTest::newRow("labelmap1") << "vtkMRMLScalarVolumeNode4" << "vtkMRMLScalarVolumeNode4";
+  QTest::newRow("labelmap1") << "vtkMRMLLabelMapVolumeNode1" << "vtkMRMLLabelMapVolumeNode1";
 }
 
 // ----------------------------------------------------------------------------
@@ -227,13 +247,13 @@ void qMRMLSliceControllerWidgetTester::testSetLabelVolume()
   sliceControllerWidget.setMRMLScene(this->MRMLScene);
 
   QFETCH(QString, volumeNodeID);
-  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toLatin1());
-  sliceControllerWidget.mrmlSliceCompositeNode()->SetLabelVolumeID(volumeNode ? volumeNode->GetID() : 0);
+  vtkMRMLNode* volumeNode = this->MRMLScene->GetNodeByID(volumeNodeID.toUtf8());
+  sliceControllerWidget.mrmlSliceCompositeNode()->SetLabelVolumeID(volumeNode ? volumeNode->GetID() : nullptr);
 
   QFETCH(QString, expectedVolumeNodeID);
   qMRMLNodeComboBox* comboBox =
     qobject_cast<qMRMLNodeComboBox*>(sliceControllerWidget.findChild<qMRMLNodeComboBox*>("LabelMapComboBox"));
-  QCOMPARE(comboBox->currentNodeId(), expectedVolumeNodeID);
+  QCOMPARE(comboBox->currentNodeID(), expectedVolumeNodeID);
 
   //sliceControllerWidget.show();
   //qApp->exec();
@@ -249,25 +269,7 @@ void qMRMLSliceControllerWidgetTester::testSetLabelVolume_data()
   QTest::newRow("volume1") << "vtkMRMLScalarVolumeNode1" << QString();
   QTest::newRow("volume2") << "vtkMRMLScalarVolumeNode2" << QString();
   QTest::newRow("volume3") << "vtkMRMLScalarVolumeNode3" << QString();
-  QTest::newRow("labelmap1") << "vtkMRMLScalarVolumeNode4" << "vtkMRMLScalarVolumeNode4";
-}
-
-// ----------------------------------------------------------------------------
-void qMRMLSliceControllerWidgetTester::testChangeLabelMapToScalarVolume()
-{
-  qMRMLSliceControllerWidget sliceControllerWidget;
-  sliceControllerWidget.setMRMLScene(this->MRMLScene);
-
-  vtkMRMLScalarVolumeNode* scalarVolumeNode =
-    vtkMRMLScalarVolumeNode::SafeDownCast(this->MRMLScene->GetNodeByID("vtkMRMLScalarVolumeNode4"));
-  sliceControllerWidget.mrmlSliceCompositeNode()->SetLabelVolumeID("vtkMRMLScalarVolumeNode4");
-
-  // Remove the label map property
-  scalarVolumeNode->SetLabelMap(0);
-
-  qMRMLNodeComboBox* comboBox =
-    qobject_cast<qMRMLNodeComboBox*>(sliceControllerWidget.findChild<qMRMLNodeComboBox*>("LabelMapComboBox"));
-  QCOMPARE(comboBox->currentNodeId(), QString());
+  QTest::newRow("labelmap1") << "vtkMRMLLabelMapVolumeNode1" << "vtkMRMLLabelMapVolumeNode1";
 }
 
 // ----------------------------------------------------------------------------
@@ -277,15 +279,14 @@ void qMRMLSliceControllerWidgetTester::testSetLabelVolumeWithNoLinkedControl()
   sliceControllerWidget.setMRMLScene(this->MRMLScene);
 
   vtkMRMLScalarVolumeNode* scalarVolumeNode =
-    vtkMRMLScalarVolumeNode::SafeDownCast(this->MRMLScene->GetNodeByID("vtkMRMLScalarVolumeNode4"));
+    vtkMRMLScalarVolumeNode::SafeDownCast(this->MRMLScene->GetNodeByID("vtkMRMLLabelMapVolumeNode1"));
   if (scalarVolumeNode)
     {
     sliceControllerWidget.mrmlSliceCompositeNode()->SetLabelVolumeID(scalarVolumeNode->GetID());
     }
 
-  vtkNew<vtkMRMLScalarVolumeNode> labelmapNode2;
+  vtkNew<vtkMRMLLabelMapVolumeNode> labelmapNode2;
   labelmapNode2->SetName("Labelmap 2");
-  labelmapNode2->SetLabelMap(1);
   this->MRMLScene->AddNode(labelmapNode2.GetPointer());
 
   vtkMRMLSliceCompositeNode* sliceCompositeNode =
@@ -301,10 +302,53 @@ void qMRMLSliceControllerWidgetTester::testSetLabelVolumeWithNoLinkedControl()
 
   qMRMLNodeComboBox* comboBox =
     qobject_cast<qMRMLNodeComboBox*>(sliceControllerWidget.findChild<qMRMLNodeComboBox*>("LabelMapComboBox"));
-  QCOMPARE(comboBox->currentNodeId(), QString(labelmapNode2->GetID()));
+  QCOMPARE(comboBox->currentNodeID(), QString(labelmapNode2->GetID()));
 
   //sliceControllerWidget.show();
   //qApp->exec();
+}
+
+// ----------------------------------------------------------------------------
+void qMRMLSliceControllerWidgetTester::testUpdateSliceOrientationSelector()
+{
+  qMRMLSliceControllerWidget sliceControllerWidget;
+  sliceControllerWidget.setSliceViewLabel("R");
+  sliceControllerWidget.setSliceViewColor(Qt::red);
+  sliceControllerWidget.setMRMLScene(this->MRMLScene);
+  sliceControllerWidget.setMRMLSliceNode(this->MRMLSliceNode);
+  QCOMPARE(sliceControllerWidget.sliceOrientation(), QString("Axial"));
+
+  // Update the sliceToRAS matrix
+  vtkMatrix4x4* sliceToRAS =
+      sliceControllerWidget.mrmlSliceNode()->GetSliceToRAS();
+  sliceToRAS->SetElement(0, 0, 1.2);
+  sliceControllerWidget.mrmlSliceNode()->UpdateMatrices();
+
+  // Make sure the presets have not been updated
+  vtkNew<vtkStringArray> orientationNames;
+  sliceControllerWidget.mrmlSliceNode()->GetSliceOrientationPresetNames(orientationNames.GetPointer());
+  QCOMPARE(orientationNames->GetNumberOfValues(), static_cast<vtkIdType>(1));
+  QCOMPARE(orientationNames->GetValue(0).c_str(), "Axial");
+
+  // Check that current orientation is updated
+  QCOMPARE(sliceControllerWidget.mrmlSliceNode()->GetOrientation(), std::string("Reformat"));
+  QCOMPARE(sliceControllerWidget.sliceOrientation(), QString("Reformat"));
+
+  // Check that "Reformat" is the last item in the selector
+  QComboBox* orientationSelector =
+      sliceControllerWidget.findChild<QComboBox*>("SliceOrientationSelector");
+  QVERIFY(orientationSelector != nullptr);
+  QStringList items;
+  for(int idx = 0; idx < orientationSelector->count(); ++idx)
+    {
+    items << orientationSelector->itemText(idx);
+    }
+  QCOMPARE(items, QStringList() << "Axial" << "Reformat");
+
+  // Set orientation back to "Axial"
+  sliceControllerWidget.mrmlSliceNode()->SetOrientation("Axial");
+  QCOMPARE(sliceControllerWidget.sliceOrientation(), QString("Axial"));
+
 }
 
 // ----------------------------------------------------------------------------

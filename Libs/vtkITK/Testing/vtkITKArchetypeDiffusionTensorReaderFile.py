@@ -1,24 +1,25 @@
+from __future__ import print_function
 #Testing against the NRRD reader
 import unittest
 import slicer
 import vtkITK
+import vtkTeem
 from vtk.util import numpy_support as ns
 import numpy
 
 """
 To run as test from slicer python console, replace the following with your source tree path and paste:
 
-execfile('/Users/pieper/slicer4/latest/Slicer/Libs/vtkITK/Testing/vtkITKArchetypeDiffusionTensorReaderFile.py'); t = vtkITKReaderAgainstNRRDReader(); t.runTest()
+exec(open('/Users/pieper/slicer4/latest/Slicer/Libs/vtkITK/Testing/vtkITKArchetypeDiffusionTensorReaderFile.py').read()); t = vtkITKReaderAgainstNRRDReader(); t.runTest()
 
 note that from the 't' variable in the console you can access the readers and other instance variables for debugging.
 """
 
 class vtkITKReaderAgainstNRRDReader(unittest.TestCase):
     def setUp(self):
-        import SampleData
-        sampleDataLogic = SampleData.SampleDataLogic()
-        dti = sampleDataLogic.downloadDTIBrain()
-        self.file_name = dti.GetStorageNode().GetFileName()
+        from SampleData import SampleDataLogic
+        dtiSource = SampleDataLogic().sourceForSampleName('DTIBrain')
+        self.file_name = SampleDataLogic().downloadSourceIntoCache(dtiSource)[0]
 
         self.ritk = vtkITK.vtkITKArchetypeDiffusionTensorImageReaderFile()
         self.ritk.SetUseOrientationFromFile(True)
@@ -28,7 +29,7 @@ class vtkITKReaderAgainstNRRDReader(unittest.TestCase):
         self.ritk.SetArchetype(self.file_name)
         self.ritk.Update()
 
-        self.rnrrd = slicer.vtkNRRDReader()
+        self.rnrrd = vtkTeem.vtkTeemNRRDReader()
         self.rnrrd.SetFileName(self.file_name)
         self.rnrrd.Update()
 
@@ -41,10 +42,10 @@ class vtkITKReaderAgainstNRRDReader(unittest.TestCase):
         )
 
     def test_ras_to_ijk(self):
-        print "ITK Matrix"
-        print self.ritk.GetRasToIjkMatrix(),
-        print "NRRD Reader Matrix"
-        print self.rnrrd.GetRasToIjkMatrix()
+        print("ITK Matrix")
+        print(self.ritk.GetRasToIjkMatrix(), end=' ')
+        print("NRRD Reader Matrix")
+        print(self.rnrrd.GetRasToIjkMatrix())
 
         self.assertTrue(
             compare_vtk_matrix(
@@ -68,9 +69,9 @@ class vtkITKReaderAgainstNRRDReader(unittest.TestCase):
 
 
 def compare_vtk_matrix(m1, m2, n=4):
-    for i in xrange(0,n):
-        for j in xrange(0,n):
-            assert(m1.GetElement(i,j) == m2.GetElement(i,j))
+    for i in range(0,n):
+        for j in range(0,n):
+            assert m1.GetElement(i,j) == m2.GetElement(i,j)
     return True
 
 

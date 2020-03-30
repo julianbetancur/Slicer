@@ -80,7 +80,24 @@ void qSlicerAbstractModuleWidget::setup()
     qobject_cast<const qSlicerAbstractModule*>(this->module());
   if (m)
     {
+    this->setObjectName(QString("%1ModuleWidget").arg(m->name()));
     this->setWindowTitle(m->title());
     this->setWindowIcon(m->icon());
     }
+}
+
+//-----------------------------------------------------------
+bool qSlicerAbstractModuleWidget::setEditedNode(vtkMRMLNode* node,
+                                                QString role /* = QString()*/,
+                                                QString context /* = QString()*/)
+{
+  // this method is redefined here to make it Q_INVOKABLE
+  return qSlicerAbstractModuleRepresentation::setEditedNode(node, role, context);
+}
+
+//-----------------------------------------------------------
+double qSlicerAbstractModuleWidget::nodeEditable(vtkMRMLNode* node)
+{
+  // this method is redefined here to make it Q_INVOKABLE
+  return qSlicerAbstractModuleRepresentation::nodeEditable(node);
 }

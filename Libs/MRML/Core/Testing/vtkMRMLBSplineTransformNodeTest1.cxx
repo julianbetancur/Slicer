@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -11,19 +11,14 @@
 =========================================================================auto=*/
 
 #include "vtkMRMLBSplineTransformNode.h"
-
-#include <vtkGeneralTransform.h>
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLScene.h"
 
 int vtkMRMLBSplineTransformNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLBSplineTransformNode > node1 = vtkSmartPointer< vtkMRMLBSplineTransformNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_TRANSFORM_MRML_METHODS(vtkMRMLBSplineTransformNode, node1);
-  
+  vtkNew<vtkMRMLBSplineTransformNode> node1;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

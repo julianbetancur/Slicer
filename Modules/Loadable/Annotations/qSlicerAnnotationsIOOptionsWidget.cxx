@@ -55,7 +55,7 @@ qSlicerAnnotationsIOOptionsWidget::qSlicerAnnotationsIOOptionsWidget(QWidget* pa
   QLayout* oldLayout = this->layout();
   int margins[4];
   oldLayout->getContentsMargins(&margins[0],&margins[1],&margins[2],&margins[3]);
-  QLayoutItem* item = 0;
+  QLayoutItem* item = nullptr;
   while((item = oldLayout->takeAt(0)))
     {
     if (item->widget())
@@ -67,7 +67,7 @@ qSlicerAnnotationsIOOptionsWidget::qSlicerAnnotationsIOOptionsWidget(QWidget* pa
   delete oldLayout;
   flowLayout->setContentsMargins(0,0,0,0);
   this->setLayout(flowLayout);
-  
+
   this->FileTypeButtonGroup = new QButtonGroup(flowLayout);
   this->FileTypeButtonGroup->addButton(d->FiducialRadioButton);
   this->FileTypeButtonGroup->addButton(d->RulerRadioButton);
@@ -76,7 +76,7 @@ qSlicerAnnotationsIOOptionsWidget::qSlicerAnnotationsIOOptionsWidget(QWidget* pa
   this->connect(this->FileTypeButtonGroup, SIGNAL(buttonClicked(int)),
                 this, SLOT(updateProperties()));
 
-  
+
   connect(d->NameLineEdit, SIGNAL(textChanged(QString)),
           this, SLOT(updateProperties()));
   /*
@@ -95,8 +95,7 @@ qSlicerAnnotationsIOOptionsWidget::qSlicerAnnotationsIOOptionsWidget(QWidget* pa
 
 //-----------------------------------------------------------------------------
 qSlicerAnnotationsIOOptionsWidget::~qSlicerAnnotationsIOOptionsWidget()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerAnnotationsIOOptionsWidget::updateProperties()
@@ -144,7 +143,7 @@ void qSlicerAnnotationsIOOptionsWidget::setFileNames(const QStringList& fileName
     QRegExp fiducialName("(\\b|_)(F)(\\b|_)");
     QRegExp rulerName("(\\b|_)(M)(\\b|_)");
     QRegExp roiName("(\\b|_)(R)(\\b|_)");
-    QAbstractButton* activeButton = 0;
+    QAbstractButton* activeButton = nullptr;
 /*    QRegExp listName("(\\b|_)(List)(\\b|_)");
     if (fileInfo.baseName().contains(listName))
       {

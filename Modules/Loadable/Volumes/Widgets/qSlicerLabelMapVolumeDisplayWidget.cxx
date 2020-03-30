@@ -43,20 +43,19 @@ public:
   ~qSlicerLabelMapVolumeDisplayWidgetPrivate();
   void init();
 
-  vtkMRMLScalarVolumeNode* VolumeNode;
+  vtkWeakPointer<vtkMRMLScalarVolumeNode> VolumeNode;
 };
 
 //-----------------------------------------------------------------------------
 qSlicerLabelMapVolumeDisplayWidgetPrivate::qSlicerLabelMapVolumeDisplayWidgetPrivate(qSlicerLabelMapVolumeDisplayWidget& object)
   : q_ptr(&object)
 {
-  this->VolumeNode = 0;
+  this->VolumeNode = nullptr;
 }
 
 //-----------------------------------------------------------------------------
 qSlicerLabelMapVolumeDisplayWidgetPrivate::~qSlicerLabelMapVolumeDisplayWidgetPrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerLabelMapVolumeDisplayWidgetPrivate::init()
@@ -66,6 +65,9 @@ void qSlicerLabelMapVolumeDisplayWidgetPrivate::init()
   this->setupUi(q);
   QObject::connect(this->ColorTableComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    q, SLOT(setColorNode(vtkMRMLNode*)));
+  QObject::connect(this->SliceIntersectionThicknessSpinBox, SIGNAL(valueChanged(int)),
+                   q, SLOT(setSliceIntersectionThickness(int)));
+
   // disable as there is not MRML Node associated with the widget
   q->setEnabled(false);
 }
@@ -80,8 +82,7 @@ qSlicerLabelMapVolumeDisplayWidget::qSlicerLabelMapVolumeDisplayWidget(QWidget* 
 
 // --------------------------------------------------------------------------
 qSlicerLabelMapVolumeDisplayWidget::~qSlicerLabelMapVolumeDisplayWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 vtkMRMLScalarVolumeNode* qSlicerLabelMapVolumeDisplayWidget::volumeNode()const
@@ -95,7 +96,7 @@ vtkMRMLLabelMapVolumeDisplayNode* qSlicerLabelMapVolumeDisplayWidget::volumeDisp
 {
   Q_D(const qSlicerLabelMapVolumeDisplayWidget);
   return d->VolumeNode ? vtkMRMLLabelMapVolumeDisplayNode::SafeDownCast(
-    d->VolumeNode->GetDisplayNode()) : 0;
+    d->VolumeNode->GetDisplayNode()) : nullptr;
 }
 
 // --------------------------------------------------------------------------
@@ -110,11 +111,11 @@ void qSlicerLabelMapVolumeDisplayWidget::setMRMLVolumeNode(vtkMRMLScalarVolumeNo
   Q_D(qSlicerLabelMapVolumeDisplayWidget);
   vtkMRMLLabelMapVolumeDisplayNode* oldVolumeDisplayNode = this->volumeDisplayNode();
 
-  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() : 0,
+  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() : nullptr,
                 vtkCommand::ModifiedEvent,
                 this, SLOT(updateWidgetFromMRML()));
   d->VolumeNode = volumeNode;
-  this->setEnabled(volumeNode != 0);
+  this->setEnabled(volumeNode != nullptr);
   this->updateWidgetFromMRML();
 }
 
@@ -127,6 +128,8 @@ void qSlicerLabelMapVolumeDisplayWidget::updateWidgetFromMRML()
   if (displayNode)
     {
     d->ColorTableComboBox->setCurrentNode(displayNode->GetColorNode());
+    d->SliceIntersectionThicknessSpinBox->setValue(
+       displayNode->GetSliceIntersectionThickness());
     }
 }
 
@@ -141,4 +144,23 @@ void qSlicerLabelMapVolumeDisplayWidget::setColorNode(vtkMRMLNode* colorNode)
     }
   Q_ASSERT(vtkMRMLColorNode::SafeDownCast(colorNode));
   displayNode->SetAndObserveColorNodeID(colorNode->GetID());
+}
+
+// --------------------------------------------------------------------------
+void qSlicerLabelMapVolumeDisplayWidget::setSliceIntersectionThickness(int thickness)
+{
+  vtkMRMLLabelMapVolumeDisplayNode* displayNode =
+    this->volumeDisplayNode();
+  if (!displayNode)
+    {
+    return;
+    }
+  displayNode->SetSliceIntersectionThickness(thickness);
+}
+
+//------------------------------------------------------------------------------
+int qSlicerLabelMapVolumeDisplayWidget::sliceIntersectionThickness()const
+{
+  Q_D(const qSlicerLabelMapVolumeDisplayWidget);
+  return d->SliceIntersectionThicknessSpinBox->value();
 }

@@ -35,9 +35,11 @@ class QMRML_WIDGETS_EXPORT qMRMLCheckableNodeComboBoxEventPlayer :
   Q_OBJECT
 
 public:
-  qMRMLCheckableNodeComboBoxEventPlayer(QObject* parent = 0);
+  typedef pqWidgetEventPlayer Superclass;
+  qMRMLCheckableNodeComboBoxEventPlayer(QObject* parent = nullptr);
 
-  bool playEvent(QObject *Object, const QString &Command, const QString &Arguments, bool &Error);
+  using Superclass::playEvent;
+  bool playEvent(QObject *Object, const QString &Command, const QString &Arguments, bool &Error) override;
 
 private:
   qMRMLCheckableNodeComboBoxEventPlayer(const qMRMLCheckableNodeComboBoxEventPlayer&); // NOT implemented

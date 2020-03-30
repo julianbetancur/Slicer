@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,18 +10,12 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLLabelMapVolumeDisplayNode.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLLabelMapVolumeDisplayNode.h"
 
 int vtkMRMLLabelMapVolumeDisplayNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLLabelMapVolumeDisplayNode > node1 = vtkSmartPointer< vtkMRMLLabelMapVolumeDisplayNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_DISPLAY_MRML_METHODS(vtkMRMLLabelMapVolumeDisplayNode, node1);
-  
+  vtkNew<vtkMRMLLabelMapVolumeDisplayNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

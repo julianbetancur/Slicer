@@ -20,9 +20,9 @@
 
 // QT includes
 #include <QApplication>
-#include <QDoubleSpinBox>
 #include <QEvent>
 #include <QHBoxLayout>
+#include <QDebug>
 
 // CTK includes
 #include <ctkColorDialog.h>
@@ -30,6 +30,7 @@
 #include <ctkDoubleSlider.h>
 #include <ctkSliderWidget.h>
 #include <ctkPopupWidget.h>
+#include <ctkDoubleSpinBox.h>
 
 // qMRML includes
 #include "qMRMLColorModel.h"
@@ -39,7 +40,7 @@
 qMRMLItemDelegate::qMRMLItemDelegate(QObject *parent)
   : QStyledItemDelegate(parent)
 {
-  this->DummySpinBox = new QDoubleSpinBox(0);
+  this->DummySpinBox = new ctkDoubleSpinBox(nullptr);
   this->DummySpinBox->setDecimals(2);
   this->DummySpinBox->setRange(0., 1.);
 }
@@ -48,7 +49,7 @@ qMRMLItemDelegate::qMRMLItemDelegate(QObject *parent)
 qMRMLItemDelegate::~qMRMLItemDelegate()
 {
   delete this->DummySpinBox;
-  this->DummySpinBox = 0;
+  this->DummySpinBox = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -61,10 +62,9 @@ bool qMRMLItemDelegate::isColor(const QModelIndex& index)const
     {
     return true;
     }
-  else if(editData.isNull() &&
-          //qobject_cast<const qMRMLColorModel*>(index.model()) != 0 &&
-          decorationData.type() == QVariant::Pixmap &&
-          index.data(qMRMLColorModel::ColorRole).type() == QVariant::Color)
+  else if ( editData.isNull() &&
+            decorationData.type() == QVariant::Pixmap &&
+            index.data(qMRMLColorModel::ColorRole).type() == QVariant::Color )
     {
     return true;
     }
@@ -120,40 +120,21 @@ QWidget *qMRMLItemDelegate
     }
   else if (this->is0To1Value(index))
     {
-    ctkSliderWidget* slider = new ctkSliderWidget(0);
+    ctkSliderWidget* slider = new ctkSliderWidget(nullptr);
     slider->setDecimals(2);
     slider->setSingleStep(0.1);
     slider->setRange(0., 1.);
     slider->setPopupSlider(true);
-    QSize s = slider->popup()->size();
     slider->popup()->layout()->setSizeConstraint(QLayout::SetMinimumSize);
-    // ctkSliderWidget::setParent() must be called after
-    // ctkSliderWidget::setPopupSlider(true)
     slider->setParent(parent);
 
-    QDoubleSpinBox *spinBox = slider->spinBox();
+    ctkDoubleSpinBox *spinBox = slider->spinBox();
     spinBox->setFrame(false);
-    /*
-    //spinBox->setParent(parent);
-
-    ctkPopupWidget* popupWidget = new ctkPopupWidget;
-    QHBoxLayout* layout = new QHBoxLayout;
-    layout->addWidget(slider);
-    layout->setContentsMargins(0,0,0,0);
-    popupWidget->setLayout(layout);
-    popupWidget->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    popupWidget->setOrientation(Qt::Horizontal);
-    popupWidget->setHorizontalDirection(Qt::RightToLeft);
-    popupWidget->setBaseWidget(spinBox);
-    
-    QObject::connect(spinBox, SIGNAL(destroyed(QObject*)),
-                     popupWidget, SLOT(deleteLater()));
-    */
     QObject::connect(slider, SIGNAL(valueChanged(double)),
                      this, SLOT(commitSenderData()));
     return slider;
     }
-  return this->QStyledItemDelegate::createEditor(parent, option, index);
+  return this->Superclass::createEditor(parent, option, index);
 }
 
 //------------------------------------------------------------------------------
@@ -164,25 +145,38 @@ void qMRMLItemDelegate::setEditorData(QWidget *editor,
     {
     QColor color = index.data(this->colorRole(index)).value<QColor>();
     ctkColorPickerButton* colorPicker = qobject_cast<ctkColorPickerButton*>(editor);
-    Q_ASSERT(colorPicker);
-    colorPicker->blockSignals(true);
-    colorPicker->setColor(color);
-    colorPicker->blockSignals(false);
-    if (colorPicker->property("changeColorOnSet").toBool())
+    if (colorPicker) // colorPicker may be nullptr, don't make the application crash when that happens
       {
-      colorPicker->setProperty("changeColorOnSet", false);
-      colorPicker->changeColor();
+      colorPicker->blockSignals(true);
+      colorPicker->setColor(color);
+      colorPicker->blockSignals(false);
+      if (colorPicker->property("changeColorOnSet").toBool())
+        {
+        colorPicker->setProperty("changeColorOnSet", false);
+        colorPicker->changeColor();
+        }
+      }
+    else
+      {
+      qWarning() << Q_FUNC_INFO << " failed: colorPicker is invalid";
       }
     }
   else if (this->is0To1Value(index))
     {
     ctkSliderWidget *sliderWidget = qobject_cast<ctkSliderWidget*>(editor);
     double value = index.data(Qt::EditRole).toDouble();
-    sliderWidget->setValue(value);
+    if (sliderWidget) // sliderWidget may be nullptr, don't make the application crash when that happens
+      {
+      sliderWidget->setValue(value);
+      }
+    else
+      {
+      qWarning() << Q_FUNC_INFO << " failed: sliderWidget is invalid";
+      }
     }
   else
     {
-    this->QStyledItemDelegate::setEditorData(editor, index);
+    this->Superclass::setEditorData(editor, index);
     }
 }
 
@@ -201,13 +195,12 @@ void qMRMLItemDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
   else if (this->is0To1Value(index))
     {
     ctkSliderWidget *sliderWidget = qobject_cast<ctkSliderWidget*>(editor);
-    //spinBox->interpretText();
     QString value = QString::number(sliderWidget->value(), 'f', 2);
     model->setData(index, value, Qt::EditRole);
     }
   else
     {
-    this->QStyledItemDelegate::setModelData(editor, model, index);
+    this->Superclass::setModelData(editor, model, index);
     }
 }
 
@@ -215,11 +208,6 @@ void qMRMLItemDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
 void qMRMLItemDelegate::commitSenderData()
 {
   QWidget* editor = qobject_cast<QWidget*>(this->sender());
-  //ctkSliderWidget* sliderEditor = qobject_cast<ctkSliderWidget*>(editor);
-  //if (sliderEditor)
-  //  {
-  //  editor = sliderEditor->spinBox();
-  //  }
   emit commitData(editor);
 }
 
@@ -236,12 +224,11 @@ QSize qMRMLItemDelegate
 ::sizeHint(const QStyleOptionViewItem &option,
            const QModelIndex &index) const
 {
-  QVariant editData = index.data(Qt::EditRole);
   if (this->is0To1Value(index))
     {
     return this->DummySpinBox->sizeHint();
     }
-  return this->QStyledItemDelegate::sizeHint(option, index);
+  return this->Superclass::sizeHint(option, index);
 }
 
 //------------------------------------------------------------------------------
@@ -259,7 +246,7 @@ void qMRMLItemDelegate
     }
   else
     {
-    this->QStyledItemDelegate::updateEditorGeometry(editor, option, index);
+    this->Superclass::updateEditorGeometry(editor, option, index);
     }
 }
 
@@ -271,7 +258,7 @@ bool qMRMLItemDelegate::eventFilter(QObject *object, QEvent *event)
       (event->type() == QEvent::FocusOut ||
       (event->type() == QEvent::Hide && editor->isWindow())))
     {
-    //the Hide event will take care of he editors that are in fact complete dialogs
+    // The Hide event will take care of he editors that are in fact complete dialogs
     if (!editor->isActiveWindow() || (QApplication::focusWidget() != editor))
       {
       QWidget* widget = QApplication::focusWidget();
@@ -286,6 +273,6 @@ bool qMRMLItemDelegate::eventFilter(QObject *object, QEvent *event)
         }
       }
     }
-  return this->QStyledItemDelegate::eventFilter(object, event);
+  return this->Superclass::eventFilter(object, event);
 }
 

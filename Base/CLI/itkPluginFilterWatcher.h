@@ -1,15 +1,22 @@
 /*=========================================================================
-
-  Copyright (c) Insight Software Consortium. All rights reserved.
-  See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
-#ifndef __itkPluginFilterWatcher_h
-#define __itkPluginFilterWatcher_h
+ *
+ *  Copyright NumFOCUS
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0.txt
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *=========================================================================*/
+#ifndef itkPluginFilterWatcher_h
+#define itkPluginFilterWatcher_h
 
 // ModuleDescriptionParser includes
 #include <ModuleProcessInformation.h>
@@ -30,7 +37,7 @@ class PluginFilterWatcher: public SimpleFilterWatcher
 public:
   PluginFilterWatcher(itk::ProcessObject* o,
                       const char *comment="",
-                      ModuleProcessInformation *inf=0,
+                      ModuleProcessInformation *inf=nullptr,
                       double fraction = 1.0,
                       double start = 0.0)
     : SimpleFilterWatcher(o, comment)
@@ -38,13 +45,13 @@ public:
     m_ProcessInformation = inf;
     m_Fraction = fraction;
     m_Start = start;
-  };
+  }
 
 protected:
 
 //-----------------------------------------------------------------------------
 /** Callback method to show the ProgressEvent */
-virtual void ShowProgress()
+void ShowProgress() override
 {
   if (this->GetProcess())
     {
@@ -55,17 +62,24 @@ virtual void ShowProgress()
         {
         strncpy(m_ProcessInformation->ProgressMessage,
                 this->GetComment().c_str(), 1023);
-        m_ProcessInformation->Progress = 
+        m_ProcessInformation->Progress =
           (this->GetProcess()->GetProgress() * m_Fraction + m_Start);
         if (m_Fraction != 1.0)
           {
           m_ProcessInformation->StageProgress = this->GetProcess()->GetProgress();
           }
 
-        this->GetTimeProbe().Stop();
-        m_ProcessInformation->ElapsedTime
-          = this->GetTimeProbe().GetMean()
-          * this->GetTimeProbe().GetNumberOfStops();
+        try
+          {
+          this->GetTimeProbe().Stop();
+          m_ProcessInformation->ElapsedTime
+            = this->GetTimeProbe().GetMean()
+            * this->GetTimeProbe().GetNumberOfStops();
+          }
+        catch(...)
+          {
+          // ignore time probe exceptions
+          }
         this->GetTimeProbe().Start();
 
         if (m_ProcessInformation->Abort)
@@ -90,7 +104,7 @@ virtual void ShowProgress()
         if (m_Fraction != 1.0)
           {
           std::cout << "<filter-stage-progress>"
-                    << this->GetProcess()->GetProgress() 
+                    << this->GetProcess()->GetProgress()
                     << "</filter-stage-progress>"
                     << std::endl;
           }
@@ -102,7 +116,7 @@ virtual void ShowProgress()
 
 //-----------------------------------------------------------------------------
 /** Callback method to show the StartEvent */
-virtual void StartFilter()
+void StartFilter() override
 {
   this->SetSteps(0);
   this->SetIterations(0);
@@ -115,7 +129,7 @@ virtual void StartFilter()
       m_ProcessInformation->StageProgress = 0;
       strncpy(m_ProcessInformation->ProgressMessage,
               this->GetComment().c_str(), 1023);
-      
+
       if (m_ProcessInformation->ProgressCallbackFunction
           && m_ProcessInformation->ProgressCallbackClientData)
         {
@@ -144,7 +158,7 @@ virtual void StartFilter()
 
 //-----------------------------------------------------------------------------
 /** Callback method to show the EndEvent */
-virtual void EndFilter()
+void EndFilter() override
 {
   this->GetTimeProbe().Stop();
   if (!this->GetQuiet())
@@ -157,7 +171,7 @@ virtual void EndFilter()
       m_ProcessInformation->ElapsedTime
         = this->GetTimeProbe().GetMean()
         * this->GetTimeProbe().GetNumberOfStops();
-      
+
       if (m_ProcessInformation->ProgressCallbackFunction
           && m_ProcessInformation->ProgressCallbackClientData)
         {
@@ -185,6 +199,7 @@ virtual void EndFilter()
 
 
   ModuleProcessInformation *m_ProcessInformation;
+
   double m_Fraction;
   double m_Start;
 };

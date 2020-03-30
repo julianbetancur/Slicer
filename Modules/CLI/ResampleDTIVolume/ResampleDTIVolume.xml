@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>Diffusion.Diffusion Tensor Images</category>
+  <category>Diffusion.Utilities</category>
   <title>Resample DTI Volume</title>
   <description><![CDATA[Resampling an image is a very important task in image analysis. It is especially important in the frame of image registration. This module implements DT image resampling through the use of itk Transforms. The resampling is controlled by the Output Spacing. "Resampling" is performed in space coordinates, not pixel/grid coordinates. It is quite important to ensure that image spacing is properly set on the images involved. The interpolator is required since the mapping from one space to the other will often require evaluation of the intensity of the image at non-grid positions.]]></description>
-  <version>0.1</version>
-  <documentation-url>http://wiki.slicer.org/slicerWiki/index.php/Documentation/4.2/Modules/ResampleDTI</documentation-url>
+  <version>1.0.2</version>
+  <documentation-url>http://wiki.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/ResampleDTI</documentation-url>
   <license/>
   <contributor>Francois Budin (UNC)</contributor>
   <acknowledgements><![CDATA[This work is part of the National Alliance for Medical Image Computing (NAMIC), funded by the National Institutes of Health through the NIH Roadmap for Medical Research, Grant U54 EB005149. Information on the National Centers for Biomedical Computing can be obtained from http://nihroadmap.nih.gov/bioinformatics]]></acknowledgements>
   <parameters>
-    <label>Input/Ouput</label>
+    <label>Input/Output</label>
     <description><![CDATA[Input/output parameters]]></description>
     <image type="tensor">
       <name>inputVolume</name>
@@ -18,7 +18,7 @@
       <index>0</index>
       <description><![CDATA[Input volume to be resampled]]></description>
     </image>
-    <image type="tensor">
+    <image type="tensor" reference="inputVolume">
       <name>outputVolume</name>
       <label>Output Volume</label>
       <channel>output</channel>
@@ -38,7 +38,7 @@
   <parameters>
     <label>Transform Parameters</label>
     <description><![CDATA[Parameters used to transform the input image into the output image]]></description>
-    <transform fileExtensions=".mat">
+    <transform fileExtensions=".h5">
       <name>transformationFile</name>
       <label>Transform Node</label>
       <flag>-f</flag>
@@ -79,6 +79,13 @@
       <element>bs</element>
       <default>linear</default>
     </string-enumeration>
+    <boolean>
+      <name>noMeasurementFrame</name>
+      <longflag>--noMeasurementFrame</longflag>
+      <description><![CDATA[Do not use the measurement frame that is in the input image to transform the tensors. Uses the image orientation instead]]></description>
+      <label>No Measurement Frame</label>
+      <default>false</default>
+    </boolean>
     <string-enumeration>
       <name>correction</name>
       <longflag>--correction</longflag>

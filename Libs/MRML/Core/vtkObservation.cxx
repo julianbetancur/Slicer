@@ -20,7 +20,6 @@
 #include <vtkCallbackCommand.h>
 #include <vtkObjectFactory.h>
 
-vtkCxxRevisionMacro(vtkObservation, "$Revision: 1.9.12.1 $");
 vtkStandardNewMacro(vtkObservation);
 vtkCxxSetObjectMacro(vtkObservation, CallbackCommand, vtkCallbackCommand);
 vtkCxxSetObjectMacro(vtkObservation, EventBroker, vtkEventBroker);
@@ -28,21 +27,21 @@ vtkCxxSetObjectMacro(vtkObservation, EventBroker, vtkEventBroker);
 //----------------------------------------------------------------------------
 vtkObservation::vtkObservation()
 {
-  this->EventBroker = NULL;
+  this->EventBroker = nullptr;
   this->InEventQueue = 0;
-  this->Subject = NULL;
+  this->Subject = nullptr;
   this->Event = 0;
-  this->Observer = NULL;
-  this->CallbackCommand = NULL;
-  this->Script = NULL;
-  this->Comment = NULL;
+  this->Observer = nullptr;
+  this->CallbackCommand = nullptr;
+  this->Script = nullptr;
+  this->Comment = nullptr;
   this->Priority = 0.0f;
   this->EventTag = 0;
   this->SubjectDeleteEventTag = 0;
   this->ObserverDeleteEventTag = 0;
 
   this->ObservationCallbackCommand = vtkCallbackCommand::New();
-  this->ObservationCallbackCommand->SetCallback( vtkEventBroker::Callback ); 
+  this->ObservationCallbackCommand->SetCallback( vtkEventBroker::Callback );
   this->ObservationCallbackCommand->SetClientData( reinterpret_cast<void *> (this) );
 
   this->LastElapsedTime = 0.0;
@@ -52,19 +51,19 @@ vtkObservation::vtkObservation()
 //----------------------------------------------------------------------------
 vtkObservation::~vtkObservation()
 {
-  this->SetScript( NULL );
+  this->SetScript( nullptr );
 
-  if (this->ObservationCallbackCommand != NULL)
+  if (this->ObservationCallbackCommand != nullptr)
     {
     this->ObservationCallbackCommand->Delete();
     }
 
-  if (this->CallbackCommand != NULL)
+  if (this->CallbackCommand != nullptr)
     {
     this->CallbackCommand->Delete();
     }
 
-  if (this->EventBroker != NULL)
+  if (this->EventBroker != nullptr)
     {
     this->EventBroker->Delete();
     }
@@ -74,7 +73,7 @@ vtkObservation::~vtkObservation()
 void vtkObservation::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->vtkObject::PrintSelf(os, indent);
-  
+
 
   if ( this->CallbackCommand ) os << indent << "EventBroker: " << this->EventBroker << "\n";
   else os << indent << "EventBroker: " << "(none) \n";

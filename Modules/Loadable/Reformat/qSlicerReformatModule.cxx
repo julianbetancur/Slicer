@@ -18,11 +18,8 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
-// SlicerQt includes
-#include "vtkSlicerTransformLogic.h"
+// QTGUI includes
+#include "qSlicerApplication.h"
 
 // Reformat Logic includes
 #include <vtkSlicerReformatLogic.h>
@@ -30,10 +27,6 @@
 // Reformat includes
 #include "qSlicerReformatModule.h"
 #include "qSlicerReformatModuleWidget.h"
-
-//------------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerReformatModule,
-                 qSlicerReformatModule);
 
 //------------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_Reformat
@@ -48,8 +41,7 @@ public:
 
 //------------------------------------------------------------------------------
 qSlicerReformatModulePrivate::qSlicerReformatModulePrivate()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 // qSlicerReformatModule methods
@@ -63,13 +55,12 @@ qSlicerReformatModule(QObject* _parent) : Superclass(_parent),
 
 //------------------------------------------------------------------------------
 qSlicerReformatModule::~qSlicerReformatModule()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 QString qSlicerReformatModule::helpText()const
 {
-  QString help = 
+  QString help =
       "The Transforms Reformat Widget Module creates "
       "and edits the Slice Node transforms.<br>"
       "<a href=\"%1/Documentation/%2.%3/Modules/Reformat\">"
@@ -126,4 +117,12 @@ createWidgetRepresentation()
 vtkMRMLAbstractLogic* qSlicerReformatModule::createLogic()
 {
   return vtkSlicerReformatLogic::New();
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerReformatModule::associatedNodeTypes() const
+{
+  return QStringList()
+    << "vtkMRMLSliceNode"
+    << "vtkMRMLSliceCompositeNode";
 }

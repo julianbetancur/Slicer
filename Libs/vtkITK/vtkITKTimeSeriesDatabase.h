@@ -19,15 +19,16 @@
 
 #include "vtkImageData.h"
 #include "vtkPointData.h"
-#include "vtkImageSource.h"
+#include "vtkImageAlgorithm.h"
 #include "itkTimeSeriesDatabase.h"
 #include "vtkImageImport.h"
 #include "itkVTKImageExport.h"
+#include <vtkVersion.h>
 
 #include "vtkITK.h"
 #include "vtkITKUtility.h"
 
-/// \brief Effeciently process large datasets in small memory.
+/// \brief Efficiently process large datasets in small memory.
 ///
 /// TimeSeriesDatabase creates a database on disk from a series of volumes
 /// stored on disk.  The database allows efficient access to volumes,
@@ -37,13 +38,13 @@
 /// This work is part of the National Alliance for Medical Image Computing
 /// (NAMIC), funded by the National Institutes of Health through the NIH Roadmap
 /// for Medical Research, Grant U54 EB005149.
-class VTK_ITK_EXPORT vtkITKTimeSeriesDatabase : public vtkImageSource
+class VTK_ITK_EXPORT vtkITKTimeSeriesDatabase : public vtkImageAlgorithm
 {
 public:
   /// vtkStandardNewMacro ( vtkITKTimeSeriesDatabase );
   static vtkITKTimeSeriesDatabase *New();
-  void PrintSelf(ostream& os, vtkIndent indent){ Superclass::PrintSelf(os, indent);};
-  vtkTypeRevisionMacro(vtkITKTimeSeriesDatabase,vtkImageSource);
+  void PrintSelf(ostream& os, vtkIndent indent) override{ Superclass::PrintSelf(os, indent);}
+  vtkTypeMacro(vtkITKTimeSeriesDatabase,vtkImageAlgorithm);
 
 public:
   /// Create a TimeSeriesDatabase from a series of volumes
@@ -51,22 +52,22 @@ public:
   {
     itk::TimeSeriesDatabase<OutputImagePixelType>::CreateFromFileArchetype ( TSDFilename, ArchetypeFilename );
   };
-  
+
   /// Connect/Disconnect to a database
   /// void Connect ( const char* filename ) { this->m_Filter->Connect ( filename ); this->Modified(); };
   /// void Disconnect() { this->m_Filter->Disconnect(); }
 
-  /// Get/Set the current time stamp to read 
+  /// Get/Set the current time stamp to read
   void SetCurrentImage ( unsigned int value )
-  { DelegateITKInputMacro ( SetCurrentImage, value); }; 
+  { DelegateITKInputMacro ( SetCurrentImage, value); };
   unsigned int GetCurrentImage ( unsigned int vtkNotUsed(value) )
-  { DelegateITKOutputMacro ( GetCurrentImage ); }; 
+  { DelegateITKOutputMacro ( GetCurrentImage ); };
 
-  int GetNumberOfVolumes() 
-  { DelegateITKOutputMacro ( GetNumberOfVolumes ); }; 
-  
+  int GetNumberOfVolumes()
+  { DelegateITKOutputMacro ( GetNumberOfVolumes ); };
+
 protected:
-  vtkITKTimeSeriesDatabase() 
+  vtkITKTimeSeriesDatabase()
     {
     m_Filter = SourceType::New();
     this->itkExporter = ImageExportType::New();
@@ -74,7 +75,7 @@ protected:
     ConnectPipelines ( this->itkExporter, this->vtkImporter );
     this->itkExporter->SetInput ( m_Filter->GetOutput() );
     };
-  ~vtkITKTimeSeriesDatabase() 
+  ~vtkITKTimeSeriesDatabase() override
     {
     this->vtkImporter->Delete();
     }
@@ -87,15 +88,15 @@ protected:
 
   SourceType::Pointer m_Filter;
   ImageExportType::Pointer itkExporter;
-  vtkImageImport* vtkImporter;  
-  
-  virtual void ExecuteInformation();
+  vtkImageImport* vtkImporter;
+
+  int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *) override;
   /// defined in the subclasses
-  virtual void ExecuteData(vtkDataObject *output);
+  void ExecuteDataWithInformation(vtkDataObject *output, vtkInformation *outInfo) override;
 
 private:
-  vtkITKTimeSeriesDatabase(const vtkITKTimeSeriesDatabase&);  /// Not implemented.
-  void operator=(const vtkITKTimeSeriesDatabase&);  /// Not implemented.
+  vtkITKTimeSeriesDatabase(const vtkITKTimeSeriesDatabase&) = delete;
+  void operator=(const vtkITKTimeSeriesDatabase&) = delete;
 
 };
 

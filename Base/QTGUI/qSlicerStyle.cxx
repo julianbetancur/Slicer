@@ -19,9 +19,13 @@
 ==============================================================================*/
 
 // Qt includes
-#include <QStyleOptionGroupBox>
+#include <QAbstractScrollArea>
+#include <QStyleFactory>
+#include <QDebug>
+#include <QEvent>
 #include <QGroupBox>
-#include <QCleanlooksStyle>
+#include <QScrollBar>
+#include <QStyleOptionGroupBox>
 
 // qMRML includes
 #include "qSlicerStyle.h"
@@ -31,16 +35,14 @@
 
 // --------------------------------------------------------------------------
 qSlicerStyle::qSlicerStyle()
-  : Superclass(new QCleanlooksStyle)
+  : Superclass(QStyleFactory::create("fusion"))
 {
-
+  this->baseStyle()->setParent(this);
 }
 
 // --------------------------------------------------------------------------
 qSlicerStyle::~qSlicerStyle()
-{
-
-}
+= default;
 
 //------------------------------------------------------------------------------
 QStyle::SubControl qSlicerStyle::hitTestComplexControl(ComplexControl cc, const QStyleOptionComplex *opt,
@@ -115,6 +117,9 @@ int qSlicerStyle::pixelMetric(PixelMetric metric, const QStyleOption * option,
     case QStyle::PM_SliderLength:
       return 12; // default to 27
       break;
+    case QStyle::PM_ButtonIconSize:
+      return 24; // Like with cleanlooks style
+      break;
     default:
       return Superclass::pixelMetric(metric, option, widget);
       break;
@@ -134,69 +139,6 @@ QRect qSlicerStyle::subControlRect(ComplexControl control, const QStyleOptionCom
   /// the following code aims at overriding that value by setting it to 4.
   switch(control)
     {
-    case CC_GroupBox:
-      if (const QStyleOptionGroupBox *groupBox =
-          qstyleoption_cast<const QStyleOptionGroupBox *>(option))
-        {
-        int topMargin = 0;
-        int topHeight = 0;
-        int verticalAlignment = this->proxy()->styleHint(
-            SH_GroupBox_TextLabelVerticalAlignment, groupBox, widget);
-        bool flat = groupBox->features & QStyleOptionFrameV2::Flat;
-        if (!groupBox->text.isEmpty())
-          {
-          topHeight = groupBox->fontMetrics.height();
-          if (verticalAlignment & Qt::AlignVCenter)
-            {
-            topMargin = topHeight / 2;
-            }
-          else if (verticalAlignment & Qt::AlignTop)
-            {
-            topMargin = topHeight;
-            }
-          }
-        QRect frameRect = groupBox->rect;
-        frameRect.setTop(topMargin);
-        if (subControl == SC_GroupBoxFrame)
-          {
-          return rect;
-          }
-        else if (subControl == SC_GroupBoxContents)
-          {
-          if(flat)
-            {
-            int margin = 0;
-            int leftMarginExtension = 4; // default 16
-            rect = frameRect.adjusted(leftMarginExtension + margin, margin + topHeight, -margin, -margin);
-            }
-          break;
-          }
-        if(flat)
-          {
-          if (const QGroupBox *groupBoxWidget = qobject_cast<const QGroupBox *>(widget))
-            {
-            //Prepare metrics for a bold font
-            QFont font = widget->font();
-            font.setBold(true);
-            QFontMetrics fontMetrics(font);
-
-            QSize textRect = fontMetrics.boundingRect(groupBoxWidget->title()).size() + QSize(2, 2);
-            if (subControl == SC_GroupBoxCheckBox)
-              {
-              int indicatorWidth = proxy()->pixelMetric(PM_IndicatorWidth, option, widget);
-              int indicatorHeight = proxy()->pixelMetric(PM_IndicatorHeight, option, widget);
-              rect.setWidth(indicatorWidth);
-              rect.setHeight(indicatorHeight);
-              rect.moveTop((fontMetrics.height() - indicatorHeight) / 2 + 2);
-              }
-            else if (subControl == SC_GroupBoxLabel)
-              {
-              rect.setSize(textRect);
-              }
-            }
-          }
-        }
-      break;
 #ifndef QT_NO_SLIDER
     // <HACK>
     // Reimplemented to work around bug: http://bugreports.qt.nokia.com/browse/QTBUG-13318
@@ -277,8 +219,54 @@ int qSlicerStyle::styleHint(StyleHint hint, const QStyleOption *opt, const QWidg
         res = widget->property("SH_ItemView_ActivateItemOnSingleClick").toBool();
         break;
         }
+    // Overload the SH_ComboBox_Popup option to prevent issue with checkable
+    // combobox. For more details see: https://bugreports.qt.io/browse/QTBUG-19683
+    case QStyle::SH_ComboBox_Popup:
+      {
+      res = 0;
+      break;
+      }
     default:
       res = this->Superclass::styleHint(hint, opt, widget, returnData);
     }
   return res;
 }
+
+//------------------------------------------------------------------------------
+bool qSlicerStyle::eventFilter(QObject* obj, QEvent* event)
+{
+  QWidget* widget = qobject_cast<QWidget*>(obj);
+  if (!widget)
+    {
+    return this->Superclass::eventFilter(obj, event);
+    }
+  switch (event->type())
+    {
+    case QEvent::Wheel:
+      if (qobject_cast<QAbstractScrollArea*>(widget) ||
+          qobject_cast<QScrollBar*>(widget) ||
+          qobject_cast<QAbstractScrollArea*>(widget->parentWidget()))
+        {
+        break;
+        }
+      for (QWidget* ancestor = widget->parentWidget();
+           ancestor; ancestor = ancestor->parentWidget())
+        {
+        if (QAbstractScrollArea* scrollArea =
+            qobject_cast<QAbstractScrollArea*>(ancestor))
+          {
+          if (scrollArea->verticalScrollBar()->minimum() !=
+              scrollArea->verticalScrollBar()->maximum())
+            {
+            event->ignore();
+            return true;
+            }
+          }
+        }
+      break;
+    default:
+      break;
+    }
+  return this->Superclass::eventFilter(obj, event);
+}
+

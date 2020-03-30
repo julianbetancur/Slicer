@@ -16,19 +16,17 @@
 #define __vtkMRMLTensorVolumeNode_h
 
 #include "vtkMRMLScalarVolumeNode.h"
-
-class vtkImageData;
-class vtkDoubleArray;
-class vtkMatrix4x4;
-class vtkDiffusionTensorMathematics;
-class vtkAssignAttribute;
 class vtkMRMLStorageNode;
+
+class vtkDoubleArray;
+class vtkImageData;
+class vtkMatrix4x4;
 
 /// \brief MRML node for representing diffusion weighted MRI volume.
 ///
 /// Diffusion Weigthed Volume nodes describe data sets that encode diffusion weigthed
 /// images. These images are the basis for computing the diffusion tensor.
-/// The node is a container for the neccesary information to interpert DW images:
+/// The node is a container for the necessary information to interpert DW images:
 /// 1. Gradient information.
 /// 2. B value for each gradient.
 /// 3. Measurement frame that relates the coordinate system where the gradients are given
@@ -38,42 +36,42 @@ class VTK_MRML_EXPORT vtkMRMLTensorVolumeNode : public vtkMRMLScalarVolumeNode
   public:
   static vtkMRMLTensorVolumeNode *New();
   vtkTypeMacro(vtkMRMLTensorVolumeNode,vtkMRMLScalarVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "TensorVolume";};
+  const char* GetNodeTagName() override {return "TensorVolume";}
 
-  /// 
-  /// Updates this node if it depends on other nodes 
+  ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void UpdateReferences()
-    { Superclass::UpdateReferences(); };
+  void UpdateReferences() override
+    { Superclass::UpdateReferences(); }
 
  /// Description:
  /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID) 
-    { Superclass::UpdateReferenceID(oldID, newID); };
+  void UpdateReferenceID(const char *oldID, const char *newID) override
+    { Superclass::UpdateReferenceID(oldID, newID); }
 
-  /// 
+  ///
   vtkGetMacro(Order,int);
   vtkSetMacro(Order,int);
-  
-  /// 
+
+  ///
   /// Set the Measurement frame matrix from 3x3 array
   void SetMeasurementFrameMatrix(const double mf[3][3]);
   /// Description
@@ -83,28 +81,24 @@ class VTK_MRML_EXPORT vtkMRMLTensorVolumeNode : public vtkMRMLScalarVolumeNode
                            const double zr, const double za, const double zs);
 
   void GetMeasurementFrameMatrix(double mf[3][3]);
-  
-  /// 
+
+  ///
   /// Set/Get the measurement frame matrix from a vtk 4x4 matrix
   void SetMeasurementFrameMatrix(vtkMatrix4x4 *mat);
   void GetMeasurementFrameMatrix(vtkMatrix4x4 *mat);
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
 protected:
   vtkMRMLTensorVolumeNode();
-  ~vtkMRMLTensorVolumeNode();
+  ~vtkMRMLTensorVolumeNode() override;
   vtkMRMLTensorVolumeNode(const vtkMRMLTensorVolumeNode&);
   void operator=(const vtkMRMLTensorVolumeNode&);
-  
+
   double MeasurementFrameMatrix[3][3];
   int Order;
-
-  vtkDiffusionTensorMathematics *DTIMathematics;  
-  vtkAssignAttribute *AssignAttributeTensorsFromScalars ;
-  
 };
 
 #endif

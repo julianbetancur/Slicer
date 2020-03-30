@@ -38,15 +38,15 @@
 //---------------------------------------------------------------------------
 qMRMLViewControllerBarPrivate::qMRMLViewControllerBarPrivate(
   qMRMLViewControllerBar& object)
-  : QObject(0)
+  : QObject(nullptr)
   , q_ptr(&object)
 {
-  this->PinButton = 0;
-  this->ViewLabel = 0;
-  this->PopupWidget = 0;
-  this->BarLayout = 0;
-  this->BarWidget = 0;
-  this->ControllerLayout = 0;
+  this->PinButton = nullptr;
+  this->ViewLabel = nullptr;
+  this->PopupWidget = nullptr;
+  this->BarLayout = nullptr;
+  this->BarWidget = nullptr;
+  this->ControllerLayout = nullptr;
   this->LayoutBehavior = qMRMLViewControllerBar::Popup;
 }
 
@@ -54,13 +54,13 @@ qMRMLViewControllerBarPrivate::qMRMLViewControllerBarPrivate(
 qMRMLViewControllerBarPrivate::~qMRMLViewControllerBarPrivate()
 {
   delete this->PopupWidget;
-  this->PopupWidget = 0;
+  this->PopupWidget = nullptr;
   delete this->BarLayout;
-  this->BarLayout = 0;
+  this->BarLayout = nullptr;
   delete this->BarWidget;
-  this->BarWidget = 0;
+  this->BarWidget = nullptr;
   delete this->ControllerLayout;
-  this->ControllerLayout = 0;
+  this->ControllerLayout = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -76,6 +76,7 @@ void qMRMLViewControllerBarPrivate::init()
   this->setParent(q);
 
   this->BarWidget = new QWidget(q);
+  this->BarWidget->setObjectName("BarWidget");
   this->BarWidget->setAutoFillBackground(true); // color the bar
 
   this->ControllerLayout = new QVBoxLayout(q);
@@ -98,6 +99,7 @@ void qMRMLViewControllerBarPrivate::init()
   this->setupPopupUi();
 
   this->PinButton = new QToolButton(q);
+  this->PinButton->setObjectName("PinButton");
   this->PinButton->setCheckable(true);
   this->PinButton->setAutoRaise(true);
   this->PinButton->setFixedSize(15, 15);
@@ -111,6 +113,7 @@ void qMRMLViewControllerBarPrivate::init()
   this->BarLayout->addWidget(this->PinButton);
 
   this->ViewLabel = new QLabel(q);
+  this->ViewLabel->setObjectName("ViewLabel");
   this->ViewLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
   this->ViewLabel->setMinimumWidth(this->ViewLabel->fontMetrics().width("XX"));
   this->ViewLabel->setAutoFillBackground(true);
@@ -176,9 +179,10 @@ void qMRMLViewControllerBarPrivate::setColor(QColor barColor)
   gradient.setColorAt(0.85, QColor::fromHsv(hue, sat, qMin(255., 253 * valueCoef)));
   gradient.setColorAt(1.0, QColor::fromHsv(hue, sat, qMin(255., 191 * valueCoef)));
   palette.setBrush(QPalette::Window, gradient);
+  palette.setBrush(QPalette::Text, Qt::black);
   this->BarWidget->setPalette(palette);
 
-  QPalette labelPalette( barColor.lighter(130));
+  QPalette labelPalette(barColor.lighter(130));
   this->ViewLabel->setPalette(labelPalette);
 }
 
@@ -210,8 +214,7 @@ qMRMLViewControllerBar::qMRMLViewControllerBar(qMRMLViewControllerBarPrivate* pi
 
 // --------------------------------------------------------------------------
 qMRMLViewControllerBar::~qMRMLViewControllerBar()
-{
-}
+= default;
 
 
 // --------------------------------------------------------------------------
@@ -260,4 +263,18 @@ QWidget* qMRMLViewControllerBar::barWidget()
   Q_D(qMRMLViewControllerBar);
 
   return d->BarWidget;
+}
+
+// --------------------------------------------------------------------------
+QToolButton* qMRMLViewControllerBar::pinButton()
+{
+  Q_D(qMRMLViewControllerBar);
+  return d->PinButton;
+}
+
+// --------------------------------------------------------------------------
+QLabel* qMRMLViewControllerBar::viewLabel()
+{
+  Q_D(qMRMLViewControllerBar);
+  return d->ViewLabel;
 }

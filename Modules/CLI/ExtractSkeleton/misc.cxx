@@ -24,7 +24,7 @@
 
 void * ipAllocateData(const int size, const size_t elemsize)
 {
-  void *data = NULL;
+  void *data = nullptr;
 
   if( !(data = malloc(size * elemsize) ) )
     {
@@ -62,7 +62,7 @@ size_t ipGetDataSize(const ipDataType type)
       break;
     default:
 #ifdef DEBUG_VSKEL
-      fprintf(stderr, "Warning: ipGetDataSize [%s, line %d]: unsuported data type: %d\n",
+      fprintf(stderr, "Warning: ipGetDataSize [%s, line %d]: unsupported data type: %d\n",
               __FILE__, __LINE__, type);
 #endif
 

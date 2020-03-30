@@ -16,7 +16,6 @@
 #include "vtkObjectFactory.h"
 
 //------------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkImageNeighborhoodFilter, "$Revision$");
 vtkStandardNewMacro(vtkImageNeighborhoodFilter);
 
 //----------------------------------------------------------------------------
@@ -24,7 +23,7 @@ vtkStandardNewMacro(vtkImageNeighborhoodFilter);
 // Constructor sets default values
 vtkImageNeighborhoodFilter::vtkImageNeighborhoodFilter()
 {
-  this->Mask = NULL;
+  this->Mask = nullptr;
   this->HandleBoundaries = 1;
   this->SetNeighborTo4();
 }
@@ -33,7 +32,7 @@ vtkImageNeighborhoodFilter::vtkImageNeighborhoodFilter()
 //----------------------------------------------------------------------------
 vtkImageNeighborhoodFilter::~vtkImageNeighborhoodFilter()
 {
-  if (this->Mask != NULL)
+  if (this->Mask != nullptr)
     {
     delete [] this->Mask;
     }
@@ -69,7 +68,7 @@ void vtkImageNeighborhoodFilter::SetKernelSize(int size0, int size1, int size2)
 
   if (modified)
     {
-    if (this->Mask != NULL)
+    if (this->Mask != nullptr)
       {
       delete [] this->Mask;
       }
@@ -86,7 +85,7 @@ void vtkImageNeighborhoodFilter::SetNeighborTo4()
   this->SetKernelSize(3,3,3);
 
   this->Neighbor = 4;
-  
+
   // clear
   memset(this->Mask, 0, this->KernelSize[0]*this->KernelSize[1]*
      this->KernelSize[2]);

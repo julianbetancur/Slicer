@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // Models includes
 #include "qMRMLModelDisplayNodeWidget.h"
 
@@ -30,16 +33,19 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLModelDisplayNodeWidgetTest1( int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
+  qMRMLWidget::postInitializeApplication();
+
   vtkSmartPointer<vtkMRMLModelDisplayNode> modelDisplayNode =
     vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
-  
+
   qMRMLModelDisplayNodeWidget modelDisplayNodeWidget;
   modelDisplayNodeWidget.setMRMLModelDisplayNode(modelDisplayNode);
   modelDisplayNodeWidget.show();

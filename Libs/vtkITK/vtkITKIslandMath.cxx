@@ -18,13 +18,13 @@
 #include "vtkDataArray.h"
 #include "vtkPointData.h"
 #include "vtkImageData.h"
-#include "vtkProcessObject.h"
+#include "vtkAlgorithm.h"
+#include <vtkVersion.h>
 
 #include "itkConnectedComponentImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
 #include "itkCommand.h"
 
-vtkCxxRevisionMacro(vtkITKIslandMath, "$Revision: 1900 $");
 vtkStandardNewMacro(vtkITKIslandMath);
 
 vtkITKIslandMath::vtkITKIslandMath()
@@ -32,15 +32,14 @@ vtkITKIslandMath::vtkITKIslandMath()
   this->FullyConnected = 0;
   this->SliceBySlice = 0;
   this->MinimumSize = 0;
-  this->MaximumSize = VTK_LARGE_ID;
+  this->MaximumSize = VTK_ID_MAX;
   this->NumberOfIslands = 0;
   this->OriginalNumberOfIslands = 0;
 
 }
 
 vtkITKIslandMath::~vtkITKIslandMath()
-{
-}
+= default;
 
 void vtkITKIslandMath::PrintSelf(ostream& os, vtkIndent indent)
 {
@@ -55,12 +54,12 @@ void vtkITKIslandMath::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 // Note: local function not method - conforms to signature in itkCommand.h
-void vtkITKIslandMathHandleProgressEvent (itk::Object *caller, 
-                                          const itk::EventObject& vtkNotUsed(eventObject), 
+void vtkITKIslandMathHandleProgressEvent (itk::Object *caller,
+                                          const itk::EventObject& vtkNotUsed(eventObject),
                                           void *clientdata)
 {
-  itk::ProcessObject *itkFilter = static_cast<itk::ProcessObject*>(caller);
-  vtkProcessObject *vtkFilter = static_cast<vtkProcessObject*>(clientdata);
+  itk::ProcessObject *itkFilter = dynamic_cast<itk::ProcessObject*>(caller);
+  vtkAlgorithm *vtkFilter = reinterpret_cast<vtkAlgorithm*>(clientdata);
   if ( itkFilter && vtkFilter )
     {
     vtkFilter->UpdateProgress ( itkFilter->GetProgress() );
@@ -129,7 +128,7 @@ void vtkITKIslandMathExecute(vtkITKIslandMath *self, vtkImageData* input,
 
 
 //
-// 
+//
 //
 void vtkITKIslandMath::SimpleExecute(vtkImageData *input, vtkImageData *output)
 {
@@ -140,13 +139,13 @@ void vtkITKIslandMath::SimpleExecute(vtkImageData *input, vtkImageData *output)
   //
   vtkPointData *pd = input->GetPointData();
   pd=input->GetPointData();
-  if (pd ==NULL)
+  if (pd ==nullptr)
     {
     vtkErrorMacro(<<"PointData is NULL");
     return;
     }
   vtkDataArray *inScalars=pd->GetScalars();
-  if ( inScalars == NULL )
+  if ( inScalars == nullptr )
     {
     vtkErrorMacro(<<"Scalars must be defined for island math");
     return;
@@ -164,8 +163,6 @@ void vtkITKIslandMath::SimpleExecute(vtkImageData *input, vtkImageData *output)
     void* inPtr = input->GetScalarPointer();
     void* outPtr = output->GetScalarPointer();
 
-#if (ITK_VERSION_MAJOR > 3) || \
-      ((ITK_VERSION_MAJOR == 3 && ITK_VERSION_MINOR >= 14))
     switch (inScalars->GetDataType())
       {
       vtkTemplateMacroCase(VTK_LONG, long, CALL);                               \
@@ -182,18 +179,8 @@ void vtkITKIslandMath::SimpleExecute(vtkImageData *input, vtkImageData *output)
         vtkErrorMacro(<< "Incompatible data type for this version of ITK.");
         }
       } //switch
-#else
-    switch (inScalars->GetDataType())
-      {
-      vtkTemplateMacroCase(VTK_UNSIGNED_LONG, unsigned long, CALL);             \
-      default:
-        {
-        vtkErrorMacro(<< "Incompatible data type for this version of ITK.");
-        }
-      } //switch
-#endif
     }
-  else 
+  else
     {
     vtkErrorMacro(<< "Only single component images supported.");
     }

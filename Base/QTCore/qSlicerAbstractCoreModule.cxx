@@ -20,6 +20,7 @@
 
 // Qt includes
 #include <QDebug>
+#include <QList>
 
 // SlicerQt includes
 #include "qSlicerAbstractCoreModule.h"
@@ -29,6 +30,7 @@
 #include "vtkSlicerModuleLogic.h"
 
 // MRML includes
+#include <vtkMRMLScene.h>
 
 // VTK includes
 #include <vtkSmartPointer.h>
@@ -44,7 +46,10 @@ public:
   QString                                    Name;
   QString                                    Path;
   bool                                       Installed;
+  bool                                       BuiltIn;
+  bool                                       WidgetRepresentationCreationEnabled;
   qSlicerAbstractModuleRepresentation*       WidgetRepresentation;
+  QList<qSlicerAbstractModuleRepresentation*> WidgetRepresentations;
   vtkSmartPointer<vtkMRMLScene>              MRMLScene;
   vtkSmartPointer<vtkSlicerApplicationLogic> AppLogic;
   vtkSmartPointer<vtkMRMLAbstractLogic>      Logic;
@@ -56,15 +61,22 @@ qSlicerAbstractCoreModulePrivate::qSlicerAbstractCoreModulePrivate()
 {
   this->Hidden = false;
   this->Name = "NA";
-  this->WidgetRepresentation = 0;
+  this->WidgetRepresentation = nullptr;
   this->Installed = false;
+  this->BuiltIn = false;
+  this->WidgetRepresentationCreationEnabled = true;
 }
 
 //-----------------------------------------------------------------------------
 qSlicerAbstractCoreModulePrivate::~qSlicerAbstractCoreModulePrivate()
 {
   // Delete the widget representation
-  delete this->WidgetRepresentation;
+  if (this->WidgetRepresentation)
+    {
+    delete this->WidgetRepresentation;
+    }
+  qDeleteAll(this->WidgetRepresentations.begin(), this->WidgetRepresentations.end());
+  this->WidgetRepresentations.clear();
 }
 
 //-----------------------------------------------------------------------------
@@ -79,8 +91,7 @@ qSlicerAbstractCoreModule::qSlicerAbstractCoreModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerAbstractCoreModule::~qSlicerAbstractCoreModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerAbstractCoreModule::initialize(vtkSlicerApplicationLogic* _appLogic)
@@ -184,7 +195,7 @@ CTK_GET_CPP(qSlicerAbstractCoreModule, vtkSlicerApplicationLogic*, appLogic, App
 //-----------------------------------------------------------------------------
 bool qSlicerAbstractCoreModule::isHidden()const
 {
-  return false;
+  return this->isWidgetRepresentationCreationEnabled() ? false : true;
 }
 
 //-----------------------------------------------------------------------------
@@ -202,9 +213,35 @@ CTK_GET_CPP(qSlicerAbstractCoreModule, bool, isInstalled, Installed);
 CTK_SET_CPP(qSlicerAbstractCoreModule, bool, setInstalled, Installed);
 
 //-----------------------------------------------------------------------------
+CTK_GET_CPP(qSlicerAbstractCoreModule, bool, isBuiltIn, BuiltIn);
+CTK_SET_CPP(qSlicerAbstractCoreModule, bool, setBuiltIn, BuiltIn);
+
+//-----------------------------------------------------------------------------
+CTK_GET_CPP(qSlicerAbstractCoreModule, bool, isWidgetRepresentationCreationEnabled, WidgetRepresentationCreationEnabled);
+CTK_SET_CPP(qSlicerAbstractCoreModule, bool, setWidgetRepresentationCreationEnabled, WidgetRepresentationCreationEnabled);
+
+//-----------------------------------------------------------------------------
 qSlicerAbstractModuleRepresentation* qSlicerAbstractCoreModule::widgetRepresentation()
 {
   Q_D(qSlicerAbstractCoreModule);
+
+  // If required, create widgetRepresentation
+  if (!d->WidgetRepresentation)
+    {
+    d->WidgetRepresentation = this->createNewWidgetRepresentation();
+    }
+  return d->WidgetRepresentation;
+}
+
+//-----------------------------------------------------------------------------
+qSlicerAbstractModuleRepresentation* qSlicerAbstractCoreModule::createNewWidgetRepresentation()
+{
+  Q_D(qSlicerAbstractCoreModule);
+
+  if (!this->isWidgetRepresentationCreationEnabled())
+    {
+    return nullptr;
+    }
 
   // Since 'logic()' should have been called in 'initialize(), let's make
   // sure the 'logic()' method call is consistent and won't create a
@@ -214,23 +251,24 @@ qSlicerAbstractModuleRepresentation* qSlicerAbstractCoreModule::widgetRepresenta
   Q_ASSERT(currentLogic == this->logic());
 #endif
 
-  // If required, create widgetRepresentation
-  if (!d->WidgetRepresentation)
+  qSlicerAbstractModuleRepresentation *newWidgetRepresentation;
+  newWidgetRepresentation = this->createWidgetRepresentation();
+
+  if (newWidgetRepresentation == nullptr)
     {
-    d->WidgetRepresentation = this->createWidgetRepresentation();
-    if (d->WidgetRepresentation == 0)
-      {
-      qDebug() << "Warning, the module "<<this->name()<< "has no widget representation";
-      return 0;
-      }
-    // internally sets the logic and call setup,
-    d->WidgetRepresentation->setModule(this);
-    // Note: setMRMLScene should be called after setup (just to make sure widgets
-    // are well written and can handle empty mrmlscene
-    d->WidgetRepresentation->setMRMLScene(this->mrmlScene());
-    //d->WidgetRepresentation->setWindowTitle(this->title());
+    qDebug() << "Warning, the module "<<this->name()<< "has no widget representation";
+    return nullptr;
     }
-  return d->WidgetRepresentation;
+  // internally sets the logic and call setup,
+  newWidgetRepresentation->setModule(this);
+  // Note: setMRMLScene should be called after setup (just to make sure widgets
+  // are well written and can handle empty mrmlscene
+  newWidgetRepresentation->setMRMLScene(this->mrmlScene());
+  //d->WidgetRepresentation->setWindowTitle(this->title());
+  // Add the copy of the widget representation to the list
+  d->WidgetRepresentations << newWidgetRepresentation;
+
+  return newWidgetRepresentation;
 }
 
 //-----------------------------------------------------------------------------
@@ -264,8 +302,21 @@ vtkMRMLAbstractLogic* qSlicerAbstractCoreModule::logic()
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerAbstractCoreModule::representationDeleted()
+void qSlicerAbstractCoreModule::representationDeleted(qSlicerAbstractModuleRepresentation *representation)
 {
   Q_D(qSlicerAbstractCoreModule);
-  d->WidgetRepresentation = 0;
+
+  // Just remove the list entry, the object storage has already been
+  // deleted by caller.
+  if (d->WidgetRepresentation == representation)
+    {
+    d->WidgetRepresentation = nullptr;
+    }
+  d->WidgetRepresentations.removeAll(representation);
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerAbstractCoreModule::associatedNodeTypes()const
+{
+  return QStringList();
 }

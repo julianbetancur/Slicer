@@ -8,7 +8,7 @@
 // STD includes
 #include <sstream>
 
-const char *vtkMRMLAnnotationPointDisplayNode::GlyphTypesNames[GlyphMax+2] = 
+const char *vtkMRMLAnnotationPointDisplayNode::GlyphTypesNames[GlyphMax+2] =
 {
   "GlyphMin",
   "Vertex2D",
@@ -35,18 +35,27 @@ vtkMRMLAnnotationPointDisplayNode::vtkMRMLAnnotationPointDisplayNode()
 {
   this->GlyphType = vtkMRMLAnnotationPointDisplayNode::Sphere3D;
   this->GlyphScale = 5.0;
+  this->SliceProjection = (vtkMRMLAnnotationDisplayNode::ProjectionOff |
+                           vtkMRMLAnnotationPointDisplayNode::ProjectionUseFiducialColor |
+                           vtkMRMLAnnotationPointDisplayNode::ProjectionOutlinedBehindSlicePlane);
 }
 
 //----------------------------------------------------------------------------
 void vtkMRMLAnnotationPointDisplayNode::WriteXML(ostream& of, int nIndent)
 {
   // Write all attributes not equal to their defaults
-  
+
   Superclass::WriteXML(of, nIndent);
 
-  vtkIndent indent(nIndent);
   of << " glyphScale=\"" << this->GlyphScale << "\"";
   of << " glyphType=\"" << this->GlyphType << "\"";
+  of << " sliceProjection=\"" << this->SliceProjection << "\"";
+
+  of << " projectedColor=\"" << this->ProjectedColor[0] << " "
+     << this->ProjectedColor[1] << " "
+     << this->ProjectedColor[2] << "\"";
+
+  of << " projectedOpacity=\"" << this->ProjectedOpacity << "\"";
  }
 
 //----------------------------------------------------------------------------
@@ -58,23 +67,43 @@ void vtkMRMLAnnotationPointDisplayNode::ReadXMLAttributes(const char** atts)
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
 
       if (!strcmp(attName, "glyphType"))
-      {
-    std::stringstream ss;
+        {
+        std::stringstream ss;
         ss << attValue;
         ss >> this->GlyphType;
-      }        
+        }
       else if (!strcmp(attName, "glyphScale"))
-      {
-          std::stringstream ss;
-          ss << attValue;
-          ss >> this->GlyphScale;
-      }
+        {
+        std::stringstream ss;
+        ss << attValue;
+        ss >> this->GlyphScale;
+        }
+      else if (!strcmp(attName, "sliceProjection"))
+        {
+        std::stringstream ss;
+        ss << attValue;
+        ss >> this->SliceProjection;
+        }
+      else if (!strcmp(attName, "projectedColor"))
+        {
+        std::stringstream ss;
+        ss << attValue;
+        ss >> this->ProjectedColor[0];
+        ss >> this->ProjectedColor[1];
+        ss >> this->ProjectedColor[2];
+        }
+      else if (!strcmp(attName, "projectedOpacity"))
+        {
+        std::stringstream ss;
+        ss << attValue;
+        ss >> this->ProjectedOpacity;
+        }
     }
   this->EndModify(disabledModify);
 }
@@ -90,6 +119,9 @@ void vtkMRMLAnnotationPointDisplayNode::Copy(vtkMRMLNode *anode)
   vtkMRMLAnnotationPointDisplayNode *node = (vtkMRMLAnnotationPointDisplayNode *) anode;
   this->SetGlyphType(node->GlyphType);
   this->SetGlyphScale(node->GlyphScale);
+  this->SetSliceProjection(node->SliceProjection);
+  this->SetProjectedColor(node->GetProjectedColor());
+  this->SetProjectedOpacity(node->GetProjectedOpacity());
 
   this->EndModify(disabledModify);
 }
@@ -103,7 +135,7 @@ const char* vtkMRMLAnnotationPointDisplayNode::GetGlyphTypeAsString()
 //----------------------------------------------------------------------------
 const char* vtkMRMLAnnotationPointDisplayNode::GetGlyphTypeAsString(int glyphType)
 {
-  if (glyphType < GlyphMin || (glyphType > GlyphMax)) 
+  if (glyphType < GlyphMin || (glyphType > GlyphMax))
     {
       return "UNKNOWN";
     }
@@ -132,12 +164,18 @@ void vtkMRMLAnnotationPointDisplayNode::PrintSelf(ostream& os, vtkIndent indent)
   os << this->GlyphScale << ")\n";
   os << indent << "Glyph type: ";
   os << this->GetGlyphTypeAsString() << " (" << this->GlyphType << ")\n";
-    
+  os << indent << "Slice projection: (";
+  os << this->SliceProjection << ")\n";
+  os << indent << "Projected Color: (";
+  os << this->ProjectedColor[0] << ","
+     << this->ProjectedColor[1] << ","
+     << this->ProjectedColor[2] << ")" << "\n";
+  os << indent << "Projected Opacity: " << this->ProjectedOpacity << "\n";
 }
 
 //---------------------------------------------------------------------------
 void vtkMRMLAnnotationPointDisplayNode::ProcessMRMLEvents ( vtkObject *caller,
-                                           unsigned long event, 
+                                           unsigned long event,
                                            void *callData )
 {
   Superclass::ProcessMRMLEvents(caller, event, callData);
@@ -162,7 +200,7 @@ int  vtkMRMLAnnotationPointDisplayNode::GlyphTypeIs3D(int glyphType)
     return 0;
     }
 }
-                              
+
 //---------------------------------------------------------------------------
 void  vtkMRMLAnnotationPointDisplayNode::SetGlyphType(int type)
 {

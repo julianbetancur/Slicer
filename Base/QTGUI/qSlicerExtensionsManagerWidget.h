@@ -21,7 +21,11 @@
 #ifndef __qSlicerExtensionsManagerWidget_h
 #define __qSlicerExtensionsManagerWidget_h
 
+// CTK includes
+#include <ctkErrorLogLevel.h>
+
 // Qt includes
+#include <QUrl>
 #include <QWidget>
 
 // QtGUI includes
@@ -39,18 +43,34 @@ public:
   typedef QWidget Superclass;
 
   /// Constructor
-  explicit qSlicerExtensionsManagerWidget(QWidget* parent = 0);
+  explicit qSlicerExtensionsManagerWidget(QWidget* parent = nullptr);
 
   /// Destructor
-  virtual ~qSlicerExtensionsManagerWidget();
+  ~qSlicerExtensionsManagerWidget() override;
 
   Q_INVOKABLE qSlicerExtensionsManagerModel* extensionsManagerModel()const;
   Q_INVOKABLE void setExtensionsManagerModel(qSlicerExtensionsManagerModel* model);
 
+public slots:
+  void refreshInstallWidget();
+
 protected slots:
   void onModelUpdated();
 
+  void onCurrentTabChanged(int index);
+
+  void onManageLinkActivated(const QUrl& link);
+  void onManageUrlChanged(const QUrl& newUrl);
+  void onInstallUrlChanged(const QUrl& newUrl);
+  void onSearchTextChanged(const QString& newText);
+
+  void onCheckForUpdatesTriggered();
+  void onInstallFromFileTriggered();
+  void onMessageLogged(const QString& text, ctkErrorLogLevel::LogLevels level);
+
 protected:
+  void timerEvent(QTimerEvent*) override;
+
   QScopedPointer<qSlicerExtensionsManagerWidgetPrivate> d_ptr;
 
 private:

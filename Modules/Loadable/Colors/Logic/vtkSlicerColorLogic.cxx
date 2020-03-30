@@ -15,9 +15,11 @@
 
 // MRML
 #include "vtkMRMLColorTableStorageNode.h"
+#include "vtkMRMLProceduralColorStorageNode.h"
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include <vtkObjectFactory.h>
 #include <vtksys/SystemTools.hxx>
 
 #ifdef WIN32
@@ -27,18 +29,15 @@
 #include <cerrno>
 #endif
 
-vtkCxxRevisionMacro(vtkSlicerColorLogic, "$Revision$");
 vtkStandardNewMacro(vtkSlicerColorLogic);
 
 //----------------------------------------------------------------------------
 vtkSlicerColorLogic::vtkSlicerColorLogic()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkSlicerColorLogic::~vtkSlicerColorLogic()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkSlicerColorLogic::PrintSelf(ostream& os, vtkIndent indent)
@@ -69,9 +68,9 @@ std::vector<std::string> vtkSlicerColorLogic::FindDefaultColorFiles()
 {
   // get the slicer home dir
   std::string slicerHome;
-  if (vtksys::SystemTools::GetEnv("SLICER_HOME") == NULL)
+  if (vtksys::SystemTools::GetEnv("SLICER_HOME") == nullptr)
     {
-    if (vtksys::SystemTools::GetEnv("PWD") != NULL)
+    if (vtksys::SystemTools::GetEnv("PWD") != nullptr)
       {
       slicerHome =  std::string(vtksys::SystemTools::GetEnv("PWD"));
       }
@@ -95,7 +94,7 @@ std::vector<std::string> vtkSlicerColorLogic::FindDefaultColorFiles()
   std::vector<std::string> DirectoriesToCheck;
 
   DirectoriesToCheck.push_back(resourcesDirString);
-  
+
   return this->FindColorFiles(DirectoriesToCheck);
 }
 
@@ -104,7 +103,7 @@ std::vector<std::string> vtkSlicerColorLogic::FindUserColorFiles()
 {
   std::vector<std::string> DirectoriesToCheck;
   // add the list of dirs set from the application
-  if (this->UserColorFilePaths != NULL)
+  if (this->UserColorFilePaths != nullptr)
     {
     vtkDebugMacro("\nFindColorFiles: got user color file paths = " << this->UserColorFilePaths);
     // parse out the list, breaking at delimiter strings
@@ -114,23 +113,23 @@ std::vector<std::string> vtkSlicerColorLogic::FindUserColorFiles()
     const char *delim = ":";
 #endif
     char *ptr = strtok(this->UserColorFilePaths, delim);
-    while (ptr != NULL)
+    while (ptr != nullptr)
       {
       std::string dir = std::string(ptr);
       vtkDebugMacro("\nFindColorFiles: Adding user dir " << dir.c_str() << " to the directories to check");
       DirectoriesToCheck.push_back(dir);
-      ptr = strtok(NULL, delim);
+      ptr = strtok(nullptr, delim);
       }
     } else { vtkDebugMacro("\nFindColorFiles: oops, the user color file paths aren't set!"); }
 
-  return this->FindColorFiles(DirectoriesToCheck);  
+  return this->FindColorFiles(DirectoriesToCheck);
 }
 
 //----------------------------------------------------------------------------
 std::vector<std::string> vtkSlicerColorLogic::FindColorFiles(const std::vector<std::string>& directories)
 {
   std::vector<std::string> filenames;
-  
+
   // get the list of colour files in these dir
   for (unsigned int d = 0; d < directories.size(); d++)
     {
@@ -160,13 +159,13 @@ std::vector<std::string> vtkSlicerColorLogic::FindColorFiles(const std::vector<s
 #else
     DIR *dp;
     struct dirent *dirp;
-    if ((dp  = opendir(dirString.c_str())) == NULL)
+    if ((dp  = opendir(dirString.c_str())) == nullptr)
       {
       vtkErrorMacro("\nError(" << errno << ") opening user specified color path: " << dirString.c_str() << ", no color files will be loaded from that directory\n(check View -> Application Settings -> Module Settings to adjust your User defined color file paths)");
       }
     else
       {
-      while ((dirp = readdir(dp)) != NULL)
+      while ((dirp = readdir(dp)) != nullptr)
         {
         // add this file to the vector holding the base dir name
         filesVector.push_back(std::string(dirp->d_name));
@@ -177,14 +176,15 @@ std::vector<std::string> vtkSlicerColorLogic::FindColorFiles(const std::vector<s
         if (fileType == vtksys::SystemTools::FileTypeText)
           {
           // check that it's a supported file type
-          // create a storage node so can check for supported file types
-          vtkSmartPointer<vtkMRMLColorTableStorageNode>colorStorageNode =
-            vtkSmartPointer<vtkMRMLColorTableStorageNode>::New();
-          if (colorStorageNode->SupportedFileType(fileToCheck.c_str()))
+          // create storage nodes so can check for supported file types
+          vtkNew<vtkMRMLColorTableStorageNode> colorStorageNode;
+          vtkNew<vtkMRMLProceduralColorStorageNode> procColorStorageNode;
+          if (colorStorageNode->SupportedFileType(fileToCheck.c_str()) ||
+              procColorStorageNode->SupportedFileType(fileToCheck.c_str()))
             {
             vtkDebugMacro("FindColorFiles: Adding " << fileToCheck.c_str() << " to list of potential colour files. Type = " << fileType);
               // add it to the list
-              this->AddColorFile(fileToCheck.c_str(), &filenames);           
+              this->AddColorFile(fileToCheck.c_str(), &filenames);
             }
           else
             {

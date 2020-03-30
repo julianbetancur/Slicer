@@ -2,7 +2,22 @@
 
 #
 # Included from a dashboard script, this cmake file will drive the configure and build
-# steps of Slicer
+# steps of Slicer extensions.
+#
+
+#
+# SCRIPT_MODE:
+#
+#   Experimental:
+#     - run_ctest() macro will be called *ONE* time
+#     - binary directory will *NOT* be cleaned
+#   Continuous:
+#     - run_ctest() macro will be called EVERY 5 minutes ...
+#     - binary directory will *NOT* be cleaned
+#     - configure/build will be executed *ONLY* if the repository has been updated
+#   Nightly:
+#     - run_ctest() macro will be called *ONE* time
+#     - binary directory *WILL BE* cleaned
 #
 
 # Helper function used to generate the CMake script that will perform the initial clone
@@ -114,71 +129,240 @@ function(_get_slicer_revision headerfile varname)
 endfunction()
 
 
-# Macro allowing to set a variable to its default value only if not already defined
+# Macro allowing to set a variable to its default value if not already defined.
+# The default value is set with:
+#  (1) if set, the value environment variable <var>.
+#  (2) if set, the value of local variable variable <var>.
+#  (3) if none of the above, the value passed as a parameter.
+# Setting the optional parameter 'OBFUSCATE' will display 'OBFUSCATED' instead of the real value.
 macro(setIfNotDefined var defaultvalue)
+  set(_obfuscate FALSE)
+  foreach(arg ${ARGN})
+    if(arg STREQUAL "OBFUSCATE")
+      set(_obfuscate TRUE)
+    endif()
+  endforeach()
+  if(DEFINED ENV{${var}} AND NOT DEFINED ${var})
+    set(_value "$ENV{${var}}")
+    if(_obfuscate)
+      set(_value "OBFUSCATED")
+    endif()
+    message(STATUS "Setting '${var}' variable with environment variable value '${_value}'")
+    set(${var} $ENV{${var}})
+  endif()
   if(NOT DEFINED ${var})
+    set(_value "${defaultvalue}")
+    if(_obfuscate)
+      set(_value "OBFUSCATED")
+    endif()
+    message(STATUS "Setting '${var}' variable with default value '${_value}'")
     set(${var} "${defaultvalue}")
+  endif()
+  if(NOT _obfuscate)
+    list(APPEND variables ${var})
   endif()
 endmacro()
 
-# The following variable are expected to be define in the top-level script:
+
+# The following variables are expected to be defined in the top-level script:
 set(expected_variables
-  ADDITIONAL_CMAKECACHE_OPTION
-  CTEST_NOTES_FILES
-  CTEST_SITE
-  CTEST_DASHBOARD_ROOT
-  CTEST_CMAKE_GENERATOR
-  WITH_MEMCHECK
-  WITH_COVERAGE
-  WITH_DOCUMENTATION
+  SCRIPT_MODE
   CTEST_BUILD_CONFIGURATION
-  CTEST_TEST_TIMEOUT
+  ADDITIONAL_CMAKECACHE_OPTION
+  CTEST_CMAKE_GENERATOR
   CTEST_BUILD_FLAGS
-  CTEST_PROJECT_NAME
-  EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY
+  EXTENSIONS_TRACK_QUALIFIER
   EXTENSIONS_BUILDSYSTEM_TESTING
   EXTENSIONS_INDEX_GIT_REPOSITORY
   EXTENSIONS_INDEX_GIT_TAG
-  CTEST_BINARY_DIRECTORY
-  CTEST_BUILD_NAME
-  SCRIPT_MODE
-  CTEST_COVERAGE_COMMAND
-  CTEST_MEMORYCHECK_COMMAND
-  CTEST_SVN_COMMAND
-  CTEST_GIT_COMMAND
-  MIDAS_PACKAGE_URL
-  MIDAS_PACKAGE_EMAIL
-  MIDAS_PACKAGE_API_KEY
   Slicer_DIR
   )
 
-if(WITH_DOCUMENTATION)
-  list(APPEND expected_variables DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY)
-endif()
-if(NOT DEFINED CTEST_PARALLEL_LEVEL)
-  set(CTEST_PARALLEL_LEVEL 8)
+#-----------------------------------------------------------------------------
+# Defaults
+#-----------------------------------------------------------------------------
+if(DEFINED Slicer_RELEASE_TYPE)
+  if("${Slicer_RELEASE_TYPE}" MATCHES "^E.*")
+    set(Slicer_RELEASE_TYPE "Experimental")
+  elseif("${Slicer_RELEASE_TYPE}" MATCHES "^P.*")
+    set(Slicer_RELEASE_TYPE "Preview")
+  elseif("${Slicer_RELEASE_TYPE}" MATCHES "^S.*")
+    set(Slicer_RELEASE_TYPE "Stable")
+  else()
+    message(FATAL_ERROR "Invalid value for Slicer_RELEASE_TYPE [${Slicer_RELEASE_TYPE}]")
+  endif()
+else()
+  set(Slicer_RELEASE_TYPE "Experimental")
 endif()
 
-if(EXISTS "${CTEST_LOG_FILE}")
-  list(APPEND CTEST_NOTES_FILES ${CTEST_LOG_FILE})
+if(NOT DEFINED BITNESS)
+  set(BITNESS "64")
 endif()
+list(APPEND expected_variables BITNESS)
 
+#-----------------------------------------------------------------------------
+# Set CTEST_BUILD_NAME
+#-----------------------------------------------------------------------------
+if(NOT DEFINED CTEST_BUILD_NAME)
+  list(APPEND expected_variables
+    OPERATING_SYSTEM
+    COMPILER
+    QT_VERSION
+    BUILD_NAME_SUFFIX
+    )
+  set(name "${OPERATING_SYSTEM}-${COMPILER}-${BITNESS}bits-QT${QT_VERSION}")
+  if(NOT "${BUILD_NAME_SUFFIX}" STREQUAL "")
+    set(name "${name}-${BUILD_NAME_SUFFIX}")
+  endif()
+  set(CTEST_BUILD_NAME "${name}-${CTEST_BUILD_CONFIGURATION}")
+endif()
+list(APPEND expected_variables CTEST_BUILD_NAME)
+
+#-----------------------------------------------------------------------------
+# Set CTEST_SITE
+#-----------------------------------------------------------------------------
+if(NOT DEFINED CTEST_SITE)
+  list(APPEND expected_variables
+    HOSTNAME
+    ORGANIZATION
+    )
+  string(TOLOWER ${ORGANIZATION} ORGANIZATION_LC)
+  set(CTEST_SITE "${HOSTNAME}.${ORGANIZATION_LC}")
+endif()
+list(APPEND expected_variables CTEST_SITE)
+
+#-----------------------------------------------------------------------------
+# Build directory
+#-----------------------------------------------------------------------------
+set(testing_suffix "")
+set(testing_long_suffix "")
+if(EXTENSIONS_BUILDSYSTEM_TESTING)
+  set(testing_suffix "-T")
+  set(testing_long_suffix "-Testing")
+endif()
+if(NOT DEFINED CTEST_BINARY_DIRECTORY)
+  list(APPEND expected_variables
+    DASHBOARDS_DIR
+    EXTENSION_DASHBOARD_SUBDIR
+    EXTENSION_DIRECTORY_BASENAME
+    Slicer_DIRECTORY_IDENTIFIER
+    )
+  set(CTEST_BINARY_DIRECTORY "${DASHBOARDS_DIR}/${EXTENSION_DASHBOARD_SUBDIR}/${EXTENSION_DIRECTORY_BASENAME}-${Slicer_DIRECTORY_IDENTIFIER}-E${testing_suffix}-b")
+endif()
+list(APPEND expected_variables CTEST_BINARY_DIRECTORY)
+
+file(WRITE "${CTEST_BINARY_DIRECTORY} - SlicerExtensions-build-${CTEST_BUILD_NAME}-${SCRIPT_MODE}${testing_long_suffix}-${EXTENSIONS_INDEX_BRANCH}.txt" "Generated by ${CTEST_SCRIPT_NAME}")
+
+#-----------------------------------------------------------------------------
+# Source directory
+#-----------------------------------------------------------------------------
+if(NOT DEFINED EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY)
+  list(APPEND expected_variables
+    Slicer_SOURCE_DIR
+    )
+  set(EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY "${Slicer_SOURCE_DIR}/Extensions/CMake")
+endif()
+list(APPEND expected_variables EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY)
+
+if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
+  set(CTEST_SOURCE_DIRECTORY ${EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY})
+endif()
+if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+  message(FATAL_ERROR "Aborting build. CTEST_SOURCE_DIRECTORY is set to a non-existent directory [${CTEST_SOURCE_DIRECTORY}]")
+endif()
+list(APPEND expected_variables CTEST_SOURCE_DIRECTORY)
+
+#-----------------------------------------------------------------------------
+# Sanity check
+#-----------------------------------------------------------------------------
 foreach(var ${expected_variables})
   if(NOT DEFINED ${var})
     message(FATAL_ERROR "Variable ${var} should be defined in top-level script !")
   endif()
 endforeach()
 
+# Collect variables to display
+set(variables ${expected_variables})
+
+#-----------------------------------------------------------------------------
 if(NOT DEFINED CTEST_CONFIGURATION_TYPE AND DEFINED CTEST_BUILD_CONFIGURATION)
   set(CTEST_CONFIGURATION_TYPE ${CTEST_BUILD_CONFIGURATION})
 endif()
+list(APPEND variables CTEST_CONFIGURATION_TYPE)
 
+#-----------------------------------------------------------------------------
+# Append top-level script as a CDash note
+list(APPEND CTEST_NOTES_FILES "${CTEST_SCRIPT_DIRECTORY}/${CTEST_SCRIPT_NAME}")
+
+#-----------------------------------------------------------------------------
+# Set default values
+#-----------------------------------------------------------------------------
+setIfNotDefined(CTEST_TEST_TIMEOUT 900) # 15mins
+setIfNotDefined(CTEST_PARALLEL_LEVEL 8)
+setIfNotDefined(MIDAS_PACKAGE_URL "http://slicer.kitware.com/midas3")
+setIfNotDefined(MIDAS_PACKAGE_EMAIL "MIDAS_PACKAGE_EMAIL-NOTDEFINED" OBFUSCATE)
+setIfNotDefined(MIDAS_PACKAGE_API_KEY "MIDAS_PACKAGE_API_KEY-NOTDEFINED" OBFUSCATE)
+setIfNotDefined(CTEST_DROP_SITE "slicer.cdash.org")
+
+#-----------------------------------------------------------------------------
+# The following variable can be used to disable specific steps
+#-----------------------------------------------------------------------------
+
+# Variables influencing the top-level CMake project
+setIfNotDefined(run_ctest_submit TRUE)
+setIfNotDefined(run_ctest_with_disable_clean FALSE)
+setIfNotDefined(run_ctest_with_update TRUE)
+setIfNotDefined(run_ctest_with_configure TRUE)
+setIfNotDefined(run_ctest_with_build TRUE)
+setIfNotDefined(run_ctest_with_notes TRUE)
+setIfNotDefined(Slicer_UPLOAD_EXTENSIONS TRUE)
+
+# Variables influencing each extension CMake project
+setIfNotDefined(run_extension_ctest_submit ${run_ctest_submit})
+setIfNotDefined(run_extension_ctest_with_configure TRUE)
+setIfNotDefined(run_extension_ctest_with_build TRUE)
+setIfNotDefined(run_extension_ctest_with_test TRUE)
+setIfNotDefined(run_extension_ctest_with_packages TRUE)
+
+#-----------------------------------------------------------------------------
+# CDash Project Name
+#-----------------------------------------------------------------------------
+if(NOT DEFINED CDASH_PROJECT_NAME)
+  set(CDASH_PROJECT_NAME  "SlicerPreview")
+  if("${Slicer_RELEASE_TYPE}" STREQUAL "Stable")
+    # XXX Rename Slicer CDash project
+    set(CDASH_PROJECT_NAME "Slicer4")
+    #set(CDASH_PROJECT_NAME  "SlicerStable")
+  endif()
+endif()
+list(APPEND variables CDASH_PROJECT_NAME)
+
+#-----------------------------------------------------------------------------
+# Required executables
+#-----------------------------------------------------------------------------
+if(NOT DEFINED CTEST_GIT_COMMAND)
+  find_program(CTEST_GIT_COMMAND NAMES git)
+endif()
+if(NOT EXISTS "${CTEST_GIT_COMMAND}")
+  message(FATAL_ERROR "CTEST_GIT_COMMAND is set to a non-existent path [${CTEST_GIT_COMMAND}]")
+endif()
+message(STATUS "CTEST_GIT_COMMAND: ${CTEST_GIT_COMMAND}")
+
+if(NOT DEFINED CTEST_SVN_COMMAND)
+  find_program(CTEST_SVN_COMMAND NAMES svn)
+endif()
+if(NOT EXISTS "${CTEST_SVN_COMMAND}")
+  message(FATAL_ERROR "CTEST_SVN_COMMAND is set to a non-existent path [${CTEST_SVN_COMMAND}]")
+endif()
+message(STATUS "CTEST_SVN_COMMAND: ${CTEST_SVN_COMMAND}")
+
+#-----------------------------------------------------------------------------
 set(CTEST_COMMAND ${CMAKE_CTEST_COMMAND})
-set(CTEST_SOURCE_DIRECTORY ${EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY})
-message(CTEST_SOURCE_DIRECTORY:${CTEST_SOURCE_DIRECTORY})
+
 if(NOT EXTENSIONS_BUILDSYSTEM_TESTING)
   set(Slicer_EXTENSION_DESCRIPTION_DIR "${CTEST_BINARY_DIRECTORY}/ExtensionsIndex")
 endif()
+list(APPEND variables Slicer_EXTENSION_DESCRIPTION_DIR)
 
 # Since having '/' in the build name confuses CDash (Separate entries are added for both
 # update and rest of the build), let's convert them into '-'.
@@ -189,6 +373,9 @@ set(empty_binary_directory FALSE)
 
 # Attempt to build and test also if 'ctest_update' returned an error
 set(force_build FALSE)
+
+# Ensure SCRIPT_MODE is lowercase
+string(TOLOWER ${SCRIPT_MODE} SCRIPT_MODE)
 
 # Set model and track options
 set(model "")
@@ -215,33 +402,92 @@ endif()
 set(track Extensions-${track_qualifier_cleaned}${model})
 set(track ${CTEST_TRACK_PREFIX}${track}${CTEST_TRACK_SUFFIX})
 
+# Used in SlicerExtensionPackageAndUploadTarget CMake module
+set(ENV{CTEST_MODEL} ${model})
 
-# Display build info
-message("CTEST_SITE ................: ${CTEST_SITE}")
-message("CTEST_BUILD_NAME ..........: ${CTEST_BUILD_NAME}")
-message("SCRIPT_MODE ...............: ${SCRIPT_MODE}")
-message("CTEST_BUILD_CONFIGURATION .: ${CTEST_BUILD_CONFIGURATION}")
-message("WITH_KWSTYLE ..............: ${WITH_KWSTYLE}")
-message("WITH_COVERAGE: ............: ${WITH_COVERAGE}")
-message("WITH_MEMCHECK .............: ${WITH_MEMCHECK}")
-message("WITH_PACKAGES .............: ${WITH_PACKAGES}")
-message("WITH_DOCUMENTATION ........: ${WITH_DOCUMENTATION}")
-message("EXTENSIONS_TRACK_QUALIFIER : ${EXTENSIONS_TRACK_QUALIFIER}")
-message("DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY: ${DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY}")
-message("EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY: ${EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY}")
-message("Slicer_DIR ................: ${Slicer_DIR}")
-
-# For more details, see http://www.kitware.com/blog/home/post/11
+# For more details, see https://cmake.org/cmake/help/latest/module/CTestUseLaunchers.html
 set(CTEST_USE_LAUNCHERS 1)
-if(NOT "${CTEST_CMAKE_GENERATOR}" MATCHES "Make")
+if(NOT "${CTEST_CMAKE_GENERATOR}" MATCHES "Make|Ninja")
   set(CTEST_USE_LAUNCHERS 0)
 endif()
 set(ENV{CTEST_USE_LAUNCHERS_DEFAULT} ${CTEST_USE_LAUNCHERS})
 
-if(empty_binary_directory)
-  message("Directory ${CTEST_BINARY_DIRECTORY} cleaned !")
+list(APPEND variables empty_binary_directory)
+list(APPEND variables force_build)
+list(APPEND variables model)
+list(APPEND variables track)
+list(APPEND variables CTEST_USE_LAUNCHERS)
+
+if(empty_binary_directory AND NOT run_ctest_with_disable_clean)
+  set(msg "Removing binary directory [${CTEST_BINARY_DIRECTORY}]")
+  message(STATUS "${msg}")
   ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+  message(STATUS "${msg} - done")
 endif()
+
+# Given a variable name, this function will display the text
+#   "-- <varname> ................: ${<varname>}"
+# and will ensure that the message is consistently padded.
+#
+# If the variable is not defined, it will display:
+#   "-- <varname> ................: <NOT DEFINED>"
+function(display_var varname)
+  set(pretext_right_jusitfy_length 35)
+  set(fill_char ".")
+
+  set(value ${${varname}})
+  if(NOT DEFINED ${varname})
+    set(value "NOT DEFINED")
+  endif()
+
+  set(pretext "${varname}")
+  string(LENGTH ${pretext} pretext_length)
+  math(EXPR pad_length "${pretext_right_jusitfy_length} - ${pretext_length} - 1")
+  if(pad_length GREATER 0)
+    string(RANDOM LENGTH ${pad_length} ALPHABET ${fill_char} pretext_dots)
+    set(text "${pretext} ${pretext_dots}: ${value}")
+  elseif(pad_length EQUAL 0)
+    set(text "${pretext} : ${value}")
+  else()
+    set(text "${pretext}: ${value}")
+  endif()
+  message(STATUS "${text}")
+endfunction()
+
+# Display variables
+foreach(var ${variables})
+  display_var(${var})
+endforeach()
+
+#-----------------------------------------------------------------------------
+# Environment
+#-----------------------------------------------------------------------------
+
+# This will ensure compiler paths specified using the cache variables are used
+# consistently.
+if(DEFINED CMAKE_C_COMPILER)
+  set(ENV{CC} "/dev/null")
+endif()
+if(DEFINED CMAKE_CXX_COMPILER)
+  set(ENV{CXX} "/dev/null")
+endif()
+
+if(UNIX)
+  if("$ENV{DISPLAY}" STREQUAL "")
+    set(ENV{DISPLAY} ":0")
+  endif()
+  message(STATUS "Setting ENV{DISPLAY} to $ENV{DISPLAY}")
+endif()
+
+# Cache for External data downloads
+if("$ENV{ExternalData_OBJECT_STORES}" STREQUAL "")
+  set(ENV{ExternalData_OBJECT_STORES} "$ENV{HOME}/.ExternalData")
+endif()
+message(STATUS "Setting ENV{ExternalData_OBJECT_STORES} to $ENV{ExternalData_OBJECT_STORES}")
+
+#-----------------------------------------------------------------------------
+# Source code checkout and update commands
+#-----------------------------------------------------------------------------
 
 if(NOT EXTENSIONS_BUILDSYSTEM_TESTING)
   # Compute 'work_dir' and 'src_name' variable used by both _write_gitclone_script and _update_gitclone_script
@@ -279,25 +525,20 @@ if(NOT EXTENSIONS_BUILDSYSTEM_TESTING)
   # Note: The following command should be specified as a list.
   set(CTEST_GIT_UPDATE_CUSTOM ${CMAKE_COMMAND} -P ${CTEST_SCRIPT_DIRECTORY}/${CTEST_SCRIPT_NAME}-${git_tag_cleaned}-${SCRIPT_MODE}-gitupdate.cmake)
 
-  # Retrieve revision associated with Slicer source tree
-  _get_slicer_revision("${Slicer_DIR}/vtkSlicerVersionConfigure.h" Slicer_WC_REVISION)
-  message("Slicer_WC_REVISION:${Slicer_WC_REVISION}")
+  # Retrieve revision associated with Slicer build tree
+  set(slicer_version_header "${Slicer_DIR}/vtkSlicerVersionConfigure.h")
+  if(NOT EXISTS "${slicer_version_header}")
+    message(FATAL_ERROR "Aborting build. Could not find 'vtkSlicerVersionConfigure.h' in Slicer_DIR [${Slicer_DIR}].")
+  endif()
+  _get_slicer_revision("${slicer_version_header}" Slicer_WC_REVISION)
+  message(STATUS "Slicer_WC_REVISION:${Slicer_WC_REVISION}")
   set(Slicer_PREVIOUS_WC_REVISION ${Slicer_WC_REVISION})
 
 endif()
 
 #-----------------------------------------------------------------------------
-# The following variable can be used while testing the driver scripts
-#-----------------------------------------------------------------------------
-setIfNotDefined(run_ctest_submit TRUE)
-setIfNotDefined(run_ctest_with_update TRUE)
-setIfNotDefined(run_ctest_with_configure TRUE)
-setIfNotDefined(run_ctest_with_build TRUE)
-setIfNotDefined(run_ctest_with_notes TRUE)
-
-#
 # run_ctest macro
-#
+#-----------------------------------------------------------------------------
 macro(run_ctest)
 
   set(slicer_build_in_progress FALSE)
@@ -310,6 +551,13 @@ macro(run_ctest)
     message("Skipping run_ctest() - Slicer build in PROGRESS")
   else()
 
+    message(STATUS "Configuring ${CTEST_BINARY_DIRECTORY}/CTestConfig.cmake")
+    # Require CTEST_DROP_SITE and CDASH_PROJECT_NAME
+    configure_file(
+      ${CTEST_SOURCE_DIRECTORY}/CTestConfig.cmake.in
+      ${CTEST_BINARY_DIRECTORY}/CTestConfig.cmake
+      )
+
     ctest_start(${model} TRACK ${track})
 
     if(NOT EXTENSIONS_BUILDSYSTEM_TESTING AND run_ctest_with_update)
@@ -319,31 +567,51 @@ macro(run_ctest)
 
     # force a build if this is the first run and the build dir is empty
     if(NOT EXISTS "${CTEST_BINARY_DIRECTORY}/CMakeCache.txt")
-      message("First time build - Initialize CMakeCache.txt")
+      message(STATUS "First time build - Initialize CMakeCache.txt")
       set(force_build TRUE)
 
-      set(Slicer_EXTENSION_DESCRIPTION_DIR_CMAKECACHE)
+      set(OPTIONAL_CACHE_CONTENT)
+
       if(NOT EXTENSIONS_BUILDSYSTEM_TESTING)
-        set(Slicer_EXTENSION_DESCRIPTION_DIR_CMAKECACHE "Slicer_EXTENSION_DESCRIPTION_DIR:PATH=${Slicer_EXTENSION_DESCRIPTION_DIR}")
+        set(OPTIONAL_CACHE_CONTENT "${OPTIONAL_CACHE_CONTENT}
+Slicer_EXTENSION_DESCRIPTION_DIR:PATH=${Slicer_EXTENSION_DESCRIPTION_DIR}")
+      endif()
+
+      if(DEFINED CMAKE_C_COMPILER)
+        set(OPTIONAL_CACHE_CONTENT "${OPTIONAL_CACHE_CONTENT}
+CMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}")
+      endif()
+
+      if(DEFINED CMAKE_CXX_COMPILER)
+        set(OPTIONAL_CACHE_CONTENT "${OPTIONAL_CACHE_CONTENT}
+CMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}")
+      endif()
+
+      if(DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(OPTIONAL_CACHE_CONTENT "${OPTIONAL_CACHE_CONTENT}
+CMAKE_OSX_DEPLOYMENT_TARGET:STRING=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+      endif()
+
+      if(DEFINED CTEST_SVN_COMMAND)
+        set(OPTIONAL_CACHE_CONTENT "${OPTIONAL_CACHE_CONTENT}
+Subversion_SVN_EXECUTABLE:FILEPATH=${CTEST_SVN_COMMAND}")
       endif()
 
       #-----------------------------------------------------------------------------
       # Write initial cache.
       #-----------------------------------------------------------------------------
       file(WRITE "${CTEST_BINARY_DIRECTORY}/CMakeCache.txt" "
+CDASH_PROJECT_NAME:STRING=${CDASH_PROJECT_NAME}
 CTEST_MODEL:STRING=${model}
+CTEST_SITE:STRING=${CTEST_SITE}
 Slicer_EXTENSIONS_TRACK_QUALIFIER:STRING=${EXTENSIONS_TRACK_QUALIFIER}
 GIT_EXECUTABLE:FILEPATH=${CTEST_GIT_COMMAND}
-Subversion_SVN_EXECUTABLE:FILEPATH=${CTEST_SVN_COMMAND}
-WITH_COVERAGE:BOOL=${WITH_COVERAGE}
-DOCUMENTATION_TARGET_IN_ALL:BOOL=${WITH_DOCUMENTATION}
-DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY:PATH=${DOCUMENTATION_ARCHIVES_OUTPUT_DIRECTORY}
 MIDAS_PACKAGE_URL:STRING=${MIDAS_PACKAGE_URL}
 MIDAS_PACKAGE_EMAIL:STRING=${MIDAS_PACKAGE_EMAIL}
 MIDAS_PACKAGE_API_KEY:STRING=${MIDAS_PACKAGE_API_KEY}
 Slicer_DIR:PATH=${Slicer_DIR}
-Slicer_UPLOAD_EXTENSIONS:BOOL=TRUE
-${Slicer_EXTENSION_DESCRIPTION_DIR_CMAKECACHE}
+Slicer_UPLOAD_EXTENSIONS:BOOL=${Slicer_UPLOAD_EXTENSIONS}
+${OPTIONAL_CACHE_CONTENT}
 ${ADDITIONAL_CMAKECACHE_OPTION}
 ")
     endif()
@@ -354,10 +622,10 @@ ${ADDITIONAL_CMAKECACHE_OPTION}
       set(slicer_source_updated TRUE)
     endif()
 
-    message("FILES_UPDATED ................: ${FILES_UPDATED}")
-    message("force_build ..................: ${force_build}")
-    message("Slicer_PREVIOUS_WC_REVISION ..: ${Slicer_PREVIOUS_WC_REVISION}")
-    message("Slicer_WC_REVISION ...........: ${Slicer_WC_REVISION}")
+    message(STATUS "FILES_UPDATED ................: ${FILES_UPDATED}")
+    message(STATUS "force_build ..................: ${force_build}")
+    message(STATUS "Slicer_PREVIOUS_WC_REVISION ..: ${Slicer_PREVIOUS_WC_REVISION}")
+    message(STATUS "Slicer_WC_REVISION ...........: ${Slicer_WC_REVISION}")
 
     if(FILES_UPDATED GREATER 0 OR force_build OR slicer_source_updated)
 
@@ -375,14 +643,8 @@ ${ADDITIONAL_CMAKECACHE_OPTION}
       # Configure
       #-----------------------------------------------------------------------------
       if(run_ctest_with_configure)
-        message("----------- [ Configure ${CTEST_PROJECT_NAME} ] -----------")
-
-        #set(label Slicer)
-
-        set_property(GLOBAL PROPERTY SubProject ${label})
         set_property(GLOBAL PROPERTY Label ${label})
-
-        ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" SOURCE "${EXTENSIONS_BUILDSYSTEM_SOURCE_DIRECTORY}")
+        ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}")
         ctest_read_custom_files("${CTEST_BINARY_DIRECTORY}")
         if(run_ctest_submit)
           ctest_submit(PARTS Configure)
@@ -394,7 +656,6 @@ ${ADDITIONAL_CMAKECACHE_OPTION}
       #-----------------------------------------------------------------------------
       set(build_errors)
       if(run_ctest_with_build)
-        message("----------- [ Build ${CTEST_PROJECT_NAME} ] -----------")
         ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" NUMBER_ERRORS build_errors APPEND)
         if(run_ctest_submit)
           ctest_submit(PARTS Build)
@@ -411,6 +672,10 @@ ${ADDITIONAL_CMAKECACHE_OPTION}
     endif()
   endif()
 endmacro()
+
+#-----------------------------------------------------------------------------
+# Dashboard execution
+#-----------------------------------------------------------------------------
 
 if(SCRIPT_MODE STREQUAL "continuous")
   while(${CTEST_ELAPSED_TIME} LESS 46800) # Lasts 13 hours (Assuming it starts at 9am, it will end around 10pm)

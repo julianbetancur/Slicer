@@ -1,8 +1,8 @@
 // .NAME vtkMRMLAnnotationControlPointsNode - MRML node to represent a fiber bundle from tractography in DTI data.
 // .SECTION Description
 // Annotation nodes contains control points, internally represented as vtkPolyData.
-// A Annotation node contains many control points  and forms the smallest logical unit of tractography 
-// that MRML will manage/read/write. Each control point has accompanying data.  
+// A Annotation node contains many control points  and forms the smallest logical unit of tractography
+// that MRML will manage/read/write. Each control point has accompanying data.
 // Visualization parameters for these nodes are controlled by the vtkMRMLAnnotationPointDisplayNode class.
 //
 
@@ -14,7 +14,8 @@
 class vtkMRMLAnnotationPointDisplayNode;
 
 /// \ingroup Slicer_QtModules_Annotation
-class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationControlPointsNode : public vtkMRMLAnnotationNode
+class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationControlPointsNode
+  : public vtkMRMLAnnotationNode
 {
 public:
   static vtkMRMLAnnotationControlPointsNode *New();
@@ -22,41 +23,45 @@ public:
 
   // void PrintSelf(ostream& os, vtkIndent indent);
   // Description:
-  // Just prints short summary 
-  virtual void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  // Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationControlPoints";};
+  const char* GetNodeTagName() override {return "AnnotationControlPoints";}
 
   // Description:
   // Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// Write this node's information to a string for passing to a CLI, write
-  /// out the prefix before each datum
-  virtual void WriteCLI(std::ostringstream& ss, std::string prefix);
+  /// Write this node's information to a vector of strings for passing to a CLI,
+  /// precede each datum with the prefix if not an empty string
+  /// coordinateSystemFlag = 0 for RAS, 1 for LPS
+  /// multipleFlag = 1 for the whole list, 1 for the first point
+  void WriteCLI(std::vector<std::string>& commandLine,
+                        std::string prefix, int coordinateSystem = 0,
+                        int multipleFlag = 1) override;
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node) {Superclass::Copy(node);}
+  void Copy(vtkMRMLNode *node) override {Superclass::Copy(node);}
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
 
   enum
@@ -64,7 +69,7 @@ public:
       ControlPointModifiedEvent = 19010,
     };
 
-  virtual void Modified() 
+  void Modified() override
     {
     Superclass::Modified();
 
@@ -74,11 +79,11 @@ public:
       }
     }
 
-  /// 
+  ///
   /// Invokes any modified events that are 'pending', meaning they were generated
   /// while the DisableModifiedEvent flag was nonzero.
   /// Returns the old flag state.
-  virtual int InvokePendingModifiedEvent ()
+  int InvokePendingModifiedEvent () override
     {
     if ( this->GetModifiedEventPending() )
       {
@@ -88,12 +93,12 @@ public:
     }
 
   // Description:
-  // get associated display node or NULL if not set
+  // get associated display node or nullptr if not set
   vtkMRMLAnnotationPointDisplayNode* GetAnnotationPointDisplayNode();
 
   // Description:
-  // Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();  
+  // Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
   int  AddControlPoint(double newControl[3],int selectedFlag, int visibleFlag);
 
@@ -115,19 +120,19 @@ public:
 
   int GetNumberOfControlPoints();
 
-  enum 
+  enum
   {
     CP_SELECTED =  vtkMRMLAnnotationNode::NUM_TEXT_ATTRIBUTE_TYPES,
     CP_VISIBLE,
     NUM_CP_ATTRIBUTE_TYPES
   };
 
-  const char *GetAttributeTypesEnumAsString(int val);
+  const char *GetAttributeTypesEnumAsString(int val) override;
 
 
   // Description:
   // Initializes all variables associated with annotations
-  virtual void ResetAnnotations();
+  void ResetAnnotations() override;
 
   // Description:
   // add display node if not already present
@@ -153,25 +158,25 @@ public:
   const char* GetNumberingSchemeAsString(int g);
   void SetNumberingSchemeFromString(const char *schemeString);
 
-  virtual void Initialize(vtkMRMLScene* mrmlScene);
+  void Initialize(vtkMRMLScene* mrmlScene) override;
 
 protected:
-  vtkMRMLAnnotationControlPointsNode(); 
-  ~vtkMRMLAnnotationControlPointsNode() { };
+  vtkMRMLAnnotationControlPointsNode();
+  ~vtkMRMLAnnotationControlPointsNode() override  = default;
   vtkMRMLAnnotationControlPointsNode(const vtkMRMLAnnotationControlPointsNode&);
   void operator=(const vtkMRMLAnnotationControlPointsNode&);
 
   // Description:
-  // Create Poly data with substructures necessary for this class 
+  // Create Poly data with substructures necessary for this class
   void CreatePolyData();
 
   // Description:
   // Initializes control pointes as well as attributes
-  void ResetControlPoints(); 
+  void ResetControlPoints();
 
   // Description:
-  // Initializes all attributes 
-  void ResetControlPointsAttributesAll(); 
+  // Initializes all attributes
+  void ResetControlPointsAttributesAll();
 
   /// How the next annotation will be numbered in it's Text field
   int NumberingScheme;

@@ -2,7 +2,7 @@
 #define __vtkMRMLAnnotationROINode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationLinesNode.h" 
+#include "vtkMRMLAnnotationLinesNode.h"
 
 class vtkMatrix4x4;
 class vtkPlanes;
@@ -10,62 +10,63 @@ class vtkAbstractTransform;
 class vtkMRMLScene;
 
 /// \ingroup Slicer_QtModules_Annotation
-class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationROINode : public vtkMRMLAnnotationLinesNode
+class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationROINode
+  : public vtkMRMLAnnotationLinesNode
 {
 public:
   static vtkMRMLAnnotationROINode *New();
   vtkTypeMacro(vtkMRMLAnnotationROINode,vtkMRMLAnnotationLinesNode);
   /// Description:
-  /// Just prints short summary 
-  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1);
+  /// Just prints short summary
+  void PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag = 1) override;
 
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   /// Description:
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationROI";};
+  const char* GetNodeTagName() override {return "AnnotationROI";}
 
-  virtual const char* GetIcon() {return ":/Icons/AnnotationROI.png";};
+  const char* GetIcon() override {return ":/Icons/AnnotationROI.png";}
 
   // Description:
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
-  
+  void ReadXMLAttributes( const char** atts) override;
+
   /// Description:
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
   /// Description:
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   /// Description:
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
-  /// 
+  ///
   /// Indicates if the ROI is updated interactively
   vtkBooleanMacro(InteractiveMode, int);
   vtkGetMacro(InteractiveMode, int);
   vtkSetMacro(InteractiveMode, int);
 
 
-  /// 
+  ///
   /// Indicates if the ROI box is inside out
   vtkBooleanMacro(InsideOut, int);
   vtkGetMacro(InsideOut, int);
   vtkSetMacro(InsideOut, int);
 
   /// Description:
-  /// KP Define - should be part of AnnotationRulerDisplayNode 
+  /// KP Define - should be part of AnnotationRulerDisplayNode
   double GetROIAnnotationScale();
   void SetROIAnnotationScale(double init);
 
@@ -74,7 +75,7 @@ public:
   int GetROIAnnotationVisibility();
   void SetROIAnnotationVisibility(int flag);
 
-//  int SetROI(vtkIdType line1Id, int sel, int vis);  
+//  int SetROI(vtkIdType line1Id, int sel, int vis);
 
   /// Description:
   /// get/set the point representation color
@@ -93,17 +94,17 @@ public:
 
   /// Description:
   /// transform utility functions
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix);
-  virtual void ApplyTransform(vtkAbstractTransform* transform);
+  void ApplyTransformMatrix(vtkMatrix4x4* transformMatrix) override;
+  void ApplyTransform(vtkAbstractTransform* transform) override;
   virtual void GetTransformedPlanes(vtkPlanes *planes);
 
   /// Description:
   /// Add ROI to scene and add display nodes
-  void Initialize(vtkMRMLScene* mrmlScene);
+  void Initialize(vtkMRMLScene* mrmlScene) override;
 
-  /// 
+  ///
   /// Get/Set for ROI Position in RAS cooridnates
-  /// Note: The ROI Postion is the center of the ROI
+  /// Note: The ROI Position is the center of the ROI
   /// Old API:
   /// void SetXYZ(double X, double Y, double Z);
   /// void SetXYZ(double* XYZ);
@@ -111,12 +112,12 @@ public:
   //double* GetXYZ() {return this->GetControlPointCoordinates(0);}
   /// returns true and control point coordinate 0 on success, false and 0,0,0 on failure
   bool GetXYZ(double point[3]);
-  int SetXYZ(double newControl[3]) 
-  { 
+  int SetXYZ(double newControl[3])
+  {
     return this->SetControlPoint(0, newControl);
   }
 
-  int SetXYZ(double nC1, double nC2, double nC3) 
+  int SetXYZ(double nC1, double nC2, double nC3)
   {
     double newControl[3] = {nC1,nC2,nC3};
     return this->SetXYZ(newControl) ;
@@ -129,12 +130,12 @@ public:
   /// vtkGetVectorMacro(RadiusXYZ,double,3);
   bool GetRadiusXYZ(double point[3]);
 
-  int SetRadiusXYZ(double newControl[3]) 
-  { 
+  int SetRadiusXYZ(double newControl[3])
+  {
     return this->SetControlPoint(1, newControl);
   }
 
-  int SetRadiusXYZ(double nC1, double nC2, double nC3) 
+  int SetRadiusXYZ(double nC1, double nC2, double nC3)
   {
     double newControl[3] = {nC1,nC2,nC3};
     return this->SetRadiusXYZ(newControl);
@@ -149,6 +150,16 @@ public:
   vtkGetStringMacro(VolumeNodeID);
   vtkSetStringMacro(VolumeNodeID);
 
+  /// Get bounding box in global RAS form (xmin,xmax, ymin,ymax, zmin,zmax).
+  /// The default implementation in the model node would not work correctly, as the polydata
+  /// in this class is used for storing the centerpoint position and radius.
+  /// \sa GetBounds()
+  void GetRASBounds(double bounds[6]) override;
+
+  /// Get bounding box in global RAS form (xmin,xmax, ymin,ymax, zmin,zmax).
+  /// This method always returns the bounds of the untransformed object.
+  /// \sa GetRASBounds()
+  void GetBounds(double bounds[6]) override;
 
   enum
   {
@@ -159,12 +170,12 @@ public:
 
 protected:
   vtkMRMLAnnotationROINode();
-  ~vtkMRMLAnnotationROINode();
+  ~vtkMRMLAnnotationROINode() override;
   vtkMRMLAnnotationROINode(const vtkMRMLAnnotationROINode&);
   void operator=(const vtkMRMLAnnotationROINode&);
 
   int InteractiveMode;
- 
+
   int SetControlPoint(int id, double newControl[3]);
 
   int AddControlPoint(double newControl[3],int selectedFlag, int visibleFlag);

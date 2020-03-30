@@ -35,22 +35,34 @@ class qMRMLThreeDWidgetPrivate;
 class vtkMRMLScene;
 class vtkMRMLViewNode;
 
+// MRMLLogic includes
+class vtkMRMLViewLogic;
+
+// VTK includes
+class vtkCollection;
+
 class QMRML_WIDGETS_EXPORT qMRMLThreeDWidget : public qMRMLWidget
 {
   Q_OBJECT
+  Q_PROPERTY(QString viewLabel READ viewLabel WRITE setViewLabel)
+  Q_PROPERTY(QColor viewColor READ viewColor WRITE setViewColor)
+
 public:
   /// Superclass typedef
   typedef qMRMLWidget Superclass;
-  
+
   /// Constructors
-  explicit qMRMLThreeDWidget(QWidget* parent = 0);
-  virtual ~qMRMLThreeDWidget();
+  explicit qMRMLThreeDWidget(QWidget* parent = nullptr);
+  ~qMRMLThreeDWidget() override;
 
   /// Get slice controller
-  qMRMLThreeDViewControllerWidget* threeDController()const;
+  Q_INVOKABLE qMRMLThreeDViewControllerWidget* threeDController()const;
 
   /// Get the 3D View node observed by view.
-  vtkMRMLViewNode* mrmlViewNode()const;
+  Q_INVOKABLE vtkMRMLViewNode* mrmlViewNode()const;
+
+  /// \sa qMRMLSliceControllerWidget::viewLogic()
+  Q_INVOKABLE vtkMRMLViewLogic* viewLogic()const;
 
   /// Get a reference to the underlying ThreeD View
   /// Becareful if you change the threeDView, you might
@@ -58,17 +70,34 @@ public:
   Q_INVOKABLE qMRMLThreeDView* threeDView()const;
 
   /// \sa qMRMLThreeDView::addDisplayableManager
-  void addDisplayableManager(const QString& displayableManager);
+  Q_INVOKABLE void addDisplayableManager(const QString& displayableManager);
+  Q_INVOKABLE void getDisplayableManagers(vtkCollection* displayableManagers);
 
-  /// \sa qMRMLThreeDControllerWidget::viewLabel()
+  /// \sa qMRMLThreeDViewControllerWidget::viewLabel()
   /// \sa setiewLabel()
   QString viewLabel()const;
 
-  /// \sa qMRMLThreeDControllerWidget::viewLabel()
+  /// \sa qMRMLThreeDViewControllerWidget::viewLabel()
   /// \sa viewLabel()
   void setViewLabel(const QString& newViewLabel);
 
+  /// \sa qMRMLThreeDViewControllerWidget::setQuadBufferStereoSupportEnabled
+  Q_INVOKABLE void setQuadBufferStereoSupportEnabled(bool value);
+
+  /// \sa qMRMLThreeDViewControllerWidget::viewColor()
+  /// \sa setViewColor()
+  QColor viewColor()const;
+
+  /// \sa qMRMLThreeDViewControllerWidget::viewColor()
+  /// \sa viewColor()
+  void setViewColor(const QColor& newViewColor);
+
+  /// propagates the logics to the qMRMLThreeDControllerWidget
+  Q_INVOKABLE void setViewLogics(vtkCollection* logics);
+
 public slots:
+  void setMRMLScene(vtkMRMLScene* newScene) override;
+
   /// Set the current \a viewNode to observe
   void setMRMLViewNode(vtkMRMLViewNode* newViewNode);
 

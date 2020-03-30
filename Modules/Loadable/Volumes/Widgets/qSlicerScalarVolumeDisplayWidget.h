@@ -29,7 +29,7 @@ public:
   /// Constructors
   typedef qSlicerWidget Superclass;
   explicit qSlicerScalarVolumeDisplayWidget(QWidget* parent);
-  virtual ~qSlicerScalarVolumeDisplayWidget();
+  ~qSlicerScalarVolumeDisplayWidget() override;
 
   vtkMRMLScalarVolumeNode* volumeNode()const;
   vtkMRMLScalarVolumeDisplayNode* volumeDisplayNode()const;
@@ -42,7 +42,7 @@ public:
 
 public slots:
 
-  /// 
+  ///
   /// Set the MRML node of interest
   void setMRMLVolumeNode(vtkMRMLScalarVolumeNode* volumeNode);
   void setMRMLVolumeNode(vtkMRMLNode* node);
@@ -53,11 +53,13 @@ public slots:
 
 protected slots:
   void updateWidgetFromMRML();
-  void updateTransferFunction();
+  void updateHistogram();
   void onPresetButtonClicked();
+  void onLockWindowLevelButtonClicked();
+  void onHistogramSectionExpanded(bool);
 
 protected:
-  void showEvent(QShowEvent * event);
+  void showEvent(QShowEvent * event) override;
 protected:
   QScopedPointer<qSlicerScalarVolumeDisplayWidgetPrivate> d_ptr;
 

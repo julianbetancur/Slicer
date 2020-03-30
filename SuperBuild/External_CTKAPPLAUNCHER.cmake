@@ -1,53 +1,71 @@
 
-# Make sure this file is included only once
-get_filename_component(CMAKE_CURRENT_LIST_FILENAME ${CMAKE_CURRENT_LIST_FILE} NAME_WE)
-if(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED)
-  return()
-endif()
-set(${CMAKE_CURRENT_LIST_FILENAME}_FILE_INCLUDED 1)
-
 if(Slicer_USE_CTKAPPLAUNCHER)
+
+  set(proj CTKAPPLAUNCHER)
+
   # Sanity checks
   if(DEFINED CTKAPPLAUNCHER_DIR AND NOT EXISTS ${CTKAPPLAUNCHER_DIR})
-    message(FATAL_ERROR "CTKAPPLAUNCHER_DIR variable is defined but corresponds to non-existing directory")
+    message(FATAL_ERROR "CTKAPPLAUNCHER_DIR variable is defined but corresponds to nonexistent directory")
   endif()
 
   # Set dependency list
-  set(CTKAPPLAUNCHER_DEPENDENCIES "")
+  set(${proj}_DEPENDENCIES "")
+  if(WIN32)
+    set(${proj}_DEPENDENCIES CTKResEdit)
+  endif()
 
   # Include dependent projects if any
-  SlicerMacroCheckExternalProjectDependency(CTKAPPLAUNCHER)
-  set(proj CTKAPPLAUNCHER)
+  ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR ${proj}_DEPENDENCIES)
 
-  if(NOT DEFINED CTKAPPLAUNCHER_DIR)
+  if(Slicer_USE_SYSTEM_${proj})
+    message(FATAL_ERROR "Enabling Slicer_USE_SYSTEM_${proj} is not supported !")
+  endif()
+
+  if(NOT DEFINED CTKAppLauncher_DIR)
+
     SlicerMacroGetOperatingSystemArchitectureBitness(VAR_PREFIX CTKAPPLAUNCHER)
-    set(launcher_version "0.1.10")
+    set(launcher_version "0.1.27")
     # On windows, use i386 launcher unconditionally
     if("${CTKAPPLAUNCHER_OS}" STREQUAL "win")
       set(CTKAPPLAUNCHER_ARCHITECTURE "i386")
-      set(md5 "fee82ee869cfedb54f48c58d0bad3710")
+      set(md5 "3f05dcc605ac2144edc69b28c27bb8d1")
     elseif("${CTKAPPLAUNCHER_OS}" STREQUAL "linux")
-      set(md5 "7da4bcc68ab09833aebc156a7d0a5f06")
+      set(md5 "a9a8aab9c0e91cdd0b5265eb799daf74")
     elseif("${CTKAPPLAUNCHER_OS}" STREQUAL "macosx")
-      set(md5 "de87ffad9d5909c7525c61dac50b0c9e")
+      set(md5 "a9de73a1609c988167884efa23819287")
     endif()
-    #message(STATUS "${__indent}Adding project ${proj}")
+
+    set(EP_BINARY_DIR ${CMAKE_BINARY_DIR}/${proj})
+
     ExternalProject_Add(${proj}
-      URL http://cloud.github.com/downloads/commontk/AppLauncher/CTKAppLauncher-${launcher_version}-${CTKAPPLAUNCHER_OS}-${CTKAPPLAUNCHER_ARCHITECTURE}.tar.gz
+      ${${proj}_EP_ARGS}
+      URL https://github.com/commontk/AppLauncher/releases/download/v${launcher_version}/CTKAppLauncher-${launcher_version}-${CTKAPPLAUNCHER_OS}-${CTKAPPLAUNCHER_ARCHITECTURE}.tar.gz
       URL_MD5 ${md5}
-      SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
-      "${slicer_external_update}"
+      DOWNLOAD_DIR ${CMAKE_BINARY_DIR}
+      SOURCE_DIR ${EP_BINARY_DIR}
+      BUILD_IN_SOURCE 1
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
       INSTALL_COMMAND ""
       DEPENDS
-        ${CTKAPPLAUNCHER_DEPENDENCIES}
+        ${${proj}_DEPENDENCIES}
       )
-    set(CTKAPPLAUNCHER_DIR ${CMAKE_BINARY_DIR}/${proj})
+
+    ExternalProject_GenerateProjectDescription_Step(${proj}
+      VERSION ${launcher_version}
+      LICENSE_FILES "https://raw.githubusercontent.com/commontk/AppLauncher/v${launcher_version}/LICENSE_Apache_20"
+      )
+
+    set(CTKAppLauncher_DIR ${EP_BINARY_DIR})
+
   else()
-    # The project is provided using CTKAPPLAUNCHER_DIR, nevertheless since other
-    # project may depend on CTKAPPLAUNCHER, let's add an 'empty' one
-    SlicerMacroEmptyExternalProject(${proj} "${CTKAPPLAUNCHER_DEPENDENCIES}")
+    ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})
   endif()
+
+  mark_as_superbuild(
+    VARS
+      CTKAppLauncher_DIR:PATH
+    LABELS "FIND_PACKAGE"
+    )
 
 endif()

@@ -44,7 +44,8 @@ public:
   qSlicerDiffusionTensorVolumeDisplayWidgetPrivate(qSlicerDiffusionTensorVolumeDisplayWidget& object);
   ~qSlicerDiffusionTensorVolumeDisplayWidgetPrivate();
   void init();
-  vtkMRMLDiffusionTensorVolumeNode* VolumeNode;
+  void glyphsOnSlicesDisplaySetEnabled(bool enabled);
+  vtkWeakPointer<vtkMRMLDiffusionTensorVolumeNode> VolumeNode;
 };
 
 //-----------------------------------------------------------------------------
@@ -53,14 +54,12 @@ qSlicerDiffusionTensorVolumeDisplayWidgetPrivate
   qSlicerDiffusionTensorVolumeDisplayWidget& object)
   : q_ptr(&object)
 {
-  this->VolumeNode = 0;
 }
 
 //-----------------------------------------------------------------------------
 qSlicerDiffusionTensorVolumeDisplayWidgetPrivate
 ::~qSlicerDiffusionTensorVolumeDisplayWidgetPrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerDiffusionTensorVolumeDisplayWidgetPrivate::init()
@@ -80,6 +79,18 @@ void qSlicerDiffusionTensorVolumeDisplayWidgetPrivate::init()
                    q, SLOT(setGreenSliceVisible(bool)));
 }
 
+//-----------------------------------------------------------------------------
+void qSlicerDiffusionTensorVolumeDisplayWidgetPrivate::glyphsOnSlicesDisplaySetEnabled(bool enabled)
+{
+  this->GlyphsOnSlicesDisplayCollapsibleGroupBox->setEnabled(enabled);
+  if (!enabled)
+    {
+    this->RedSliceCheckBox->setCheckState(Qt::Unchecked);
+    this->YellowSliceCheckBox->setCheckState(Qt::Unchecked);
+    this->GreenSliceCheckBox->setCheckState(Qt::Unchecked);
+    }
+}
+
 // --------------------------------------------------------------------------
 qSlicerDiffusionTensorVolumeDisplayWidget
 ::qSlicerDiffusionTensorVolumeDisplayWidget(QWidget* parentWidget)
@@ -96,8 +107,7 @@ qSlicerDiffusionTensorVolumeDisplayWidget
 // --------------------------------------------------------------------------
 qSlicerDiffusionTensorVolumeDisplayWidget
 ::~qSlicerDiffusionTensorVolumeDisplayWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 vtkMRMLDiffusionTensorVolumeNode* qSlicerDiffusionTensorVolumeDisplayWidget
@@ -112,7 +122,7 @@ vtkMRMLDiffusionTensorVolumeDisplayNode* qSlicerDiffusionTensorVolumeDisplayWidg
 {
   vtkMRMLDiffusionTensorVolumeNode* volumeNode = this->volumeNode();
   return volumeNode ? vtkMRMLDiffusionTensorVolumeDisplayNode::SafeDownCast(
-    volumeNode->GetDisplayNode()) : 0;
+    volumeNode->GetDisplayNode()) : nullptr;
 }
 
 // --------------------------------------------------------------------------
@@ -144,12 +154,13 @@ void qSlicerDiffusionTensorVolumeDisplayWidget::setMRMLVolumeNode(vtkMRMLDiffusi
 
   vtkMRMLDiffusionTensorVolumeDisplayNode* oldVolumeDisplayNode = this->volumeDisplayNode();
 
-  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() :0,
+  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() :nullptr,
                 vtkCommand::ModifiedEvent,
                 this, SLOT(updateWidgetFromMRML()));
   d->VolumeNode = volumeNode;
   d->ScalarVolumeDisplayWidget->setMRMLVolumeNode(volumeNode);
   vtkMRMLDiffusionTensorVolumeDisplayNode* newVolumeDisplayNode = this->volumeDisplayNode();
+  vtkMRMLGlyphableVolumeSliceDisplayNode* glyphableVolumeSliceNode = nullptr;
   if (newVolumeDisplayNode)
     {
     std::vector< vtkMRMLGlyphableVolumeSliceDisplayNode*> dtiSliceDisplayNodes =
@@ -161,12 +172,24 @@ void qSlicerDiffusionTensorVolumeDisplayWidget::setMRMLVolumeNode(vtkMRMLDiffusi
         newVolumeDisplayNode->GetSliceGlyphDisplayNodes(d->VolumeNode);
       }
     Q_ASSERT(dtiSliceDisplayNodes.size());
-    d->DTISliceDisplayWidget->setMRMLDTISliceDisplayNode(dtiSliceDisplayNodes[0]);
-    qvtkDisconnect(0, vtkCommand::ModifiedEvent, this, SLOT(synchronizeSliceDisplayNodes()));
-    qvtkConnect(dtiSliceDisplayNodes[0], vtkCommand::ModifiedEvent,
-                this, SLOT(synchronizeSliceDisplayNodes()));
-    this->synchronizeSliceDisplayNodes();
+    d->RedSliceCheckBox->setChecked(dtiSliceDisplayNodes[0]->GetVisibility());
+    if (dtiSliceDisplayNodes.size() > 1)
+      {
+      d->YellowSliceCheckBox->setChecked(dtiSliceDisplayNodes[1]->GetVisibility());
+      }
+    if (dtiSliceDisplayNodes.size() > 2)
+      {
+      d->GreenSliceCheckBox->setChecked(dtiSliceDisplayNodes[1]->GetVisibility());
+      }
+
+    glyphableVolumeSliceNode = dtiSliceDisplayNodes[0];
     }
+  // The update tasks are also needed when scene is closed (newVolumeDisplayNode is nullptr)
+  d->DTISliceDisplayWidget->setMRMLDTISliceDisplayNode(glyphableVolumeSliceNode);
+  qvtkDisconnect(nullptr, vtkCommand::ModifiedEvent, this, SLOT(synchronizeSliceDisplayNodes()));
+  qvtkConnect(glyphableVolumeSliceNode, vtkCommand::ModifiedEvent,
+              this, SLOT(synchronizeSliceDisplayNodes()));
+  this->synchronizeSliceDisplayNodes();
   this->updateWidgetFromMRML();
 }
 
@@ -174,7 +197,7 @@ void qSlicerDiffusionTensorVolumeDisplayWidget::setMRMLVolumeNode(vtkMRMLDiffusi
 void qSlicerDiffusionTensorVolumeDisplayWidget::updateWidgetFromMRML()
 {
   Q_D(qSlicerDiffusionTensorVolumeDisplayWidget);
-  this->setEnabled(d->VolumeNode != 0);
+  this->setEnabled(d->VolumeNode != nullptr);
   vtkMRMLDiffusionTensorVolumeDisplayNode* displayNode =
     this->volumeDisplayNode();
   if (!displayNode)
@@ -182,11 +205,11 @@ void qSlicerDiffusionTensorVolumeDisplayWidget::updateWidgetFromMRML()
     return;
     }
   d->ScalarInvariantComboBox->setScalarInvariant(displayNode->GetScalarInvariant());
-  if ( 
+  if (
     displayNode->GetScalarInvariant() == vtkMRMLDiffusionTensorDisplayPropertiesNode::ColorOrientation ||
     displayNode->GetScalarInvariant() == vtkMRMLDiffusionTensorDisplayPropertiesNode::ColorOrientationMiddleEigenvector ||
-    displayNode->GetScalarInvariant() == vtkMRMLDiffusionTensorDisplayPropertiesNode::ColorOrientationMinEigenvector 
-    ) 
+    displayNode->GetScalarInvariant() == vtkMRMLDiffusionTensorDisplayPropertiesNode::ColorOrientationMinEigenvector
+    )
   {
     d->ScalarVolumeDisplayWidget->setColorTableComboBoxEnabled(false);
     d->ScalarVolumeDisplayWidget->setMRMLWindowLevelWidgetEnabled(false);

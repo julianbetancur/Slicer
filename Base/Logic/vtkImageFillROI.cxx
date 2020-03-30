@@ -8,20 +8,24 @@
 =========================================================================auto=*/
 #include "vtkImageFillROI.h"
 
-#include "vtkObjectFactory.h"
-#include "vtkImageData.h"
-#include "vtkPoints.h"
+// VTK includes
+#include <vtkImageData.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
+#include <vtkObjectFactory.h>
+#include <vtkPoints.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkVersion.h>
 
 vtkCxxSetObjectMacro(vtkImageFillROI,Points,vtkPoints);
 
 //------------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkImageFillROI, "$Revision$");
 vtkStandardNewMacro(vtkImageFillROI);
 
 //----------------------------------------------------------------------------
 vtkImageFillROI::vtkImageFillROI()
 {
-  this->Points = NULL;
+  this->Points = nullptr;
   this->Value = 255;
   this->Shape = SHAPE_POLYGON;
   this->Radius = 0;
@@ -31,7 +35,7 @@ vtkImageFillROI::vtkImageFillROI()
 vtkImageFillROI::~vtkImageFillROI()
 {
   // We must UnRegister any object that has a vtkSetObjectMacro
-  if (this->Points != NULL)
+  if (this->Points != nullptr)
     {
     this->Points->UnRegister(this);
     }
@@ -63,7 +67,7 @@ void vtkImageFillROI::PrintSelf(ostream& os, vtkIndent indent)
 class Edge
 {
 public:
-  Edge() {this->next = NULL;};
+  Edge() {this->next = nullptr;};
   int yUpper;
   int dx, dy, dy2, dx2, dydx2, r, xInc, x;
   Edge *next;
@@ -75,13 +79,13 @@ void InsertEdge(Edge *list, Edge *edge)
   Edge *p, *q = list;
 
   p = q->next;
-  while (p != NULL) 
+  while (p != nullptr)
     {
     if (edge->x < p->x)
       {
-      p = NULL;
+      p = nullptr;
       }
-    else 
+    else
       {
       q = p;
       p = p->next;
@@ -138,12 +142,12 @@ void BuildEdgeList(int nPts, int *xPts, int *yPts, Edge *edges[])
   x1 = xPts[nPts-1];
   y1 = yPts[nPts-1];
 
-  for (i=0; i<nPts; i++) 
+  for (i=0; i<nPts; i++)
     {
     x2 = xPts[i];
     y2 = yPts[i];
 
-    if (y1 != y2) 
+    if (y1 != y2)
       {
       // non-horizontal line
       edge = new Edge;
@@ -164,7 +168,7 @@ void BuildEdgeList(int nPts, int *xPts, int *yPts, Edge *edges[])
 }
 
 template <class T>
-static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int *yPts, 
+static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int *yPts,
     T value, T *outPtr)
 {
   int    i, scan, done;
@@ -173,7 +177,7 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
   T *ptr;
 
   // Build a list of edges for each pixel in y direction.
-  // The max possible number of edges is then the 
+  // The max possible number of edges is then the
   // height of the image, so allocate this many edge pointers.
   Edge **edges = new Edge*[ny];
 
@@ -185,26 +189,26 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
   BuildEdgeList(nPts, xPts, yPts, edges);
   active = new Edge;
 
-  for (scan=0; scan < ny; scan++) 
+  for (scan=0; scan < ny; scan++)
     {
     // BuildActiveList(int scan, Edge *active, Edge *edges[])
     p = edges[scan]->next;
-    while (p) 
+    while (p)
       {
       q = p->next;
       InsertEdge(active, p);
       p = q;
       }
 
-    if (active->next) 
+    if (active->next)
       {
 
-      // DeleteFromActiveList(int scan, Edge *active) 
+      // DeleteFromActiveList(int scan, Edge *active)
       q = active;
       p = active->next;
-      while (p) 
+      while (p)
         {
-        if (scan >= p->yUpper) 
+        if (scan >= p->yUpper)
           {
           p = p->next;
 
@@ -212,8 +216,8 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
           del = q->next;
           q->next = del->next;
           delete del;
-          } 
-        else 
+          }
+        else
           {
           q = p;
           p = p->next;
@@ -223,10 +227,10 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
       // FillScan(int nx, int scan, Edge *active, T value, T *outPtr)
       p = active->next;
       ptr = &outPtr[scan*nx];
-      while (p) 
+      while (p)
         {
         q = p->next;
-        if (!q) 
+        if (!q)
           {
           fprintf(stderr, "ODD FILL: y=%d\n", scan);
           break;
@@ -244,13 +248,13 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
         }
 
       // UpdateActiveList(int scan, Edge *active)
-      // Update 'x' field 
+      // Update 'x' field
       q = active;
       p = active->next;
-      while (p) 
+      while (p)
         {
         // < 45 degree slope
-        if (p->dy <= p->dx) 
+        if (p->dy <= p->dx)
           {
           done = 0;
           while (done == 0)
@@ -260,7 +264,7 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
               {
               p->r += p->dy2;
               }
-            else 
+            else
               {
               done = 1;
               p->r += p->dydx2;
@@ -268,13 +272,13 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
             }
           }
         // > 45
-        else 
+        else
           {
           if (p->r <= 0)
             {
             p->r += p->dx2;
             }
-          else 
+          else
             {
             p->x += p->xInc;
             p->r += p->dydx2;
@@ -286,8 +290,8 @@ static void vtkImageFillROIDrawPolygon(int nx, int ny, int nPts, int *xPts, int 
 
       // ResortActiveList(Edge *active)
       p = active->next;
-      active->next = NULL;
-      while (p) 
+      active->next = nullptr;
+      while (p)
         {
         q = p->next;
         InsertEdge(active, p);
@@ -326,14 +330,14 @@ static void DrawLinesFast(int nx, int ny, int nPts, int *xPts, int *yPts,
     yy2 = yPts[i+1];
 
     // Sort points so x1,y1 is below x2,y2
-    if (yy1 <= yy2) 
+    if (yy1 <= yy2)
       {
       x1 = xx1;
       y1 = yy1;
       x2 = xx2;
       y2 = yy2;
-      } 
-    else 
+      }
+    else
       {
       x1 = xx2;
       y1 = yy2;
@@ -375,7 +379,7 @@ static void DrawLinesFast(int nx, int ny, int nPts, int *xPts, int *yPts,
             {
             r += dy2;
             }
-          else 
+          else
             {
             // Don't draw: don't want thick lines here
             y++;
@@ -394,7 +398,7 @@ static void DrawLinesFast(int nx, int ny, int nPts, int *xPts, int *yPts,
             {
             r += dy2;
             }
-          else 
+          else
             {
             // Don't draw: don't want thick lines here
             y++;
@@ -420,7 +424,7 @@ static void DrawLinesFast(int nx, int ny, int nPts, int *xPts, int *yPts,
           {
           r += dx2;
           }
-        else 
+        else
           {
           // Draw now only because it's thick
 
@@ -460,14 +464,14 @@ static void DrawLines(int nx, int ny, int z, int radius,
     yy2 = yPts[i+1];
 
     // Sort points so x1,y1 is below x2,y2
-    if (yy1 <= yy2) 
+    if (yy1 <= yy2)
       {
       x1 = xx1;
       y1 = yy1;
       x2 = xx2;
       y2 = yy2;
-      } 
-    else 
+      }
+    else
       {
       x1 = xx2;
       y1 = yy2;
@@ -495,10 +499,10 @@ static void DrawLines(int nx, int ny, int z, int radius,
       y = y1;
 
       // Draw first point with radius r
-      for (yy = y-rad; yy <= y+rad; yy++) 
+      for (yy = y-rad; yy <= y+rad; yy++)
         {
         outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-        for (xx = x-rad; xx <= x+rad; xx++) 
+        for (xx = x-rad; xx <= x+rad; xx++)
           {
           *outPtr = value;
           outPtr++;
@@ -521,13 +525,13 @@ static void DrawLines(int nx, int ny, int z, int radius,
               {
               r += dy2;
               }
-            else 
+            else
               {
               // Draw now only because it's thick
-              for (yy = y-rad; yy <= y+rad; yy++) 
+              for (yy = y-rad; yy <= y+rad; yy++)
                 {
                 outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-                for (xx = x-rad; xx <= x+rad; xx++) 
+                for (xx = x-rad; xx <= x+rad; xx++)
                   {
                   *outPtr = value;
                   outPtr++;
@@ -537,10 +541,10 @@ static void DrawLines(int nx, int ny, int z, int radius,
               r += dydx2;
               }
             // Draw point with radius r
-            for (yy = y-rad; yy <= y+rad; yy++) 
+            for (yy = y-rad; yy <= y+rad; yy++)
               {
               outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-              for (xx = x-rad; xx <= x+rad; xx++) 
+              for (xx = x-rad; xx <= x+rad; xx++)
                 {
                 *outPtr = value;
                 outPtr++;
@@ -557,13 +561,13 @@ static void DrawLines(int nx, int ny, int z, int radius,
               {
               r += dy2;
               }
-            else 
+            else
               {
               // Draw now only because it's thick
-              for (yy = y-rad; yy <= y+rad; yy++) 
+              for (yy = y-rad; yy <= y+rad; yy++)
                 {
                 outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-                for (xx = x-rad; xx <= x+rad; xx++) 
+                for (xx = x-rad; xx <= x+rad; xx++)
                   {
                   *outPtr = value;
                   outPtr++;
@@ -573,10 +577,10 @@ static void DrawLines(int nx, int ny, int z, int radius,
               r += dydx2;
               }
             // Draw point with radius r
-            for (yy = y-rad; yy <= y+rad; yy++) 
+            for (yy = y-rad; yy <= y+rad; yy++)
               {
               outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-              for (xx = x-rad; xx <= x+rad; xx++) 
+              for (xx = x-rad; xx <= x+rad; xx++)
                 {
                 *outPtr = value;
                 outPtr++;
@@ -600,7 +604,7 @@ static void DrawLines(int nx, int ny, int z, int radius,
             {
             r += dx2;
             }
-          else 
+          else
             {
             // Draw now only because it's thick
 
@@ -608,10 +612,10 @@ static void DrawLines(int nx, int ny, int z, int radius,
             r += dydx2;
             }
           // Draw point with radius r
-          for (yy = y-rad; yy <= y+rad; yy++) 
+          for (yy = y-rad; yy <= y+rad; yy++)
             {
             outPtr = (T*)(outData->GetScalarPointer(x-rad, yy, z));
-            for (xx = x-rad; xx <= x+rad; xx++) 
+            for (xx = x-rad; xx <= x+rad; xx++)
               {
               *outPtr = value;
               outPtr++;
@@ -666,10 +670,10 @@ static void vtkImageFillROIExecute(vtkImageFillROI* self,
   int r = self->GetRadius();
   int i, j, x, y, z, nPts, nx, ny, outExt[6];
   int *xPts, *yPts;
-  vtkFloatingPointType *pt;
+  double *pt;
 
   vtkPoints *points = self->GetPoints();
-  if (points == NULL)
+  if (points == nullptr)
     return;
 
   outData->GetExtent(outExt);
@@ -741,52 +745,63 @@ static void vtkImageFillROIExecute(vtkImageFillROI* self,
 }
 
 //----------------------------------------------------------------------------
-void vtkImageFillROI::ExecuteData(vtkDataObject *out)
+int vtkImageFillROI::RequestData(
+   vtkInformation *vtkNotUsed(request),
+   vtkInformationVector **inputVector,
+   vtkInformationVector *outputVector)
 {
+  vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+  vtkInformation *outInfo = outputVector->GetInformationObject(0);
+
+  // Get the image data.
+  vtkImageData *input = vtkImageData::SafeDownCast(
+    inInfo->Get(vtkDataObject::DATA_OBJECT()));
+  vtkImageData *output = vtkImageData::SafeDownCast(
+    outInfo->Get(vtkDataObject::DATA_OBJECT()));
+
   // Make sure the Input has been set.
-  if ( this->GetInput() == NULL )
+  if ( input == nullptr )
     {
     vtkErrorMacro(<< "ExecuteData: Input is not set.");
-    return;
+    return 0;
     }
-    
-  this->AllocateOutputData(out);
 
-  if ( this->GetInput()->GetDataObjectType() != VTK_IMAGE_DATA )
+  this->AllocateOutputData(output, outInfo);
+
+  if ( !input ||
+       input->GetDataObjectType() != VTK_IMAGE_DATA )
     {
     vtkWarningMacro ("was sent non-image data data object");
-    return;
+    return 0;
     }
 
-  vtkImageData *inData = (vtkImageData *) this->GetInput();
-
-  void *ptr = NULL;
-  int x1, *inExt;
+  void *ptr = nullptr;
+  int x1, inExt[6];
 
   // ensure 1 component data
-  x1 = inData->GetNumberOfScalarComponents();
+  x1 = input->GetNumberOfScalarComponents();
   if (x1 != 1)
     {
     vtkErrorMacro("Input has "<<x1<<" components instead of 1.");
-    return;
+    return 0;
     }
 
   // Ensure intput is 2D
-  inExt = inData->GetWholeExtent();
+  inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), inExt);
   if (inExt[5] != inExt[4])
     {
     vtkErrorMacro("Input must be 2D.");
-    return;
+    return 0;
     }
 
-  switch (this->GetOutput()->GetScalarType())
+  switch (output->GetScalarType())
     {
-    vtkTemplateMacro( vtkImageFillROIExecute ( this, this->GetOutput(), static_cast<VTK_TT*>(ptr) ) );
-    default: 
+    vtkTemplateMacro( vtkImageFillROIExecute ( this, output, static_cast<VTK_TT*>(ptr) ) );
+    default:
       {
       vtkErrorMacro(<< "Execute: Unknown ScalarType\n");
-      return;
+      return 0;
       }
     }
+  return 1;
 }
-

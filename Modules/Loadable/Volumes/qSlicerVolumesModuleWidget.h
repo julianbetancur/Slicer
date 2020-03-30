@@ -38,11 +38,18 @@ class Q_SLICER_QTMODULES_VOLUMES_EXPORT qSlicerVolumesModuleWidget :
 public:
 
   typedef qSlicerAbstractModuleWidget Superclass;
-  qSlicerVolumesModuleWidget(QWidget *parent=0);
-  virtual ~qSlicerVolumesModuleWidget();
+  qSlicerVolumesModuleWidget(QWidget *parent=nullptr);
+  ~qSlicerVolumesModuleWidget() override;
+
+  bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
 
 protected:
-  virtual void setup();
+  void setup() override;
+
+protected slots:
+  void nodeSelectionChanged(vtkMRMLNode*);
+  void updateWidgetFromMRML();
+  void convertVolume();
 
 protected:
   QScopedPointer<qSlicerVolumesModuleWidgetPrivate> d_ptr;

@@ -29,6 +29,8 @@ set(${KIT}_SRCS
   qMRMLColorTableComboBoxPlugin.h
   qMRMLColorTableViewPlugin.cxx
   qMRMLColorTableViewPlugin.h
+  qMRMLCoordinatesWidgetPlugin.cxx
+  qMRMLCoordinatesWidgetPlugin.h
   qMRMLDisplayNodeViewComboBoxPlugin.cxx
   qMRMLDisplayNodeViewComboBoxPlugin.h
   qMRMLDisplayNodeWidgetPlugin.cxx
@@ -49,8 +51,16 @@ set(${KIT}_SRCS
   qMRMLModelInfoWidgetPlugin.h
   qMRMLNavigationViewPlugin.cxx
   qMRMLNavigationViewPlugin.h
+  qMRMLNodeAttributeTableViewPlugin.cxx
+  qMRMLNodeAttributeTableViewPlugin.h
+  qMRMLNodeAttributeTableWidgetPlugin.cxx
+  qMRMLNodeAttributeTableWidgetPlugin.h
   qMRMLNodeComboBoxPlugin.cxx
   qMRMLNodeComboBoxPlugin.h
+  qMRMLPlotViewControllerWidgetPlugin.cxx
+  qMRMLPlotViewControllerWidgetPlugin.h
+  qMRMLPlotWidgetPlugin.cxx
+  qMRMLPlotWidgetPlugin.h
   qMRMLRangeWidgetPlugin.cxx
   qMRMLRangeWidgetPlugin.h
   qMRMLROIWidgetPlugin.cxx
@@ -65,6 +75,14 @@ set(${KIT}_SRCS
   qMRMLSliceInformationWidgetPlugin.h
   qMRMLSliceWidgetPlugin.cxx
   qMRMLSliceWidgetPlugin.h
+  qMRMLSliderWidgetPlugin.cxx
+  qMRMLSliderWidgetPlugin.h
+  qMRMLSpinBoxPlugin.cxx
+  qMRMLSpinBoxPlugin.h
+  qMRMLTableViewPlugin.cxx
+  qMRMLTableViewPlugin.h
+  qMRMLThreeDViewInformationWidgetPlugin.cxx
+  qMRMLThreeDViewInformationWidgetPlugin.h
   qMRMLThreeDViewPlugin.cxx
   qMRMLThreeDViewPlugin.h
   qMRMLTransformSlidersPlugin.cxx
@@ -81,6 +99,13 @@ set(${KIT}_SRCS
   qMRMLWindowLevelWidgetPlugin.h
   )
 
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  list(APPEND ${KIT}_SRCS
+    qMRMLExpandingWebViewPlugin.cxx
+    qMRMLExpandingWebViewPlugin.h
+    )
+endif()
+
 # Headers that should run through moc
 set(${KIT}_MOC_SRCS
   qMRMLWidgetsPlugin.h
@@ -92,6 +117,7 @@ set(${KIT}_MOC_SRCS
   qMRMLColorListViewPlugin.h
   qMRMLColorTableComboBoxPlugin.h
   qMRMLColorTableViewPlugin.h
+  qMRMLCoordinatesWidgetPlugin.h
   qMRMLDisplayNodeViewComboBoxPlugin.h
   qMRMLDisplayNodeWidgetPlugin.h
   qMRMLEventBrokerWidgetPlugin.h
@@ -102,7 +128,11 @@ set(${KIT}_MOC_SRCS
   qMRMLMatrixWidgetPlugin.h
   qMRMLModelInfoWidgetPlugin.h
   qMRMLNavigationViewPlugin.h
+  qMRMLNodeAttributeTableViewPlugin.h
+  qMRMLNodeAttributeTableWidgetPlugin.h
   qMRMLNodeComboBoxPlugin.h
+  qMRMLPlotViewControllerWidgetPlugin.h
+  qMRMLPlotWidgetPlugin.h
   qMRMLRangeWidgetPlugin.h
   qMRMLROIWidgetPlugin.h
   qMRMLScalarInvariantComboBoxPlugin.h
@@ -110,6 +140,10 @@ set(${KIT}_MOC_SRCS
   qMRMLSliceControllerWidgetPlugin.h
   qMRMLSliceInformationWidgetPlugin.h
   qMRMLSliceWidgetPlugin.h
+  qMRMLSliderWidgetPlugin.h
+  qMRMLSpinBoxPlugin.h
+  qMRMLTableViewPlugin.h
+  qMRMLThreeDViewInformationWidgetPlugin.h
   qMRMLThreeDViewPlugin.h
   qMRMLTransformSlidersPlugin.h
   qMRMLTreeViewPlugin.h
@@ -119,6 +153,12 @@ set(${KIT}_MOC_SRCS
   qMRMLWindowLevelWidgetPlugin.h
   )
 
+if(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT)
+  list(APPEND ${KIT}_MOC_SRCS
+    qMRMLExpandingWebViewPlugin.h
+    )
+endif()
+
 set(${KIT}_TARGET_LIBRARIES
   qMRMLWidgets
   )
@@ -126,6 +166,7 @@ set(${KIT}_TARGET_LIBRARIES
 ctkMacroBuildQtDesignerPlugin(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${${KIT}_EXPORT}
+  FOLDER "${${KIT}_FOLDER}"
   SRCS ${${KIT}_SRCS}
   MOC_SRCS ${${KIT}_MOC_SRCS}
   TARGET_LIBRARIES ${${KIT}_TARGET_LIBRARIES}

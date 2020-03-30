@@ -18,9 +18,20 @@
 
 ==============================================================================*/
 
+#include "vtkSlicerConfigure.h" // For Slicer_BUILD_WEBENGINE_SUPPORT
+
+// Qt includes
+#include <QGridLayout>
+#include <QtGlobal>
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+#include <QWebEngineView>
+#endif
+
 // SlicerQt includes
 #include "qSlicerActionsDialog.h"
+#include "qSlicerCoreApplication.h"
 #include "ui_qSlicerActionsDialog.h"
+#include "vtkSlicerVersionConfigure.h"
 
 //-----------------------------------------------------------------------------
 class qSlicerActionsDialogPrivate: public Ui_qSlicerActionsDialog
@@ -33,11 +44,18 @@ public:
   qSlicerActionsDialogPrivate(qSlicerActionsDialog& object);
   void init();
 
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+  QWebEngineView* WebView;
+#endif
+
 };
 
 // --------------------------------------------------------------------------
 qSlicerActionsDialogPrivate::qSlicerActionsDialogPrivate(qSlicerActionsDialog& object)
-  :q_ptr(&object)
+  : q_ptr(&object)
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+  , WebView(nullptr)
+#endif
 {
 }
 
@@ -47,6 +65,23 @@ void qSlicerActionsDialogPrivate::init()
   Q_Q(qSlicerActionsDialog);
 
   this->setupUi(q);
+#ifdef Slicer_BUILD_WEBENGINE_SUPPORT
+  this->WebView = new QWebEngineView();
+  this->WebView->setObjectName("WebView");
+  this->gridLayout->addWidget(this->WebView, 0, 0);
+  QString wikiVersion = "Nightly";
+  qSlicerCoreApplication* app = qSlicerCoreApplication::application();
+  if (app && app->releaseType() == "Stable")
+    {
+    wikiVersion = QString("%1.%2").arg(app->majorVersion()).arg(app->minorVersion());
+    }
+  QString shortcutsUrl =
+    QString("http://wiki.slicer.org/slicerWiki/index.php/Documentation/%1/").arg(wikiVersion);
+  shortcutsUrl += "SlicerApplication/MouseandKeyboardShortcuts";
+  this->WebView->setUrl( shortcutsUrl );
+#else
+  this->tabWidget->setTabEnabled(this->tabWidget->indexOf(this->WikiTab), false);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -60,8 +95,7 @@ qSlicerActionsDialog::qSlicerActionsDialog(QWidget* parentWidget)
 
 //------------------------------------------------------------------------------
 qSlicerActionsDialog::~qSlicerActionsDialog()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void qSlicerActionsDialog::addAction(QAction* action, const QString& group)

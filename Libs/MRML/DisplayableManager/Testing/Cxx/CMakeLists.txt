@@ -26,19 +26,20 @@ set(DisplayableManagerTest_SRCS
   )
 
 # Create the instantiator for DisplayableManager classes.
-set(VTK_USE_INSTANTIATOR_NEW 1)
-VTK_MAKE_INSTANTIATOR3("${PROJECT_NAME}TestInstantiator"
-  DisplayableManagerInstantiatorTest_SRCS
-  "${DisplayableManagerTest_SRCS}"
-  ""
-  ${PROJECT_BINARY_DIR}
-  "")
+SlicerConfigureDisplayableManagerObjectFactory(
+  TARGET_NAME ${KIT}CxxTests
+  SRCS "${DisplayableManagerTest_SRCS}"
+  NO_EXPORT
+  OUTPUT_SRCS_VAR DisplayableManagerInstantiatorTest_SRCS
+  )
 
-add_executable(${KIT}CxxTests
+ctk_add_executable_utf8(${KIT}CxxTests
   ${Tests}
   ${DisplayableManagerTest_SRCS}
   ${DisplayableManagerInstantiatorTest_SRCS})
 target_link_libraries(${KIT}CxxTests ${KIT})
+
+set_target_properties(${KIT}CxxTests PROPERTIES FOLDER ${${PROJECT_NAME}_FOLDER})
 
 #
 # Add all the tests
@@ -46,13 +47,12 @@ target_link_libraries(${KIT}CxxTests ${KIT})
 set(TEMP "${Slicer_BINARY_DIR}/Testing/Temporary")
 foreach(test ${TestsToRun})
   get_filename_component(TESTNAME ${test} NAME_WE)
-  add_test(
-      NAME ${TESTNAME}
-      COMMAND ${Slicer_LAUNCH_COMMAND} $<TARGET_FILE:${KIT}CxxTests> ${TESTNAME}
+  simple_test(
+    ${TESTNAME}
       -D ${CMAKE_CURRENT_SOURCE_DIR}/../
       -T ${TEMP}
       -V Baseline/${TESTNAME}.png
-      )
+    )
 endforeach()
 
 set_tests_properties(vtkMRMLCameraDisplayableManagerTest1 PROPERTIES RUN_SERIAL TRUE)

@@ -22,8 +22,8 @@ class Q_SLICER_QTMODULES_VOLUMES_WIDGETS_EXPORT qSlicerVolumeDisplayWidget : pub
 public:
   /// Constructors
   typedef QStackedWidget Superclass;
-  explicit qSlicerVolumeDisplayWidget(QWidget* parent=0);
-  virtual ~qSlicerVolumeDisplayWidget();
+  explicit qSlicerVolumeDisplayWidget(QWidget* parent=nullptr);
+  ~qSlicerVolumeDisplayWidget() override;
 
 public slots:
   /// Set the MRML node of interest
@@ -31,7 +31,7 @@ public slots:
 
 protected slots:
   /// Internally use in case the current display widget should change when the
-  /// volume node changes (typically if the LabelMap attribute is changed)
+  /// volume node changes
   void updateFromMRML(vtkObject* volume);
 protected:
   QScopedPointer<qSlicerVolumeDisplayWidgetPrivate> d_ptr;

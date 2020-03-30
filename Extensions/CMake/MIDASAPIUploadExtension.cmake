@@ -29,9 +29,33 @@
 #   RESULT_VARNAME Will set the value of ${RESULT_VARNAME} to either "ok" or "fail".
 
 function(midas_api_upload_extension)
-  set(expected_nonempty_args SERVER_URL SERVER_EMAIL SERVER_APIKEY SUBMISSION_TYPE SLICER_REVISION EXTENSION_NAME EXTENSION_CATEGORY EXTENSION_HOMEPAGE EXTENSION_REPOSITORY_TYPE EXTENSION_REPOSITORY_URL EXTENSION_SOURCE_REVISION EXTENSION_ENABLED OPERATING_SYSTEM ARCHITECTURE PACKAGE_TYPE RESULT_VARNAME)
-  set(optional_args EXTENSION_ICONURL EXTENSION_DESCRIPTION EXTENSION_CONTRIBUTORS EXTENSION_SCREENSHOTURLS)
-  set(expected_existing_args PACKAGE_FILEPATH)
+  set(expected_nonempty_args
+    ARCHITECTURE
+    EXTENSION_NAME
+    EXTENSION_REPOSITORY_TYPE
+    EXTENSION_REPOSITORY_URL
+    EXTENSION_SOURCE_REVISION
+    OPERATING_SYSTEM
+    PACKAGE_TYPE
+    RESULT_VARNAME
+    SERVER_APIKEY
+    SERVER_EMAIL
+    SERVER_URL
+    SLICER_REVISION
+    SUBMISSION_TYPE
+    )
+  set(optional_args
+    EXTENSION_CATEGORY
+    EXTENSION_CONTRIBUTORS
+    EXTENSION_DESCRIPTION
+    EXTENSION_ENABLED
+    EXTENSION_HOMEPAGE
+    EXTENSION_ICONURL
+    EXTENSION_SCREENSHOTURLS
+    )
+  set(expected_existing_args
+    PACKAGE_FILEPATH
+    )
   include(CMakeParseArguments)
   set(options)
   set(oneValueArgs ${expected_nonempty_args} ${optional_args} ${expected_existing_args} RELEASE)
@@ -42,13 +66,6 @@ function(midas_api_upload_extension)
   foreach(var ${expected_nonempty_args})
     if("${MY_${var}}" STREQUAL "")
       message(FATAL_ERROR "error: ${var} CMake variable is empty !")
-    endif()
-  endforeach()
-
-  foreach(var ${optional_args})
-    if(NOT DEFINED ${var} AND NOT "${${var}_AUTHOR_WARN}" STREQUAL "DONE")
-      message(AUTHOR_WARNING "warning: ${var} CMake variable ${var} is empty !")
-      set(${var}_AUTHOR_WARN "DONE")
     endif()
   endforeach()
 
@@ -111,7 +128,7 @@ function(midas_api_upload_extension)
   set(url "${MY_SERVER_URL}/api/json?method=${api_method}${params}")
 
   file(UPLOAD ${MY_PACKAGE_FILEPATH} ${url} INACTIVITY_TIMEOUT 120 STATUS status LOG log SHOW_PROGRESS)
-  string(REGEX REPLACE ".*{\"stat\":\"([^\"]*)\".*" "\\1" status ${log})
+  string(REGEX REPLACE ".*{\"stat\":[ ]*\"([^\"]*)\".*" "\\1" status ${log})
 
   set(api_call_log ${CMAKE_CURRENT_BINARY_DIR}/${api_method}_response.txt)
   file(WRITE ${api_call_log} ${log})
@@ -127,7 +144,7 @@ endfunction()
 
 
 #
-# Testing - cmake -DTEST_<TESTNAME>:BOOL=ON -P MIDASAPIUploadExtensionTest.cmake
+# Testing - cmake -DTEST_<TESTNAME>:BOOL=ON -P MIDASAPIUploadExtension.cmake
 #
 
 #
@@ -139,7 +156,7 @@ if(TEST_midas_api_upload_extension_test)
 
     set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/../../CMake ${CMAKE_MODULE_PATH})
 
-    set(Test_TESTDATE "2011-12-26")
+    set(Test_TESTDATE "2013-10-09")
 
     # Sanity check
     set(expected_nonempty_vars Test_TESTDATE)
@@ -152,9 +169,9 @@ if(TEST_midas_api_upload_extension_test)
 
     set(server_url "http://karakoram/midas")
     set(server_email "jchris.fillionr@kitware.com")
-    set(server_apikey "a4d947d1772e227adf75639b449974d3")
+    set(server_apikey "x5Dxxz3t9hKSJ2AObxlAXWk3mRhskSXI")
 
-    set(source_checkoutdate "2011-12-26 12:21:42 -0500 (Mon, 26 Dec 2011)")
+    set(source_checkoutdate "2013-10-09 12:21:42 -0500 (Wed, 9 Oct 2013)")
     set(package_type "installer")
 
     #set(slicer_revisions "100" "101" "102" "103" "104" "105" "106")
@@ -164,8 +181,9 @@ if(TEST_midas_api_upload_extension_test)
     set(slicer_revision_105_nightly_release "4.2")
 
     set(extension_infos
-      "ExtensionA^^git^^git://github.com/nowhere/ExtensionA.git^^83352cd1c5^^Foo^^0"
-      "ExtensionB^^git^^git://github.com/nowhere/ExtensionB.git^^45689ae3d4^^Bar^^1")
+      "ExtensionA^^git^^git://github.com/jcfr/SimpleVTKPythonWrap.git^^7896b30d82^^Foo^^0"
+      "ExtensionB^^git^^git://github.com/jcfr/SimpleVTKPythonWrap.git^^31c6782a1e^^Bar^^1"
+      "ExtensionC^^svn^^https://subversion.assembla.com/svn/plusremote/trunk/PlusRemote/src^^9^^Far^^1")
 
     include(SlicerBlockOperatingSystemNames)
 
@@ -186,7 +204,10 @@ if(TEST_midas_api_upload_extension_test)
               set(extension_homepage "http://homepage.${extension_name}.org/foo/bar")
               set(extension_iconurl "http://homepage.${extension_name}.org/foo/bar.png")
               set(extension_contributors "Jean-Christophe Fillion-Robin (Kitware)")
-              set(extension_screenshoturls "http://homepage.${extension_name}.org/screenshot1.png http://homepage.${extension_name}.org/screenshot2.png")
+              set(extension_screenshoturls
+                "http://wiki.slicer.org/slicerWiki/images/9/9a/SlicerToKiwiExporter_SaveDialog_Select-file-format_1.png")
+              set(extension_screenshoturls
+                "${extension_screenshoturls} http://wiki.slicer.org/slicerWiki/images/e/ea/SlicerToKiwiExporter_SaveDialog_Select-dest-directory_2.png")
 
               #set(release "${slicer_revision_${slicer_revision}_${submission_type}_release}")
 

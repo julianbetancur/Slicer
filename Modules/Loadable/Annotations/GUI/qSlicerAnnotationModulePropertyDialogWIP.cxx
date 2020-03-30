@@ -154,7 +154,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
 
   this->lockUnlockInterface(locked);
 
-  // load the visiblity status
+  // load the visibility status
   int visible = this->m_logic->GetAnnotationVisibility(this->m_id.c_str());
 
   if (!visible)
@@ -174,7 +174,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     return;
     }
   vtkMRMLAnnotationControlPointsNode *pointsNode = vtkMRMLAnnotationControlPointsNode::SafeDownCast(mrmlNode);
-  vtkMRMLAnnotationPointDisplayNode *pointDisplayNode = NULL;
+  vtkMRMLAnnotationPointDisplayNode *pointDisplayNode = nullptr;
   if (pointsNode)
     {
     // get the point display node
@@ -192,7 +192,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
         ui.pointsTableWidget->setItem(p,0,new QTableWidgetItem(name));
         }
       double *coord = pointsNode->GetControlPointCoordinates(p);
-      
+
       if (coord)
         {
         QString qnum;
@@ -207,8 +207,8 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     }
   if (pointDisplayNode)
     {
-    
-  
+
+
     // unselected color
     double *pointUnSelColor = pointDisplayNode->GetColor();
     QColor pointUnSelQColor;
@@ -216,7 +216,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     ui.pointUnselectedColorPickerButton->setDisplayColorName(false);
     ui.pointUnselectedColorPickerButton->setColor(pointUnSelQColor);
     ui.pointUnselectedColorPickerButton->setDialogOptions(ctkColorPickerButton::UseCTKColorDialog);
-    
+
     // selected color
     double *pointSelColor = pointDisplayNode->GetSelectedColor();
     QColor pointSelQColor;
@@ -224,9 +224,9 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     ui.pointSelectedColorPickerButton->setDisplayColorName(false);
     ui.pointSelectedColorPickerButton->setColor(pointSelQColor);
     ui.pointSelectedColorPickerButton->setDialogOptions(ctkColorPickerButton::UseCTKColorDialog);
-    
+
     // load the glyph type
-  
+
 
     // fill in the combo box with glyph types if not already done
     if (ui.pointGlyphTypeComboBox->count() == 0)
@@ -258,18 +258,18 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
       }
     // glyph size
     ui.pointSizeSliderSpinBoxWidget->setValue(pointDisplayNode->GetGlyphScale());
-    
+
     // glyph material properties
     ui.pointOpacitySliderSpinBoxWidget->setValue(pointDisplayNode->GetOpacity());
     ui.pointAmbientSliderSpinBoxWidget->setValue(pointDisplayNode->GetAmbient());
     ui.pointDiffuseSliderSpinBoxWidget->setValue(pointDisplayNode->GetDiffuse());
     ui.pointSpecularSliderSpinBoxWidget->setValue(pointDisplayNode->GetSpecular());
     }
-    
+
   /// Lines
   // get the line version of the node
   vtkMRMLAnnotationLinesNode *linesNode = vtkMRMLAnnotationLinesNode::SafeDownCast(mrmlNode);
-  vtkMRMLAnnotationLineDisplayNode *lineDisplayNode = NULL;
+  vtkMRMLAnnotationLineDisplayNode *lineDisplayNode = nullptr;
   if (linesNode)
     {
     lineDisplayNode = linesNode->GetAnnotationLineDisplayNode();
@@ -301,7 +301,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     ui.lineSelectedColorPickerButton->setDisplayColorName(false);
     ui.lineSelectedColorPickerButton->setColor(lineSelQColor);
     ui.lineSelectedColorPickerButton->setDialogOptions(ctkColorPickerButton::UseCTKColorDialog);
-    
+
     // width
     ui.lineWidthSliderSpinBoxWidget_2->setValue(lineDisplayNode->GetLineThickness());
     // label position
@@ -315,14 +315,14 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
 
     // max ticks
     ui.lineMaxTicksSliderSpinBoxWidget->setValue(lineDisplayNode->GetMaxTicks());
-    
+
     // line material properties
     ui.lineOpacitySliderSpinBoxWidget_2->setValue(lineDisplayNode->GetOpacity());
     ui.lineAmbientSliderSpinBoxWidget_2->setValue(lineDisplayNode->GetAmbient());
     ui.lineDiffuseSliderSpinBoxWidget_2->setValue(lineDisplayNode->GetDiffuse());
     ui.lineSpecularSliderSpinBoxWidget_2->setValue(lineDisplayNode->GetSpecular());
     }
- 
+
   /// ROI
   // get the line version of the node
   vtkMRMLAnnotationROINode *roiNode = vtkMRMLAnnotationROINode::SafeDownCast(mrmlNode);
@@ -340,8 +340,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
     /*
    this->setWindowTitle(
    "Annotation Properties");
-   this->SaveStateForUndo(
-   node);
+   this->SaveStateForUndo();
 
    // COORDINATES
    QDoubleValidator *doubleVal = new QDoubleValidator(
@@ -429,7 +428,7 @@ void qSlicerAnnotationModulePropertyDialog::initialize()
 
    // Lock/Unlock properties
    if (vtkMRMLAnnotationNode::SafeDownCast(
-   node) != NULL)
+   node) != nullptr)
    {
    if (vtkMRMLAnnotationNode::SafeDownCast(
    node)->GetLocked() == 1)
@@ -766,7 +765,7 @@ void qSlicerAnnotationModulePropertyDialog::createConnection()
 
   this->connect(ui.pointSizeSliderSpinBoxWidget, SIGNAL(valueChanged(double)),
                 this, SLOT(onPointSizeChanged(double)));
-  
+
   this->connect(ui.pointGlyphTypeComboBox, SIGNAL(currentIndexChanged(QString)),
                 this, SLOT(onPointGlyphChanged(QString)));
 
@@ -778,7 +777,7 @@ void qSlicerAnnotationModulePropertyDialog::createConnection()
    //             this, SLOT(onPointDiffuseChanged(double)));
   //this->connect(ui.pointSpecularSliderSpinBoxWidget, SIGNAL(valueChanged(double)),
   //              this, SLOT(onPointSpecularChanged(double)));
-  
+
   // line
   this->connect(ui.lineUnselectedColorPickerButton, SIGNAL(colorChanged(QColor)),
                 this, SLOT(onLineColorChanged(QColor)));
@@ -804,7 +803,7 @@ void qSlicerAnnotationModulePropertyDialog::createConnection()
   //              this, SLOT(onLineDiffuseChanged(double)));
   //this->connect(ui.lineSpecularSliderSpinBoxWidget_2, SIGNAL(valueChanged(double)),
    //             this, SLOT(onLineSpecularChanged(double)));
-  
+
   this->connect(ui.lockUnlockButton, SIGNAL(clicked()), this, SLOT(onLockUnlockButtonClicked()));
   this->connect(ui.visibleInvisibleButton, SIGNAL(clicked()), this, SLOT(onVisibleInvisibleButtonClicked()));
    /*
@@ -966,7 +965,7 @@ void qSlicerAnnotationModulePropertyDialog::onCoordinateChanged(QString text)
 void qSlicerAnnotationModulePropertyDialog::onTextChanged()
 {
   QString text = ui.annotationTextEdit->toPlainText();
-  this->m_logic->SetAnnotationText(this->m_id.c_str(), text.toLatin1());
+  this->m_logic->SetAnnotationText(this->m_id.c_str(), text.toUtf8());
 }
 
 //------------------------------------------------------------------------------
@@ -1080,11 +1079,7 @@ void qSlicerAnnotationModulePropertyDialog::SaveStateForUndo(vtkMRMLNode* node)
    vtkMRMLAnnotationFiducialNode::SafeDownCast(node);
    fiducialNode->CreateAnnotationTextDisplayNode();
    fiducialNode->CreateAnnotationPointDisplayNode();
-   fiducialNode->GetScene()->SaveStateForUndo(fiducialNode);
-   fiducialNode->GetAnnotationTextDisplayNode()->GetScene()->SaveStateForUndo(
-   fiducialNode->GetAnnotationTextDisplayNode());
-   fiducialNode->GetAnnotationPointDisplayNode()->GetScene()->SaveStateForUndo(
-   fiducialNode->GetAnnotationPointDisplayNode());
+   fiducialNode->GetScene()->SaveStateForUndo();
    }
    */
 }
@@ -1222,7 +1217,7 @@ void qSlicerAnnotationModulePropertyDialog::onVisibleInvisibleButtonClicked()
 {
   this->m_logic->SetAnnotationVisibility(this->m_id.c_str());
 
-  // load the visiblity status
+  // load the visibility status
   int visible = this->m_logic->GetAnnotationVisibility(this->m_id.c_str());
 
   if (!visible)
@@ -1240,7 +1235,7 @@ void qSlicerAnnotationModulePropertyDialog::onVisibleInvisibleButtonClicked()
 //------------------------------------------------------------------------------
 void qSlicerAnnotationModulePropertyDialog::onPointsTableWidgetChanged(QTableWidgetItem *tableItem)
 {
-  if (tableItem == NULL)
+  if (tableItem == nullptr)
     {
     return;
     }
@@ -1393,7 +1388,7 @@ void qSlicerAnnotationModulePropertyDialog::onPointSpecularChanged(double value)
 void qSlicerAnnotationModulePropertyDialog::onPointGlyphChanged(QString value)
 {
 //  std::cout << "OnPointGlyphChanged: " << qPrintable(value) << std::endl;
-  this->m_logic->SetAnnotationPointGlyphTypeFromString(this->m_id.c_str(),value.toLatin1());
+  this->m_logic->SetAnnotationPointGlyphTypeFromString(this->m_id.c_str(),value.toUtf8());
 }
 
 //------------------------------------------------------------------------------

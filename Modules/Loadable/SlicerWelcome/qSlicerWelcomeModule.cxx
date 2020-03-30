@@ -18,15 +18,9 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // SlicerQt includes
 #include "qSlicerWelcomeModule.h"
 #include "qSlicerWelcomeModuleWidget.h"
-
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerWelcomeModule, qSlicerWelcomeModule);
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_SlicerWelcome
@@ -44,8 +38,7 @@ qSlicerWelcomeModule::qSlicerWelcomeModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerWelcomeModule::~qSlicerWelcomeModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QStringList qSlicerWelcomeModule::categories()const
@@ -93,5 +86,5 @@ qSlicerAbstractModuleRepresentation* qSlicerWelcomeModule::createWidgetRepresent
 //-----------------------------------------------------------------------------
 vtkMRMLAbstractLogic* qSlicerWelcomeModule::createLogic()
 {
-  return 0;
+  return nullptr;
 }

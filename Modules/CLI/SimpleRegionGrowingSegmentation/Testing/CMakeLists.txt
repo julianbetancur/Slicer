@@ -1,16 +1,24 @@
 
 #-----------------------------------------------------------------------------
 set(BASELINE ${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline)
+set(INPUT ${CMAKE_CURRENT_SOURCE_DIR}/../Data/Input)
+
 set(CLP ${MODULE_NAME})
 
+if(NOT DEFINED SEM_DATA_MANAGEMENT_TARGET)
+  set(SEM_DATA_MANAGEMENT_TARGET ${CLP}Data)
+endif()
+
 #-----------------------------------------------------------------------------
-add_executable(${CLP}Test ${CLP}Test.cxx)
-target_link_libraries(${CLP}Test ${CLP}Lib)
+ctk_add_executable_utf8(${CLP}Test ${CLP}Test.cxx)
+target_link_libraries(${CLP}Test ${CLP}Lib ${SlicerExecutionModel_EXTRA_EXECUTABLE_TARGET_LIBRARIES})
 set_target_properties(${CLP}Test PROPERTIES LABELS ${CLP})
+set_target_properties(${CLP}Test PROPERTIES FOLDER ${${CLP}_TARGETS_FOLDER})
 
 set(testname ${CLP}Test)
-add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
-  --compare ${BASELINE}/${CLP}Test.nhdr
+ExternalData_add_test(${SEM_DATA_MANAGEMENT_TARGET}
+  NAME ${testname} COMMAND ${SEM_LAUNCH_COMMAND} $<TARGET_FILE:${CLP}Test>
+  --compare DATA{${BASELINE}/${CLP}Test.nhdr,SimpleRegionGrowingSegmentationTest.raw.gz}
             ${TEMP}/${CLP}Test.nhdr
     ModuleEntryPoint
     --smoothingIterations 1
@@ -20,7 +28,12 @@ add_test(NAME ${testname} COMMAND ${Launcher_Command} $<TARGET_FILE:${CLP}Test>
     --neighborhood 1
     --labelvalue 2
     --seed 9.71622,-8.1,14.2189 --seed -12.9459,-8.1,18.577
-    ${TEST_DATA}/MRHeadResampled.nhdr
+    DATA{${INPUT}/MRHeadResampled.nhdr,MRHeadResampled.raw.gz}
     ${TEMP}/${CLP}Test.nhdr
   )
 set_property(TEST ${testname} PROPERTY LABELS ${CLP})
+
+#-----------------------------------------------------------------------------
+if(${SEM_DATA_MANAGEMENT_TARGET} STREQUAL ${CLP}Data)
+  ExternalData_add_target(${CLP}Data)
+endif()

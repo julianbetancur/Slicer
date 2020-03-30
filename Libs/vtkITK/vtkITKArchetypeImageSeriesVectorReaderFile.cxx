@@ -16,8 +16,10 @@
 #include "vtkITKArchetypeImageSeriesVectorReaderFile.h"
 
 // VTK includes
+#include <vtkAOSDataArrayTemplate.h>
 #include <vtkCommand.h>
 #include <vtkDataArray.h>
+#include <vtkErrorCode.h>
 #include <vtkImageData.h>
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
@@ -27,17 +29,24 @@
 #include <itkOrientImageFilter.h>
 
 vtkStandardNewMacro(vtkITKArchetypeImageSeriesVectorReaderFile);
-vtkCxxRevisionMacro(vtkITKArchetypeImageSeriesVectorReaderFile, "$Revision: 4068 $");
+
+namespace {
+
+template <class T>
+vtkAOSDataArrayTemplate<T>* DownCast(vtkAbstractArray* a)
+{
+  return vtkAOSDataArrayTemplate<T>::FastDownCast(a);
+}
+
+};
 
 //----------------------------------------------------------------------------
 vtkITKArchetypeImageSeriesVectorReaderFile::vtkITKArchetypeImageSeriesVectorReaderFile()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
-vtkITKArchetypeImageSeriesVectorReaderFile::~vtkITKArchetypeImageSeriesVectorReaderFile() 
-{
-}
+vtkITKArchetypeImageSeriesVectorReaderFile::~vtkITKArchetypeImageSeriesVectorReaderFile()
+= default;
 
 //----------------------------------------------------------------------------
 void vtkITKArchetypeImageSeriesVectorReaderFile::PrintSelf(ostream& os, vtkIndent indent)
@@ -52,7 +61,6 @@ void vtkITKExecuteDataFromFileVector(
   vtkITKArchetypeImageSeriesVectorReaderFile* self,
   vtkImageData *data)
 {
-  typedef itk::Vector<T, 3> VectorPixelType;
   typedef itk::VectorImage<T,3> image2;
   typedef itk::ImageSource<image2> FilterType;
   typename FilterType::Pointer filter;
@@ -74,31 +82,28 @@ void vtkITKExecuteDataFromFileVector(
       self->GetDesiredCoordinateOrientation());
     filter = orient2;
     }
-   filter->UpdateLargestPossibleRegion();
-  typename itk::ImportImageContainer<unsigned long, T>::Pointer PixelContainer2;
+  filter->UpdateLargestPossibleRegion();
+  typename itk::ImportImageContainer<itk::SizeValueType, T>::Pointer PixelContainer2;
   PixelContainer2 = filter->GetOutput()->GetPixelContainer();
   void *ptr = static_cast<void *> (PixelContainer2->GetBufferPointer());
-  data->GetPointData()->GetScalars()
-    ->SetVoidArray(ptr, PixelContainer2->Size(), 0);
+  DownCast<T>(data->GetPointData()->GetScalars())
+    ->SetVoidArray(ptr, PixelContainer2->Size(), 0,
+                   vtkAOSDataArrayTemplate<T>::VTK_DATA_ARRAY_DELETE);
   PixelContainer2->ContainerManageMemoryOff();
 }
 
 //----------------------------------------------------------------------------
 // This function reads a data from a file.  The datas extent/axes
 // are assumed to be the same as the file extent/order.
-void vtkITKArchetypeImageSeriesVectorReaderFile::ExecuteData(vtkDataObject *output)
+void vtkITKArchetypeImageSeriesVectorReaderFile::ExecuteDataWithInformation(vtkDataObject *output, vtkInformation* outInfo)
 {
-  if (!this->Superclass::Archetype)
-    {
-      vtkErrorMacro("An Archetype must be specified.");
-      return;
-    }
-
-  vtkImageData *data = vtkImageData::SafeDownCast(output);
-  //data->UpdateInformation();
-  data->SetExtent(0,0,0,0,0,0);
-  data->AllocateScalars();
-  data->SetExtent(data->GetWholeExtent());
+    if (!this->Superclass::Archetype)
+      {
+        vtkErrorMacro("An Archetype must be specified.");
+        this->SetErrorCode(vtkErrorCode::NoFileNameError);
+        return;
+      }
+    vtkImageData *data = this->AllocateOutputData(output, outInfo);
 
     // If there is only one file in the series, just use an image file reader
   if (this->FileNames.size() == 1)
@@ -120,12 +125,16 @@ void vtkITKArchetypeImageSeriesVectorReaderFile::ExecuteData(vtkDataObject *outp
       vtkTemplateMacroCase(VTK_UNSIGNED_CHAR, unsigned char, vtkITKExecuteDataFromFileVector<VTK_TT>(this, data));
     default:
         vtkErrorMacro(<< "UpdateFromFile: Unknown data type " << this->OutputScalarType);
+        this->SetErrorCode(vtkErrorCode::UnrecognizedFileTypeError);
       }
+
+    this->SetMetaDataScalarRangeToPointDataInfo(data);
     }
   else
     {
     // ERROR - should have used the series reader
     vtkErrorMacro("There is more than one file, use the VectorReaderSeries instead");
+    this->SetErrorCode(vtkErrorCode::FileFormatError);
     }
 }
 

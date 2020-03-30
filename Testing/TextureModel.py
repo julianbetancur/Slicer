@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import Slicer
 import time
@@ -18,6 +19,7 @@ def newPlane():
   # set up display node that includes the texture
   modelDisplayNode = Slicer.slicer.vtkMRMLModelDisplayNode()
   modelDisplayNode.SetBackfaceCulling(0)
+# VTK6 TODO
   modelDisplayNode.SetAndObserveTextureImageData(imageSource.GetOutput())
   Slicer.slicer.MRMLScene.AddNode(modelDisplayNode)
 
@@ -28,6 +30,7 @@ def newPlane():
 
   # set up model node
   modelNode = Slicer.slicer.vtkMRMLModelNode()
+# VTK6 TODO
   modelNode.SetAndObservePolyData( plane.GetOutput() )
   modelNode.SetAndObserveDisplayNodeID( modelDisplayNode.GetID() )
   modelNode.SetAndObserveTransformNodeID( transformNode.GetID() )
@@ -35,8 +38,8 @@ def newPlane():
   Slicer.slicer.MRMLScene.AddNode(modelNode)
 
   # need to invoke a NodeAddedEvent since some GUI elements
-  # don't respond to each event (for efficiency).  In C++ 
-  # you would use the vtkMRMLScene::NodeAddedEvent enum but 
+  # don't respond to each event (for efficiency).  In C++
+  # you would use the vtkMRMLScene::NodeAddedEvent enum but
   # it's not directly available from scripts
   Slicer.slicer.MRMLScene.InvokeEvent(66000)
 
@@ -45,7 +48,7 @@ def newPlane():
 
 def texturedPlane():
 
-  # create the plane and modify the texture and transform 
+  # create the plane and modify the texture and transform
   # every iteration.  Call Modified on the PolyData so the
   # viewer will know to update.  Call Tk's "update" to flush
   # the event queue so the Render will appear on screen
@@ -58,14 +61,19 @@ def texturedPlane():
 
   modelNode,transformNode,imageSource = newPlane()
 
-  for i in xrange(steps):
+  toParent = vtk.vtkMatrix4x4()
+  transformNode.GetMatrixTransformToParent(toParent)
+  for i in range(steps):
     imageSource.SetInValue( 200*(i%2) )
-    transformNode.GetMatrixTransformToParent().SetElement(0, 3, i)
+
+    toParent.SetElement(0, 3, i)
+    transformNode.SetMatrixTransformToParent(toParent)
+
     modelNode.GetPolyData().Modified()
     Slicer.TkCall( "update" )
 
   endTime = time.time()
-  ellapsed = endTime - startTime
-  hertz = steps/ellapsed
-  print 'ran %d iterations in %g seconds (%g hertz)' % (steps, ellapsed, hertz)
-    
+  elapsed = endTime - startTime
+  hertz = int(steps / elapsed)
+  print('ran %d iterations in %g seconds (%g hertz)' % (steps, elapsed, hertz))
+

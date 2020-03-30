@@ -15,7 +15,7 @@ macro(slicerMacroBuildCLI)
     LINK_DIRECTORIES
     INCLUDE_DIRECTORIES
   )
-  CMAKE_PARSE_ARGUMENTS(MY_SLICER
+  cmake_parse_arguments(MY_SLICER
     "${options}"
     "${oneValueArgs}"
     "${multiValueArgs}"
@@ -31,6 +31,8 @@ macro(slicerMacroBuildCLI)
   if(${MY_SLICER_VERBOSE})
     set(PASS_VERBOSE VERBOSE)
   endif()
+
+  message(WARNING "Macro 'slicerMacroBuildCLI' is *DEPRECATED* - Use 'SEMMacroBuildCLI' instead.")
 
   SEMMacroBuildCLI(
     ${PASS_EXECUTABLE_ONLY}

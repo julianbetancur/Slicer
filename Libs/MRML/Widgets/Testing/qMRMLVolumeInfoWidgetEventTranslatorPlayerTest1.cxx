@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -35,14 +38,16 @@
 #include "qMRMLVolumeInfoWidget.h"
 
 // MRML includes
-#include <vtkMRMLColorTableNode.h>
+#include <vtkMRMLColorLogic.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLScalarVolumeDisplayNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
 
 // VTK includes
 #include <vtkImageData.h>
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include <vtkVersion.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -62,7 +67,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLVolumeInfoWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -72,34 +79,31 @@ int qMRMLVolumeInfoWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
   etpWidget.setTestUtility(testUtility);
 
   // Test case 1
-  vtkSmartPointer< vtkMRMLScalarVolumeNode > volumeNode = vtkSmartPointer< vtkMRMLScalarVolumeNode >::New();
+  vtkNew<vtkMRMLScalarVolumeNode> volumeNode;
 
-  vtkSmartPointer< vtkImageData > imageData = vtkSmartPointer< vtkImageData >::New();
+  vtkNew<vtkImageData> imageData;
   imageData->SetDimensions(256, 256, 1);
-  imageData->SetScalarTypeToUnsignedShort();
-  imageData->SetNumberOfScalarComponents(1); // image holds one value intensities
   //imageData->SetSpacing(2., 2., 512.); not used by vtkMRMLVolumeNode
   //imageData->SetOrigin(0.0,0.0,0.0); not used by vtkMRMLVolumeNode
-  imageData->AllocateScalars(); // allocate storage for image data
-
-  volumeNode->SetAndObserveImageData(imageData);
+  imageData->AllocateScalars(VTK_UNSIGNED_SHORT, 1); // allocate storage for image data
+  volumeNode->SetAndObserveImageData(imageData.GetPointer());
   volumeNode->SetSpacing(2., 2., 512.);
   volumeNode->SetOrigin(0, 0, 0);
 
-  vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode> displayNode = vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New();
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  scene->AddNode(volumeNode);
-  scene->AddNode(displayNode);
+  vtkNew<vtkMRMLScalarVolumeDisplayNode> displayNode;
+  vtkNew<vtkMRMLScene> scene;
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorNode = vtkSmartPointer<vtkMRMLColorTableNode>::New();
-  colorNode->SetTypeToGrey();
-  scene->AddNode(colorNode);
-  displayNode->SetAndObserveColorNodeID(colorNode->GetID());
+  // Add default color nodes
+  vtkNew<vtkMRMLColorLogic> colorLogic;
+  colorLogic->SetMRMLScene(scene.GetPointer());
+
+  scene->AddNode(volumeNode.GetPointer());
+  scene->AddNode(displayNode.GetPointer());
 
   volumeNode->SetAndObserveDisplayNodeID(displayNode->GetID());
 
   qMRMLVolumeInfoWidget volumeInfo;
-  volumeInfo.setVolumeNode(volumeNode);
+  volumeInfo.setVolumeNode(volumeNode.GetPointer());
   etpWidget.addTestCase(&volumeInfo,
                         xmlDirectory + "qMRMLVolumeInfoWidgetEventTranslatorPlayerTest1.xml",
                         &checkFinalWidgetState);

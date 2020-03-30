@@ -102,7 +102,7 @@ void PopulateScene(vtkMRMLScene* scene, int numberOfLevels)
 {
   // At each level, create a Model node and a Hierarchy node, the latter becomes
   // the parent of the next level.
-  vtkMRMLDisplayableHierarchyNode* parentHierarchy = 0;
+  vtkMRMLDisplayableHierarchyNode* parentHierarchy = nullptr;
   for (int level = 0; level < numberOfLevels; ++level)
     {
     // Model
@@ -120,7 +120,7 @@ void PopulateScene(vtkMRMLScene* scene, int numberOfLevels)
 
     vtkNew<vtkMRMLModelHierarchyNode> modelHierarchyNode;
     std::stringstream smhn;
-    smhn << level << " model hiearchy";
+    smhn << level << " model hierarchy";
     modelHierarchyNode->SetName(smhn.str().c_str());
     scene->AddNode(modelHierarchyNode.GetPointer());
 
@@ -156,7 +156,6 @@ void PopulateScene(vtkMRMLScene* scene, int numberOfLevels)
 //---------------------------------------------------------------------------
 vtkMRMLModelNode* GetModelNode(vtkMRMLScene* scene, int level)
 {
-  scene->InitTraversal();
   return vtkMRMLModelNode::SafeDownCast(
     scene->GetNthNodeByClass(level, "vtkMRMLModelNode"));
 }
@@ -164,7 +163,6 @@ vtkMRMLModelNode* GetModelNode(vtkMRMLScene* scene, int level)
 //---------------------------------------------------------------------------
 vtkMRMLDisplayableHierarchyNode* GetHierarchyNode(vtkMRMLScene* scene, int level)
 {
-  scene->InitTraversal();
   return vtkMRMLDisplayableHierarchyNode::SafeDownCast(
     scene->GetNthNodeByClass(2*level + 1, "vtkMRMLDisplayableHierarchyNode"));
 }
@@ -172,7 +170,6 @@ vtkMRMLDisplayableHierarchyNode* GetHierarchyNode(vtkMRMLScene* scene, int level
 //---------------------------------------------------------------------------
 vtkMRMLDisplayableHierarchyNode* GetModelHierarchyNode(vtkMRMLScene* scene, int level)
 {
-  scene->InitTraversal();
   return vtkMRMLDisplayableHierarchyNode::SafeDownCast(
     scene->GetNthNodeByClass(2*level, "vtkMRMLDisplayableHierarchyNode"));
 }
@@ -275,7 +272,7 @@ bool TestCollapseLevel0()
     std::cout << "Color or visibility is wrong" << std::endl;
     }
 
-  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != 0 ||
+  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != nullptr ||
       GetModelHierarchyNode(scene.GetPointer(), 1)->GetCollapsedParentNode() != hierarchyNode ||
       GetModelHierarchyNode(scene.GetPointer(), 2)->GetCollapsedParentNode() != hierarchyNode)
     {
@@ -307,8 +304,8 @@ bool TestCollapseLevel1()
     std::cout << "Color or visibility is wrong" << std::endl;
     }
 
-  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != 0 ||
-      GetModelHierarchyNode(scene.GetPointer(), 1)->GetCollapsedParentNode() != 0 ||
+  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != nullptr ||
+      GetModelHierarchyNode(scene.GetPointer(), 1)->GetCollapsedParentNode() != nullptr ||
       GetModelHierarchyNode(scene.GetPointer(), 2)->GetCollapsedParentNode() != hierarchyNode)
     {
     std::cout << "CollapsedParentNode is wrong (hierarchyNode at level 1 collapsed):" << std::endl
@@ -341,7 +338,7 @@ bool TestCollapseLevels0And1()
     std::cout << "Color or visibility is wrong" << std::endl;
     }
 
-  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != 0 ||
+  if (GetModelHierarchyNode(scene.GetPointer(), 0)->GetCollapsedParentNode() != nullptr ||
       GetModelHierarchyNode(scene.GetPointer(), 1)->GetCollapsedParentNode() != hierarchyNode ||
       GetModelHierarchyNode(scene.GetPointer(), 2)->GetCollapsedParentNode() != hierarchyNode)
     {
@@ -365,7 +362,7 @@ bool TestColors(vtkMRMLScene* scene,
     {
     // Model
     vtkMRMLModelNode* modelNode = GetModelNode(scene, level);
-    if (modelNode == 0)
+    if (modelNode == nullptr)
       {
       return true;
       }
@@ -402,7 +399,7 @@ bool TestVisibility(vtkMRMLScene* scene,
     {
     // Model
     vtkMRMLModelNode* modelNode = GetModelNode(scene, level);
-    if (modelNode == 0)
+    if (modelNode == nullptr)
       {
       return true;
       }

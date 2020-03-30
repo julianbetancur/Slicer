@@ -39,8 +39,7 @@ qSlicerIOOptionsWidget
 }
 //------------------------------------------------------------------------------
 qSlicerIOOptionsWidget::~qSlicerIOOptionsWidget()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 bool qSlicerIOOptionsWidget::isValid()const
@@ -95,4 +94,11 @@ void qSlicerIOOptionsWidget::setFileNames(const QStringList& fileNames)
   */
   d->Properties["fileName"] = fileNames;
   this->updateValid();
+}
+
+//------------------------------------------------------------------------------
+void qSlicerIOOptionsWidget::updateGUI(const qSlicerIO::IOProperties& ioProperties)
+{
+  Q_UNUSED(ioProperties);
+  // derived classes should implement update of GUI based on provided properties
 }

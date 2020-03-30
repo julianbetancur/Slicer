@@ -22,6 +22,9 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLVolumeInfoWidget.h"
 
@@ -33,44 +36,41 @@
 
 // VTK includes
 #include <vtkImageData.h>
-#include <vtkSmartPointer.h>
-
-// STD includes
+#include <vtkNew.h>
+#include <vtkVersion.h>
+#include "qMRMLWidget.h"
 
 int qMRMLVolumeInfoWidgetTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
-  vtkSmartPointer< vtkMRMLScalarVolumeNode > volumeNode = vtkSmartPointer< vtkMRMLScalarVolumeNode >::New();
+  qMRMLWidget::postInitializeApplication();
 
-  vtkSmartPointer< vtkImageData > imageData = vtkSmartPointer< vtkImageData >::New();
+  vtkNew< vtkMRMLScalarVolumeNode > volumeNode;
+
+  vtkNew< vtkImageData > imageData;
   imageData->SetDimensions(256, 256, 1);
-  imageData->SetScalarTypeToUnsignedShort();
-  imageData->SetNumberOfScalarComponents(1); // image holds one value intensities
-  //imageData->SetSpacing(2., 2., 512.); not used by vtkMRMLVolumeNode
-  //imageData->SetOrigin(0.0,0.0,0.0); not used by vtkMRMLVolumeNode
-  imageData->AllocateScalars(); // allocate storage for image data  
-  
-  volumeNode->SetAndObserveImageData(imageData);
+  imageData->AllocateScalars(VTK_UNSIGNED_SHORT, 1); // allocate storage for image data
+  volumeNode->SetAndObserveImageData(imageData.GetPointer());
   volumeNode->SetSpacing(2., 2., 512.);
   volumeNode->SetOrigin(0, 0, 0);
 
-  vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode> displayNode = vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New();
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
-  scene->AddNode(volumeNode);
-  scene->AddNode(displayNode);
+  vtkNew<vtkMRMLScalarVolumeDisplayNode> displayNode;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(volumeNode.GetPointer());
+  scene->AddNode(displayNode.GetPointer());
 
-  vtkSmartPointer<vtkMRMLColorTableNode> colorNode = vtkSmartPointer<vtkMRMLColorTableNode>::New();
+  vtkNew<vtkMRMLColorTableNode> colorNode;
   colorNode->SetTypeToGrey();
-  scene->AddNode(colorNode);
+  scene->AddNode(colorNode.GetPointer());
   displayNode->SetAndObserveColorNodeID(colorNode->GetID());
 
   volumeNode->SetAndObserveDisplayNodeID(displayNode->GetID());
-  
+
   qMRMLVolumeInfoWidget volumeInfo;
-  volumeInfo.setVolumeNode(volumeNode);
+  volumeInfo.setVolumeNode(volumeNode.GetPointer());
   volumeInfo.show();
-  
+
   if (argc < 2 || QString(argv[1]) != "-I" )
     {
     QTimer::singleShot(200, &app, SLOT(quit()));

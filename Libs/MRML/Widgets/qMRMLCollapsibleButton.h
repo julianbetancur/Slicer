@@ -33,12 +33,12 @@ class QMRML_WIDGETS_EXPORT qMRMLCollapsibleButton : public ctkCollapsibleButton
 public:
   /// Superclass typedef
   typedef ctkCollapsibleButton Superclass;
-  
+
   /// Constructors
-  explicit qMRMLCollapsibleButton(QWidget* parent = 0);
-  virtual ~qMRMLCollapsibleButton(){}
+  explicit qMRMLCollapsibleButton(QWidget* parent = nullptr);
+  ~qMRMLCollapsibleButton() override = default;
 protected:
-  virtual void changeEvent(QEvent* event);
+  void changeEvent(QEvent* event) override;
   void computePalette();
 };
 

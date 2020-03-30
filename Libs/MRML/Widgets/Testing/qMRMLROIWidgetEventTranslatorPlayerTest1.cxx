@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -38,7 +41,8 @@
 #include <vtkMRMLROINode.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -58,7 +62,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLROIWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 
@@ -71,8 +77,7 @@ int qMRMLROIWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
   QWidget qWidget;
   qMRMLROIWidget* widget = new qMRMLROIWidget(&qWidget);
 
-  vtkSmartPointer<vtkMRMLROINode> roiNode =
-    vtkSmartPointer<vtkMRMLROINode>::New();
+  vtkNew<vtkMRMLROINode> roiNode;
 
   widget->setMRMLROINode(roiNode.GetPointer());
 

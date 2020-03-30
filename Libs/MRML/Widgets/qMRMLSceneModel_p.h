@@ -21,9 +21,21 @@
 #ifndef __qMRMLSceneModel_p_h
 #define __qMRMLSceneModel_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 class QStandardItemModel;
 #include <QFlags>
+#include <QMap>
 
 // qMRML includes
 #include "qMRMLSceneModel.h"
@@ -59,22 +71,28 @@ public:
   void listenNodeModifiedEvent();
   void reparentItems(QList<QStandardItem*>& children, int newIndex, QStandardItem* newParent);
 
+  /// This method is called by qMRMLSceneModel::populateScene() to speed up
+  /// the loading of large scene. By explicitly specifying the \a index, it
+  /// skips repetitive scene traversal calls caused by
+  /// qMRMLSceneModel::nodeIndex(vtkMRMLNode*).
+  QStandardItem* insertNode(vtkMRMLNode* node, int index);
+
   vtkSmartPointer<vtkCallbackCommand> CallBack;
-  bool ListenNodeModifiedEvent;
+  qMRMLSceneModel::NodeTypes ListenNodeModifiedEvent;
   bool LazyUpdate;
   int PendingItemModified;
-  
+
   int NameColumn;
   int IDColumn;
   int CheckableColumn;
   int VisibilityColumn;
   int ToolTipNameColumn;
   int ExtraItemColumn;
-  
+
   QIcon VisibleIcon;
   QIcon HiddenIcon;
   QIcon PartiallyVisibleIcon;
-  
+
   vtkMRMLScene* MRMLScene;
   QStandardItem* DraggedItem;
   mutable QList<vtkMRMLNode*>  DraggedNodes;
@@ -82,6 +100,13 @@ public:
   // We keep a list of QStandardItem instead of vtkMRMLNode* because they are
   // likely to be unreachable when browsing the model
   QList<QList<QStandardItem*> > Orphans;
+
+  // Map from MRML node to row.
+  // It just stores the result of the latest lookup by indexFromNode,
+  // not guaranteed to contain up-to-date information, should be just used
+  // as a search hint. If the node cannot be found at the given index then
+  // we need to browse through all model items.
+  mutable QMap<vtkMRMLNode*,QPersistentModelIndex> RowCache;
 };
 
 #endif

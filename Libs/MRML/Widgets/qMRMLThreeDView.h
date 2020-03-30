@@ -28,8 +28,10 @@
 #include "qMRMLWidgetsExport.h"
 
 class qMRMLThreeDViewPrivate;
+class vtkMRMLAbstractDisplayableManager;
 class vtkMRMLScene;
 class vtkMRMLViewNode;
+class vtkCollection;
 
 /// \brief 3D view for view nodes.
 /// For performance reasons, the view block refreshs when the scene is in
@@ -43,8 +45,8 @@ public:
   typedef ctkVTKRenderView Superclass;
 
   /// Constructors
-  explicit qMRMLThreeDView(QWidget* parent = 0);
-  virtual ~qMRMLThreeDView();
+  explicit qMRMLThreeDView(QWidget* parent = nullptr);
+  ~qMRMLThreeDView() override;
 
   /// Add a displayable manager to the view,
   /// the displayable manager is proper to the 3D view and is not shared
@@ -56,12 +58,36 @@ public:
   /// vtkMRMLViewDisplayableManager and vtkMRMLModelDisplayableManager are
   /// already registered.
   void addDisplayableManager(const QString& displayableManager);
+  Q_INVOKABLE void getDisplayableManagers(vtkCollection* displayableManagers);
+
+  /// Return a DisplayableManager given its class name
+  Q_INVOKABLE  vtkMRMLAbstractDisplayableManager* displayableManagerByClassName(const char* className);
 
   /// Get the 3D View node observed by view.
   Q_INVOKABLE vtkMRMLViewNode* mrmlViewNode()const;
 
   /// Returns the interactor style of the view
   //vtkInteractorObserver* interactorStyle()const;
+
+  /// Methods to rotate/reset the camera,
+  /// Can defined a view axis by its index (from 0 to 5)
+  /// or its label (defined in vtkMRMLViewNode::AxisLabels)
+  /// to rotate to the axis ranged in that order:
+  /// -X, +X, -Y, +Y, -Z, +Z
+  Q_INVOKABLE void rotateToViewAxis(unsigned int axisId);
+  Q_INVOKABLE void rotateToViewAxis(const std::string& axisLabel);
+  Q_INVOKABLE void resetCamera(bool resetRotation = true,
+                               bool resetTranslation = true,
+                               bool resetDistance = true);
+
+  /// Set cursor in the view area
+  Q_INVOKABLE void setViewCursor(const QCursor &);
+
+  /// Restore default cursor in the view area
+  Q_INVOKABLE void unsetViewCursor();
+
+  /// Set default cursor in the view area
+  Q_INVOKABLE void setDefaultViewCursor(const QCursor &cursor);
 
 public slots:
 

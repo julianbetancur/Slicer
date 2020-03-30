@@ -3,18 +3,27 @@ project(SlicerLibs)
 # Enable this option to avoid unnecessary re-compilation associated with command line module
 set(GENERATECLP_USE_MD5 ON)
 
-#set(IGT_USE_IGSTK ${Slicer_USE_IGSTK})
-#set(IGT_USE_NAVITRACK ${Slicer_USE_NAVITRACK})
-
 # --------------------------------------------------------------------------
 #                      ----] W A R N I N G [----
 # --------------------------------------------------------------------------
 # Order of project directory matters. Project should be topologically ordered
 # --------------------------------------------------------------------------
 
-set(dirs
+set(dirs )
+
+list(APPEND dirs
+  ITKFactoryRegistration
+  )
+set(SlicerExecutionModel_EXTRA_EXECUTABLE_TARGET_LIBRARIES
+  ${SlicerExecutionModel_EXTRA_EXECUTABLE_TARGET_LIBRARIES} ITKFactoryRegistration
+  CACHE INTERNAL "SlicerExecutionModel extra executable target libraries" FORCE
+  )
+
+list(APPEND dirs
+  vtkAddon
   vtkTeem
   vtkITK
+  vtkSegmentationCore
   FreeSurfer
   MRML/Core
   )
@@ -30,8 +39,6 @@ if(Slicer_BUILD_CLI_SUPPORT)
   list(APPEND dirs MRML/IDImageIO)
 endif()
 list(APPEND dirs
-  MGHImageIO
-#  IGT
   MRML/Widgets
   )
 
@@ -47,14 +54,30 @@ if(Slicer_BUILD_CLI_SUPPORT)
   set(ModuleDescriptionParser_USE_PYTHON OFF)
 endif()
 
+# Qt designer plugins
+set(MRML_BUILD_QT_DESIGNER_PLUGINS ${Slicer_BUILD_QT_DESIGNER_PLUGINS})
+
 # ITKFactories directories
-set(MGHImageIO_ITKFACTORIES_DIR ${Slicer_ITKFACTORIES_DIR})
-set(MGHImageIO_INSTALL_ITKFACTORIES_DIR ${Slicer_INSTALL_ITKFACTORIES_DIR})
 set(MRMLIDImageIO_ITKFACTORIES_DIR ${Slicer_ITKFACTORIES_DIR})
 set(MRMLIDImageIO_INSTALL_ITKFACTORIES_DIR ${Slicer_INSTALL_ITKFACTORIES_DIR})
 
+# Name of the environment variable that contains the application home directory.
+set(MRML_APPLICATION_HOME_DIR_ENV "SLICER_HOME")
+
+# Name of the environment variable that contains the requested OpenGL profile.
+# Accepted values are "default" (same as not specifying a value) or
+# to force a specific profile: "no", "core", or  "compatibility".
+set(MRML_APPLICATION_OPENGL_PROFILE_ENV "SLICER_OPENGL_PROFILE")
+
+# Name of the subdirectory within the application directory where shared files are stored.
+set(MRML_APPLICATION_SHARE_SUBDIR ${Slicer_SHARE_DIR})
+
 # vtkITK contains tests that uses MRML's test data.
 set(MRML_TEST_DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MRML/Core/Testing/TestData)
+
+set(VTKITK_BUILD_DICOM_SUPPORT ${Slicer_BUILD_DICOM_SUPPORT})
+
+set(MRML_WIDGETS_HAVE_WEBENGINE_SUPPORT ${Slicer_BUILD_WEBENGINE_SUPPORT})
 
 #-----------------------------------------------------------------------------
 # Loop over list of directories
@@ -70,6 +93,7 @@ foreach(dir ${dirs})
   set(${dir_noslash}_INSTALL_SHARE_DIR ${Slicer_INSTALL_ROOT}share/${dir_noslash})
   set(${dir_noslash}_INSTALL_NO_DEVELOPMENT ${Slicer_INSTALL_NO_DEVELOPMENT})
   set(${dir_noslash}_EXPORT_FILE ${Slicer_BINARY_DIR}/SlicerTargets.cmake)
+  set(${dir_noslash}_FOLDER Core-Libs/${dir_noslash})
   add_subdirectory(${dir})
 endforeach()
 
@@ -104,12 +128,13 @@ set(MRML_LIBRARIES ${_mrml_libraries} CACHE INTERNAL "MRML libraries" FORCE)
 # Set variable Slicer_Libs_VTK_WRAPPED_LIBRARIES
 #-----------------------------------------------------------------------------
 set(_vtk_wrapped_libraries
+  vtkAddon
+  vtkSegmentationCore
   vtkTeem
   vtkITK
   FreeSurfer
   MRMLCore
   MRMLLogic
-  RemoteIO
   )
 if(Slicer_USE_PYTHONQT AND VTK_WRAP_PYTHON)
   list(APPEND _vtk_wrapped_libraries MRMLDisplayableManager)

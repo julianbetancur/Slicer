@@ -5,11 +5,6 @@
   See COPYRIGHT.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   3D Slicer
-  Module:    $RCSfile: vtkFSSurfaceAnnotationReader.h,v $
-  Date:      $Date: 2006/08/07 21:06:54 $
-  Version:   $Revision: 1.6 $
-
 =========================================================================auto=*/
 
 #ifndef __vtkFSSurfaceAnnotationReader_h
@@ -17,7 +12,7 @@
 
 // FreeSurfer includes
 #include "FreeSurferConfigure.h"
-#include "vtkFreeSurferWin32Header.h"
+#include "vtkFreeSurferExport.h"
 
 // VTK includes
 #include <vtkDataReader.h>
@@ -39,7 +34,7 @@ class VTK_FreeSurfer_EXPORT vtkFSSurfaceAnnotationReader : public vtkDataReader
 public:
   static vtkFSSurfaceAnnotationReader *New();
   vtkTypeMacro(vtkFSSurfaceAnnotationReader,vtkDataReader);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   vtkIntArray *GetOutput();
   void SetOutput(vtkIntArray *output);
@@ -55,7 +50,7 @@ public:
   int WriteFSAnnotation();
 
   vtkGetMacro(NumColorTableEntries, int);
-  void SetColorTableFileName (char*);
+  vtkSetStringMacro(ColorTableFileName);
 
   vtkGetMacro(UseExternalColorTableFile,int);
   vtkSetMacro(UseExternalColorTableFile,int);
@@ -80,16 +75,15 @@ public:
   };
 protected:
   vtkFSSurfaceAnnotationReader();
-  ~vtkFSSurfaceAnnotationReader();
+  ~vtkFSSurfaceAnnotationReader() override;
 
   vtkIntArray    *Labels;
   vtkLookupTable *Colors;
   char           *NamesList;
   int            NumColorTableEntries;
 
-    /// bool UseExternalColorTableFile;
-    int UseExternalColorTableFile;
-  char ColorTableFileName[1024];
+  int UseExternalColorTableFile;
+  char *ColorTableFileName;
 
   /// Read color table information from a source, allocate the arrays
   /// to hold rgb and name values, and return pointers to the
@@ -101,8 +95,8 @@ protected:
 
 
 private:
-  vtkFSSurfaceAnnotationReader(const vtkFSSurfaceAnnotationReader&);  /// Not implemented.
-  void operator=(const vtkFSSurfaceAnnotationReader&);  /// Not implemented.
+  vtkFSSurfaceAnnotationReader(const vtkFSSurfaceAnnotationReader&) = delete;
+  void operator=(const vtkFSSurfaceAnnotationReader&) = delete;
 };
 
 #endif

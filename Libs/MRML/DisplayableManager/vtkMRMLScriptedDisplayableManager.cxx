@@ -18,6 +18,9 @@
 
 ==============================================================================*/
 
+// Python includes
+#include <vtkPython.h>
+
 // MRMLDisplayableManager includes
 #include "vtkMRMLScriptedDisplayableManager.h"
 
@@ -28,16 +31,14 @@
 #include <vtksys/SystemTools.hxx>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkObjectFactory.h>
 #include <vtkPythonUtil.h>
-
-// Python includes
+#include <vtkSmartPointer.h>
 
 // STD includes
 
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLScriptedDisplayableManager );
-vtkCxxRevisionMacro(vtkMRMLScriptedDisplayableManager, "$Revision: 13525 $");
 
 //---------------------------------------------------------------------------
 class vtkMRMLScriptedDisplayableManager::vtkInternal
@@ -87,10 +88,10 @@ const char* vtkMRMLScriptedDisplayableManager::vtkInternal::APIMethodNames[8] =
 //---------------------------------------------------------------------------
 vtkMRMLScriptedDisplayableManager::vtkInternal::vtkInternal()
 {
-  this->PythonSelf = 0;
+  this->PythonSelf = nullptr;
   for (int i = 0; i < vtkInternal::APIMethodCount; ++i)
     {
-    this->PythonAPIMethods[i] = 0;
+    this->PythonAPIMethods[i] = nullptr;
     }
 }
 
@@ -136,14 +137,14 @@ void vtkMRMLScriptedDisplayableManager::Create()
     {
     return;
     }
-  PyObject_CallObject(method, 0);
+  PyObject_CallObject(method, nullptr);
   PyErr_Print();
 }
 
 //---------------------------------------------------------------------------
 void vtkMRMLScriptedDisplayableManager::SetMRMLSceneInternal(vtkMRMLScene* newScene)
 {
-  vtkIntArray * sceneEventsAsPointer = 0;
+  vtkIntArray * sceneEventsAsPointer = nullptr;
 
   // Obtain list of event to listen
   PyObject* method =
@@ -151,7 +152,7 @@ void vtkMRMLScriptedDisplayableManager::SetMRMLSceneInternal(vtkMRMLScene* newSc
   if (method)
     {
     sceneEventsAsPointer = vtkIntArray::SafeDownCast(
-        vtkPythonUtil::GetPointerFromObject(PyObject_CallObject(method, 0), "vtkIntArray"));
+        vtkPythonUtil::GetPointerFromObject(PyObject_CallObject(method, nullptr), "vtkIntArray"));
     PyErr_Print();
     }
   vtkSmartPointer<vtkIntArray> sceneEvents;
@@ -201,7 +202,7 @@ void vtkMRMLScriptedDisplayableManager::ProcessMRMLNodesEvents(vtkObject *caller
   PyObject * arguments = PyTuple_New(3);
   PyTuple_SET_ITEM(arguments, 0, vtkPythonUtil::GetObjectFromPointer(caller));
   PyTuple_SET_ITEM(arguments, 1, PyInt_FromLong(event));
-  PyTuple_SET_ITEM(arguments, 2, vtkPythonUtil::GetObjectFromPointer(0));
+  PyTuple_SET_ITEM(arguments, 2, vtkPythonUtil::GetObjectFromPointer(nullptr));
 
   PyObject_CallObject(method, arguments);
   PyErr_Print();
@@ -217,7 +218,7 @@ void vtkMRMLScriptedDisplayableManager::RemoveMRMLObservers()
     {
     return;
     }
-  PyObject_CallObject(method, 0);
+  PyObject_CallObject(method, nullptr);
   PyErr_Print();
 
   this->Superclass::RemoveMRMLObservers();
@@ -231,7 +232,7 @@ void vtkMRMLScriptedDisplayableManager::UpdateFromMRML()
     {
     return;
     }
-  PyObject_CallObject(method, 0);
+  PyObject_CallObject(method, nullptr);
   PyErr_Print();
 }
 
@@ -275,13 +276,9 @@ void vtkMRMLScriptedDisplayableManager::OnMRMLDisplayableNodeModifiedEvent(vtkOb
 //---------------------------------------------------------------------------
 void vtkMRMLScriptedDisplayableManager::SetPythonSource(const std::string& pythonSource)
 {
-  assert(pythonSource.find(".py") != std::string::npos);
-
-  // Open the file
-  FILE* pyfile = fopen(pythonSource.c_str(), "r");
-  if (!pyfile)
+  if(pythonSource.find(".py") == std::string::npos &&
+     pythonSource.find(".pyc") == std::string::npos)
     {
-    vtkErrorMacro(<< "SetPythonSource - File " << pythonSource << " doesn't exist !");
     return;
     }
 
@@ -297,7 +294,28 @@ void vtkMRMLScriptedDisplayableManager::SetPythonSource(const std::string& pytho
   PyObject * classToInstantiate = PyDict_GetItemString(global_dict, className.c_str());
   if (!classToInstantiate)
     {
-    PyRun_File(pyfile, pythonSource.c_str(), Py_file_input, global_dict, global_dict);
+    PyObject * pyRes = nullptr;
+    if (pythonSource.find(".py") != std::string::npos)
+      {
+      std::string pyRunStr = std::string("execfile('") + pythonSource + std::string("')");
+      pyRes = PyRun_String(pyRunStr.c_str(),
+                           Py_file_input, global_dict, global_dict);
+      }
+    else if (pythonSource.find(".pyc") != std::string::npos)
+      {
+      std::string pyRunStr = std::string("with open('") + pythonSource +
+          std::string("', 'rb') as f:import imp;imp.load_module('__main__', f, '") + pythonSource +
+          std::string("', ('.pyc', 'rb', 2))");
+      pyRes = PyRun_String(
+            pyRunStr.c_str(),
+            Py_file_input, global_dict, global_dict);
+      }
+    if (!pyRes)
+      {
+      vtkErrorMacro(<< "setPythonSource - Failed to execute file" << pythonSource << "!");
+      return;
+      }
+    Py_DECREF(pyRes);
     classToInstantiate = PyDict_GetItemString(global_dict, className.c_str());
     }
   if (!classToInstantiate)
@@ -313,7 +331,7 @@ void vtkMRMLScriptedDisplayableManager::SetPythonSource(const std::string& pytho
   PyTuple_SET_ITEM(arguments, 0, vtkPythonUtil::GetObjectFromPointer(this));
 
   // Attempt to instantiate the associated python class
-  PyObject * self = PyInstance_New(classToInstantiate, arguments, 0);
+  PyObject * self = PyObject_CallObject(classToInstantiate, arguments);
   Py_DECREF(arguments);
   if (!self)
     {

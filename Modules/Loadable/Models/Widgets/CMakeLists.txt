@@ -5,6 +5,7 @@ set(KIT ${PROJECT_NAME})
 set(${KIT}_EXPORT_DIRECTIVE "Q_SLICER_QTMODULES_${MODULE_NAME_UPPER}_WIDGETS_EXPORT")
 
 set(${KIT}_INCLUDE_DIRECTORIES
+  ${qSlicerSubjectHierarchyModuleWidgets_INCLUDE_DIRS}
   )
 
 set(${KIT}_SRCS
@@ -21,10 +22,10 @@ set(${KIT}_UI_SRCS
   )
 
 set(${KIT}_RESOURCES
-  Resources/qSlicer${MODULE_NAME}ModuleWidgets.qrc
   )
 
 set(${KIT}_TARGET_LIBRARIES
+  qSlicerSubjectHierarchyModuleWidgets
   )
 
 #-----------------------------------------------------------------------------
@@ -41,9 +42,11 @@ SlicerMacroBuildModuleWidgets(
   )
 
 #-----------------------------------------------------------------------------
-add_subdirectory(DesignerPlugins)
+if(Slicer_BUILD_QT_DESIGNER_PLUGINS)
+  add_subdirectory(DesignerPlugins)
+endif()
 
-# Testing
+#-----------------------------------------------------------------------------
 if(BUILD_TESTING)
   add_subdirectory(Testing)
 endif()

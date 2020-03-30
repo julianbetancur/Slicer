@@ -27,22 +27,22 @@
 // VTK includes
 #include <vtkSingleton.h>
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkRenderer;
 
 /// \brief Factory where displayable manager classes are registered.
 ///
-/// A displayable manager class is responsible to represente a 
+/// A displayable manager class is responsible to represent a
 /// MRMLDisplayable node in a renderer.
 class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLThreeDViewDisplayableManagerFactory
   : public vtkMRMLDisplayableManagerFactory
 {
 public:
 
-  vtkTypeRevisionMacro(vtkMRMLThreeDViewDisplayableManagerFactory,
+  vtkTypeMacro(vtkMRMLThreeDViewDisplayableManagerFactory,
                        vtkMRMLDisplayableManagerFactory);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// This is a singleton pattern New.  There will only be ONE
   /// reference to a vtkMRMLThreeDViewDisplayableManagerFactory object per process. Clients that
@@ -56,18 +56,22 @@ public:
 protected:
 
   vtkMRMLThreeDViewDisplayableManagerFactory();
-  virtual ~vtkMRMLThreeDViewDisplayableManagerFactory();
+  ~vtkMRMLThreeDViewDisplayableManagerFactory() override;
 
   VTK_SINGLETON_DECLARE(vtkMRMLThreeDViewDisplayableManagerFactory);
 
 private:
 
-  vtkMRMLThreeDViewDisplayableManagerFactory(const vtkMRMLThreeDViewDisplayableManagerFactory&);
-  void operator=(const vtkMRMLThreeDViewDisplayableManagerFactory&);
+  vtkMRMLThreeDViewDisplayableManagerFactory(const vtkMRMLThreeDViewDisplayableManagerFactory&) = delete;
+  void operator=(const vtkMRMLThreeDViewDisplayableManagerFactory&) = delete;
 
 };
 
+#ifndef __VTK_WRAP__
+//BTX
 VTK_SINGLETON_DECLARE_INITIALIZER(VTK_MRML_DISPLAYABLEMANAGER_EXPORT,
                                   vtkMRMLThreeDViewDisplayableManagerFactory);
+//ETX
+#endif // __VTK_WRAP__
 
 #endif

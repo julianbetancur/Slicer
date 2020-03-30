@@ -22,7 +22,7 @@ class vtkMRMLDiffusionWeightedVolumeNode;
 ///
 /// Diffusion Weigthed Volume nodes describe data sets that encode diffusion weigthed
 /// images. These images are the basis for computing the diffusion tensor.
-/// The node is a container for the neccesary information to interpert DW images:
+/// The node is a container for the necessary information to interpert DW images:
 /// 1. Gradient information.
 /// 2. B value for each gradient.
 /// 3. Measurement frame that relates the coordinate system where the gradients are given
@@ -32,32 +32,32 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionImageVolumeNode : public vtkMRMLTensorVolu
   public:
   static vtkMRMLDiffusionImageVolumeNode *New();
   vtkTypeMacro(vtkMRMLDiffusionImageVolumeNode,vtkMRMLTensorVolumeNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "DiffusionImageVolume";};
+  const char* GetNodeTagName() override {return "DiffusionImageVolume";}
 
  /// Description:
   /// String ID of the storage MRML node
   void SetBaselineNodeID(const char* id);
   vtkGetStringMacro(BaselineNodeID);
 
-  /// 
+  ///
   /// String ID of the display MRML node
   void SetMaskNodeID(const char* id);
   vtkGetStringMacro(MaskNodeID);
@@ -67,55 +67,55 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionImageVolumeNode : public vtkMRMLTensorVolu
   void SetDiffusionWeightedNodeID(const char* id);
   vtkGetStringMacro(DiffusionWeightedNodeID);
 
-  /// 
+  ///
   /// Associated volume MRML node
   vtkMRMLVolumeNode* GetBaselineNode();
 
-  /// 
+  ///
   /// Associated volume MRML node
   vtkMRMLVolumeNode* GetMaskNode();
 
-  /// 
+  ///
   /// Associated volume MRML node
   vtkMRMLDiffusionWeightedVolumeNode* GetDiffusionWeightedNode();
 
-  /// 
+  ///
   /// Associated volume MRML node
   //vtkMRMLDiffusionImageVolumeDisplayNode* GetDisplayNode();
 
-  /// 
+  ///
   /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
+  void UpdateReferenceID(const char *oldID, const char *newID) override;
 
-   /// 
+   ///
   /// Finds the storage node and read the data
   //void UpdateScene(vtkMRMLScene *scene);
 
-  /// 
-  /// Updates this node if it depends on other nodes 
+  ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  void UpdateReferences();
+  void UpdateReferences() override;
 
-  
-  /// 
+
+  ///
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
-  /// 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode()
+  ///
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override
     {
     return Superclass::CreateDefaultStorageNode();
-    };
+    }
 
 protected:
   vtkMRMLDiffusionImageVolumeNode();
-  ~vtkMRMLDiffusionImageVolumeNode();
+  ~vtkMRMLDiffusionImageVolumeNode() override;
   vtkMRMLDiffusionImageVolumeNode(const vtkMRMLDiffusionImageVolumeNode&);
   void operator=(const vtkMRMLDiffusionImageVolumeNode&);
-  
+
   char *BaselineNodeID;
   char *MaskNodeID;
   char *DiffusionWeightedNodeID;

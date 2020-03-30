@@ -12,25 +12,21 @@
 
 =========================================================================auto=*/
 
-// MRMLLogic includes
-
 // MRML includes
+#include <vtkCacheManager.h>
+#include <vtkDataIOManager.h>
+#include <vtkMRMLScene.h>
+#include <vtkTagTable.h>
 
-// VTK sys includes
+// VTK includes
 #include <vtkCollection.h>
+#include <vtkObjectFactory.h>
 
 // RemoteIO includes
-#include "vtkDataIOManager.h"
-#include "vtkCacheManager.h"
-#include "vtkSRBHandler.h"
-#include "vtkXNATHandler.h"
-#include "vtkHIDHandler.h"
-#include "vtkXNDHandler.h"
-//#include "vtkSlicerXNATPermissionPrompterWidget.h"
+#include <vtkHTTPHandler.h>
 
 #include "vtkMRMLRemoteIOLogic.h"
 
-vtkCxxRevisionMacro(vtkMRMLRemoteIOLogic, "$Revision: 16232 $");
 vtkStandardNewMacro(vtkMRMLRemoteIOLogic);
 
 vtkCxxSetObjectMacro(vtkMRMLRemoteIOLogic, CacheManager, vtkCacheManager);
@@ -49,12 +45,12 @@ vtkMRMLRemoteIOLogic::~vtkMRMLRemoteIOLogic()
 {
   if (this->DataIOManager)
     {
-    this->DataIOManager->SetCacheManager(NULL);
-    this->SetDataIOManager(NULL);
+    this->DataIOManager->SetCacheManager(nullptr);
+    this->SetDataIOManager(nullptr);
     }
   if (this->CacheManager)
     {
-    this->SetCacheManager(NULL);
+    this->SetCacheManager(nullptr);
     }
 }
 
@@ -70,9 +66,12 @@ void vtkMRMLRemoteIOLogic::AddDataIOToScene()
 {
   // TODO more of the cache and DataIOManager code
   // from qSlicerCoreApplication::setMRMLScene(vtkMRMLScene* newMRMLScene)
-  // should be moved to here so they can be used outside of the 
+  // should be moved to here so they can be used outside of the
   // context of a qSlicer based application
-
+  // Update 2015/03/20: split qSlicerCoreApplication::setMRMLScene so that
+  // a user can call vtkSlicerApplicationLogic::SetMRMLSceneDataIO to trigger
+  /// this method on a independent scene with separate remote io logic and data
+  /// io manager logic
   if (!this->GetMRMLScene())
     {
     vtkErrorMacro("Cannot add DataIOHandlers -- scene not set");
@@ -97,43 +96,6 @@ void vtkMRMLRemoteIOLogic::AddDataIOToScene()
   this->GetMRMLScene()->AddURIHandler(httpHandler);
   httpHandler->Delete();
 
-  vtkSRBHandler *srbHandler = vtkSRBHandler::New();
-  srbHandler->SetPrefix ( "srb://" );
-  srbHandler->SetName ( "SRBHandler" );
-  this->GetMRMLScene()->AddURIHandler(srbHandler);
-  srbHandler->Delete();
-
-  vtkXNATHandler *xnatHandler = vtkXNATHandler::New();
-  // TODO: deal with permission prompting at the application level
-  //vtkSlicerXNATPermissionPrompterWidget *xnatPermissionPrompter = vtkSlicerXNATPermissionPrompterWidget::New();
-#if 0
-  if (app)
-    {
-    //xnatPermissionPrompter->SetApplication ( app );
-    }
-#endif
-  //xnatPermissionPrompter->SetPromptTitle ("Permission Prompt");
-  xnatHandler->SetPrefix ( "xnat://" );
-  xnatHandler->SetName ( "XNATHandler" );
-  xnatHandler->SetRequiresPermission (0);
-  //xnatHandler->SetRequiresPermission (1);
-  //xnatHandler->SetPermissionPrompter ( xnatPermissionPrompter );
-  this->GetMRMLScene()->AddURIHandler(xnatHandler);
-  //xnatPermissionPrompter->Delete();
-  xnatHandler->Delete();
-
-  vtkHIDHandler *hidHandler = vtkHIDHandler::New();
-  hidHandler->SetPrefix ( "hid://" );
-  hidHandler->SetName ( "HIDHandler" );
-  this->GetMRMLScene()->AddURIHandler( hidHandler);
-  hidHandler->Delete();
-
-  vtkXNDHandler *xndHandler = vtkXNDHandler::New();
-  xndHandler->SetPrefix ( "xnd://" );
-  xndHandler->SetName ( "XNDHandler" );
-  this->GetMRMLScene()->AddURIHandler( xndHandler);
-  xndHandler->Delete();
-
   //add something to hold user tags
   vtkTagTable *userTagTable = vtkTagTable::New();
   this->GetMRMLScene()->SetUserTagTable( userTagTable );
@@ -147,7 +109,7 @@ void vtkMRMLRemoteIOLogic::RemoveDataIOFromScene()
     {
     vtkErrorMacro("Cannot remove DataIOHandlers -- scene not set");
     }
-  this->GetMRMLScene()->SetURIHandlerCollection(NULL);
-  this->GetMRMLScene()->SetUserTagTable( NULL );
+  this->GetMRMLScene()->SetURIHandlerCollection(nullptr);
+  this->GetMRMLScene()->SetUserTagTable( nullptr );
 }
 

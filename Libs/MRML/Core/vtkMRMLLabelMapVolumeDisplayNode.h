@@ -17,6 +17,7 @@
 
 #include "vtkMRMLVolumeDisplayNode.h"
 
+class vtkImageAlgorithm;
 class vtkImageMapToColors;
 
 /// \brief MRML node for representing a volume display attributes.
@@ -27,37 +28,37 @@ class VTK_MRML_EXPORT vtkMRMLLabelMapVolumeDisplayNode : public vtkMRMLVolumeDis
   public:
   static vtkMRMLLabelMapVolumeDisplayNode *New();
   vtkTypeMacro(vtkMRMLLabelMapVolumeDisplayNode,vtkMRMLVolumeDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "LabelMapVolumeDisplay";};
+  const char* GetNodeTagName() override {return "LabelMapVolumeDisplay";}
 
-  /// 
+  ///
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
-  /// 
-  /// set gray colormap
-  virtual void SetDefaultColorMap();
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
+  ///
+  /// set default labels colormap
+  void SetDefaultColorMap() override;
 
   /// Set the pipeline input
-  virtual void SetInputImageData(vtkImageData *imageData);
+  void SetInputImageDataConnection(vtkAlgorithmOutput *imageDataConnection) override;
 
   /// Get the pipeline input
-  virtual vtkImageData* GetInputImageData();
+  vtkImageData* GetInputImageData() override;
 
   /// Gets the pipeline output
-  virtual vtkImageData* GetOutputImageData();
+  vtkAlgorithmOutput* GetOutputImageDataConnection() override;
 
-  virtual void UpdateImageDataPipeline();
+  void UpdateImageDataPipeline() override;
 
 protected:
   vtkMRMLLabelMapVolumeDisplayNode();
-  virtual ~vtkMRMLLabelMapVolumeDisplayNode();
+  ~vtkMRMLLabelMapVolumeDisplayNode() override;
   vtkMRMLLabelMapVolumeDisplayNode(const vtkMRMLLabelMapVolumeDisplayNode&);
   void operator=(const vtkMRMLLabelMapVolumeDisplayNode&);
 

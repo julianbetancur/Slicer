@@ -5,21 +5,16 @@
   See COPYRIGHT.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   3D Slicer
-  Module:    $RCSfile: vtkFSSurfaceReader.h,v $
-  Date:      $Date: 2006/05/26 19:40:14 $
-  Version:   $Revision: 1.9 $
-
 =========================================================================auto=*/
 
 #ifndef __vtkFSSurfaceReader_h
 #define __vtkFSSurfaceReader_h
 
 #include "FreeSurferConfigure.h"
-#include "vtkFreeSurferWin32Header.h"
+#include "vtkFreeSurferExport.h"
 
 // VTK includes
-#include <vtkDataReader.h>
+#include <vtkAbstractPolyDataReader.h>
 
 /// Prints debugging info.
 #define FS_DEBUG 0
@@ -36,17 +31,12 @@ class vtkPolyData;
 ///
 /// Reads a surface file from FreeSurfer and output PolyData. Use the
 /// SetFileName function to specify the file name.
-class VTK_FreeSurfer_EXPORT vtkFSSurfaceReader : public vtkDataReader
+class VTK_FreeSurfer_EXPORT vtkFSSurfaceReader : public vtkAbstractPolyDataReader
 {
 public:
   static vtkFSSurfaceReader *New();
-  vtkTypeMacro(vtkFSSurfaceReader,vtkDataReader);
-  void PrintSelf(ostream& os, vtkIndent indent);
-
-  /// Get the output of this reader.
-  vtkPolyData *GetOutput();
-  vtkPolyData *GetOutput(int idx);
-  void SetOutput(vtkPolyData *output);
+  vtkTypeMacro(vtkFSSurfaceReader, vtkAbstractPolyDataReader);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// old previous versions constants
   enum
@@ -59,29 +49,18 @@ public:
       FS_MAX_NUM_FACES_PER_VERTEX = 10, /// kinda arbitrary
   };
 
-  int RequestData(
-      vtkInformation *,
-      vtkInformationVector **,
-      vtkInformationVector *outputVector);
-
 protected:
   vtkFSSurfaceReader();
-  ~vtkFSSurfaceReader();
+  ~vtkFSSurfaceReader() override;
 
-  /// Update extent of PolyData is specified in pieces.
-  /// Since all DataObjects should be able to set UpdateExent as pieces,
-  /// just copy output->UpdateExtent  all Inputs.
-  virtual int FillOutputPortInformation(int, vtkInformation*);
-
-  /// Used by streaming: The extent of the output being processed by
-  /// the execute method. Set in the ComputeInputUpdateExtents method.
-  int ExecutePiece;
-  int ExecuteNumberOfPieces;
-  int ExecuteGhostLevel;
+  int RequestData(
+    vtkInformation *,
+    vtkInformationVector **,
+    vtkInformationVector *outputVector) override;
 
 private:
-  vtkFSSurfaceReader(const vtkFSSurfaceReader&);  /// Not implemented.
-  void operator=(const vtkFSSurfaceReader&);  /// Not implemented.
+  vtkFSSurfaceReader(const vtkFSSurfaceReader&) = delete;
+  void operator=(const vtkFSSurfaceReader&) = delete;
 };
 
 

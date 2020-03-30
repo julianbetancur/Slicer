@@ -15,9 +15,6 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // Slice includes
 #include <qSlicerCoreApplication.h>
 #include <qSlicerCoreIOManager.h>
@@ -27,11 +24,8 @@
 #include <vtkSlicerDoubleArraysLogic.h>
 
 // DoubleArrays includes
-#include "qSlicerDoubleArraysIO.h"
 #include "qSlicerDoubleArraysModule.h"
-
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerDoubleArraysModule, qSlicerDoubleArraysModule);
+#include "qSlicerDoubleArraysReader.h"
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_ExtensionTemplate
@@ -46,8 +40,7 @@ public:
 
 //-----------------------------------------------------------------------------
 qSlicerDoubleArraysModulePrivate::qSlicerDoubleArraysModulePrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 // qSlicerDoubleArraysModule methods
@@ -61,8 +54,7 @@ qSlicerDoubleArraysModule::qSlicerDoubleArraysModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerDoubleArraysModule::~qSlicerDoubleArraysModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerDoubleArraysModule::helpText()const
@@ -105,10 +97,10 @@ void qSlicerDoubleArraysModule::setup()
 
   qSlicerCoreIOManager* ioManager =
     qSlicerCoreApplication::application()->coreIOManager();
-  ioManager->registerIO(new qSlicerDoubleArraysIO(doubleArraysLogic,this));
+  ioManager->registerIO(new qSlicerDoubleArraysReader(doubleArraysLogic,this));
   ioManager->registerIO(new qSlicerNodeWriter(
     "Double Arrays", QString("DoubleArrayFile"),
-    QStringList() << "vtkMRMLDoubleArrayNode", this));
+    QStringList() << "vtkMRMLDoubleArrayNode", true, this));
 }
 
 //-----------------------------------------------------------------------------
@@ -120,7 +112,7 @@ bool qSlicerDoubleArraysModule::isHidden() const
 //-----------------------------------------------------------------------------
 qSlicerAbstractModuleRepresentation * qSlicerDoubleArraysModule::createWidgetRepresentation()
 {
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------

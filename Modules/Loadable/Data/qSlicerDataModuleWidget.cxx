@@ -20,46 +20,82 @@
 
 // SlicerQt includes
 #include "qSlicerDataModuleWidget.h"
-#include "ui_qSlicerDataModule.h"
+#include "ui_qSlicerDataModuleWidget.h"
 #include "qSlicerApplication.h"
 #include "qSlicerIOManager.h"
 
 // Data Logic includes
 #include "vtkSlicerDataModuleLogic.h"
 
-// SlicerLibs includes
-#include <vtkSlicerTransformLogic.h>
+// Subject Hierarchy includes
+#include "qMRMLSubjectHierarchyModel.h"
+#include "qMRMLSortFilterSubjectHierarchyProxyModel.h"
+#include "qSlicerSubjectHierarchyAbstractPlugin.h"
+#include "qSlicerSubjectHierarchyPluginHandler.h"
 
 // MRMLWidgets includes
 #include <qMRMLSceneModel.h>
 
 // MRML includes
 #include <vtkMRMLLinearTransformNode.h>
+#include <vtkMRMLSubjectHierarchyNode.h>
+#include <vtkMRMLScene.h>
 
 // VTK includes
 #include <vtkNew.h>
+#include <vtkSmartPointer.h>
+#include <vtkCallbackCommand.h>
 
-// STL includes
-#include <set>
+// Qt includes
+#include <QAction>
+#include <QDebug>
+#include <QSettings>
+#include <QTimer>
 
 //-----------------------------------------------------------------------------
-class qSlicerDataModuleWidgetPrivate: public Ui_qSlicerDataModule
+class qSlicerDataModuleWidgetPrivate: public Ui_qSlicerDataModuleWidget
 {
   Q_DECLARE_PUBLIC(qSlicerDataModuleWidget);
 protected:
   qSlicerDataModuleWidget* const q_ptr;
 public:
   qSlicerDataModuleWidgetPrivate(qSlicerDataModuleWidget& object);
+  ~qSlicerDataModuleWidgetPrivate();
   vtkSlicerDataModuleLogic* logic() const;
+public:
+  QAction* HardenTransformAction;
+  int ContextMenusHintShown;
 
-  QAction*                    HardenTransformAction;
+  /// Callback object to get notified about item modified events
+  vtkSmartPointer<vtkCallbackCommand> CallBack;
+
+  /// Observer tag for subject hierarchy observation
+  unsigned long SubjectHierarchyObservationTag;
 };
 
 //-----------------------------------------------------------------------------
+// qSlicerDataModuleWidgetPrivate methods
+
+//-----------------------------------------------------------------------------
 qSlicerDataModuleWidgetPrivate::qSlicerDataModuleWidgetPrivate(qSlicerDataModuleWidget& object)
- : q_ptr(&object)
+  : q_ptr(&object)
+  , HardenTransformAction(nullptr)
+  , ContextMenusHintShown(0)
+  , SubjectHierarchyObservationTag(0)
 {
-  this->HardenTransformAction = 0;
+  this->CallBack = vtkSmartPointer<vtkCallbackCommand>::New();
+  this->CallBack->SetClientData(q_ptr);
+  this->CallBack->SetCallback(qSlicerDataModuleWidget::onSubjectHierarchyItemEvent);
+}
+
+//-----------------------------------------------------------------------------
+qSlicerDataModuleWidgetPrivate::~qSlicerDataModuleWidgetPrivate()
+{
+  vtkMRMLSubjectHierarchyNode* shNode = this->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (shNode)
+    {
+    shNode->RemoveObserver(this->SubjectHierarchyObservationTag);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -71,6 +107,9 @@ qSlicerDataModuleWidgetPrivate::logic() const
 }
 
 //-----------------------------------------------------------------------------
+// qSlicerDataModuleWidget methods
+
+//-----------------------------------------------------------------------------
 qSlicerDataModuleWidget::qSlicerDataModuleWidget(QWidget* parentWidget)
   :qSlicerAbstractModuleWidget(parentWidget)
   , d_ptr( new qSlicerDataModuleWidgetPrivate(*this) )
@@ -79,7 +118,17 @@ qSlicerDataModuleWidget::qSlicerDataModuleWidget(QWidget* parentWidget)
 
 //-----------------------------------------------------------------------------
 qSlicerDataModuleWidget::~qSlicerDataModuleWidget()
+= default;
+
+//-----------------------------------------------------------------------------
+void qSlicerDataModuleWidget::enter()
 {
+  Q_D(qSlicerDataModuleWidget);
+
+  // Trigger showing the subject hierarchy context menu hint
+  this->onCurrentTabChanged(d->ViewTabWidget->currentIndex());
+
+  this->Superclass::enter();
 }
 
 //-----------------------------------------------------------------------------
@@ -89,86 +138,140 @@ void qSlicerDataModuleWidget::setup()
 
   d->setupUi(this);
 
-  // Edit properties...
-  connect(d->MRMLTreeView, SIGNAL(editNodeRequested(vtkMRMLNode*)),
-          qSlicerApplication::application(), SLOT(openNodeModule(vtkMRMLNode*)));
+  // Tab widget
+  d->ViewTabWidget->widget(TabIndexSubjectHierarchy)->layout()->setContentsMargins(2,2,2,2);
+  d->ViewTabWidget->widget(TabIndexSubjectHierarchy)->layout()->setSpacing(4);
 
+  d->ViewTabWidget->widget(TabIndexTransformHierarchy)->layout()->setContentsMargins(2,2,2,2);
+  d->ViewTabWidget->widget(TabIndexTransformHierarchy)->layout()->setSpacing(4);
+
+  d->ViewTabWidget->widget(TabIndexAllNodes)->layout()->setContentsMargins(2,2,2,2);
+  d->ViewTabWidget->widget(TabIndexAllNodes)->layout()->setSpacing(4);
+
+  connect( d->ViewTabWidget, SIGNAL(currentChanged(int)),
+          this, SLOT(onCurrentTabChanged(int)) );
+
+  //
+  // Subject hierarchy tab
+
+  // Make connections for the checkboxes and buttons
+  connect( d->SubjectHierarchyDisplayDataNodeIDsCheckBox, SIGNAL(toggled(bool)),
+           this, SLOT(setMRMLIDsVisible(bool)) );
+  connect( d->SubjectHierarchyDisplayTransformsCheckBox, SIGNAL(toggled(bool)),
+           this, SLOT(setTransformsVisible(bool)) );
+
+  // Set up tree view
+  d->SubjectHierarchyTreeView->expandToDepth(4);
+  d->SubjectHierarchyTreeView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
+  // Make subject hierarchy item info label text selectable
+  d->SubjectHierarchyItemInfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+  connect(d->SubjectHierarchyTreeView, SIGNAL(currentItemChanged(vtkIdType)),
+           this, SLOT(setDataNodeFromSubjectHierarchyItem(vtkIdType)) );
+  connect(d->SubjectHierarchyTreeView, SIGNAL(currentItemChanged(vtkIdType)),
+           this, SLOT(setInfoLabelFromSubjectHierarchyItem(vtkIdType)) );
+
+  // Connect name filter
+  connect( d->FilterLineEdit, SIGNAL(textChanged(QString)),
+           d->SubjectHierarchyTreeView->sortFilterProxyModel(), SLOT(setNameFilter(QString)) );
+
+  // Help button
+  connect( d->HelpButton, SIGNAL(clicked()),
+           this, SLOT(onHelpButtonClicked()) );
+  // Assemble help text for help button tooltip
+  QString aggregatedHelpText(
+    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">"
+    "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\"> p, li { white-space: pre-wrap; }"
+    "</style></head><body style=\" font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;\">");
+  foreach (qSlicerSubjectHierarchyAbstractPlugin* plugin, qSlicerSubjectHierarchyPluginHandler::instance()->allPlugins())
+    {
+    // Add help text from each plugin
+    QString pluginHelpText = plugin->helpText();
+    if (!pluginHelpText.isEmpty())
+      {
+      aggregatedHelpText.append(QString("\n") + pluginHelpText);
+      }
+    }
+  aggregatedHelpText.append(QString("</body></html>"));
+  d->HelpButton->setToolTip(aggregatedHelpText);
+
+  //
+  // Transform hierarchy tab
+
+  d->TransformMRMLTreeView->sceneModel()->setIDColumn(1);
+  d->TransformMRMLTreeView->sceneModel()->setHorizontalHeaderLabels(QStringList() << "Nodes" << "IDs");
+  d->TransformMRMLTreeView->header()->setStretchLastSection(false);
+  d->TransformMRMLTreeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+  d->TransformMRMLTreeView->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+
+  connect( d->TransformMRMLTreeView, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+           this, SLOT(onCurrentNodeChanged(vtkMRMLNode*)) );
+
+  // Edit properties
+  connect( d->TransformMRMLTreeView, SIGNAL(editNodeRequested(vtkMRMLNode*)),
+           qSlicerApplication::application(), SLOT(openNodeModule(vtkMRMLNode*)) );
   // Insert transform
   QAction* insertTransformAction = new QAction(tr("Insert transform"),this);
-  d->MRMLTreeView->prependNodeMenuAction(insertTransformAction);
-  d->MRMLTreeView->prependSceneMenuAction(insertTransformAction);
-  connect(insertTransformAction, SIGNAL(triggered()),
-          this, SLOT(insertTransformNode()));
+  d->TransformMRMLTreeView->prependNodeMenuAction(insertTransformAction);
+  d->TransformMRMLTreeView->prependSceneMenuAction(insertTransformAction);
+  connect( insertTransformAction, SIGNAL(triggered()),
+           this, SLOT(insertTransformNode()) );
   // Harden transform
-  connect( d->MRMLTreeView, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
-           this, SLOT(onCurrentNodeChanged(vtkMRMLNode*)) );
   d->HardenTransformAction = new QAction(tr("Harden transform"), this);
   connect( d->HardenTransformAction, SIGNAL(triggered()),
            this, SLOT(hardenTransformOnCurrentNode()) );
-
-  connect(d->MRMLSceneModelComboBox, SIGNAL(currentIndexChanged(QString)),
-          this, SLOT(onSceneModelChanged(QString)));
-
-  // Connection with TreeView is done in UI file
-  d->MRMLSceneModelComboBox->addItem(QString("Transform"));
-  d->MRMLSceneModelComboBox->addItem(QString("Displayable"));
-  d->MRMLSceneModelComboBox->addItem(QString("ModelHierarchy"));
-
-  connect(d->DisplayMRMLIDsCheckBox, SIGNAL(toggled(bool)),
-          this, SLOT(setMRMLIDsVisible(bool)));
-  connect(d->ShowHiddenCheckBox, SIGNAL(toggled(bool)),
-          d->MRMLTreeView->sortFilterProxyModel(), SLOT(setShowHidden(bool)));
-
-  QAction* printNodeAction = new QAction(tr("Print"),this);
-  d->MRMLTreeView->appendNodeMenuAction(printNodeAction);
-  d->MRMLTreeView->appendSceneMenuAction(printNodeAction);
-  connect(printNodeAction, SIGNAL(triggered()),
-          this, SLOT(printObject()));
-
+  // Checkboxes
+  connect( d->TransformDisplayMRMLIDsCheckBox, SIGNAL(toggled(bool)),
+          this, SLOT(setMRMLIDsVisible(bool)) );
+  connect( d->TransformShowHiddenCheckBox, SIGNAL(toggled(bool)),
+          d->TransformMRMLTreeView->sortFilterProxyModel(), SLOT(setShowHidden(bool)) );
+  connect( d->TransformShowHiddenCheckBox, SIGNAL(toggled(bool)),
+          d->AllNodesTransformShowHiddenCheckBox, SLOT(setChecked(bool)) );
   // Filter on all the columns
-  d->MRMLTreeView->sortFilterProxyModel()->setFilterKeyColumn(-1);
-  connect(d->FilterLineEdit, SIGNAL(textChanged(QString)),
-          d->MRMLTreeView->sortFilterProxyModel(), SLOT(setFilterFixedString(QString)));
-
-  // Hide the IDs by default
-  d->DisplayMRMLIDsCheckBox->setChecked(false);
-
+  d->TransformMRMLTreeView->sortFilterProxyModel()->setFilterKeyColumn(-1);
+  connect( d->FilterLineEdit, SIGNAL(textChanged(QString)),
+          d->TransformMRMLTreeView->sortFilterProxyModel(), SLOT(setFilterWildcard(QString)) );
   // Make connections for the attribute table widget
-  connect(d->MRMLTreeView, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
-          d->MRMLNodeAttributeTableWidget, SLOT(setMRMLNode(vtkMRMLNode*)));
+  connect( d->TransformMRMLTreeView, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+          d->MRMLNodeAttributeTableWidget, SLOT(setMRMLNode(vtkMRMLNode*)) );
 
-  // Connect the buttons to the associated slots
-  connect(d->LoadSceneToolButton, SIGNAL(clicked()),
-          this, SLOT(loadScene()));
-  connect(d->AddSceneToolButton, SIGNAL(clicked()),
-          this, SLOT(addScene()));
-  connect(d->AddDataToolButton, SIGNAL(clicked()),
-          this, SLOT(addData()));
-  connect(d->AddVolumesToolButton, SIGNAL(clicked()),
-          this, SLOT(addVolumes()));
-  connect(d->AddModelsToolButton, SIGNAL(clicked()),
-          this, SLOT(addModels()));
-  connect(d->AddScalarOverlayToolButton, SIGNAL(clicked()),
-          this, SLOT(addScalarOverlay()));
-  connect(d->AddTransformationToolButton, SIGNAL(clicked()),
-          this, SLOT(addTransformation()));
-  connect(d->AddFiducialListToolButton, SIGNAL(clicked()),
-          this, SLOT(addFiducialList()));
-  connect(d->AddColorTableToolButton, SIGNAL(clicked()),
-          this, SLOT(addColorTable()));
-  connect(d->AddFiberBundleToolButton, SIGNAL(clicked()),
-          this, SLOT(addFiberBundle()));
+  //
+  // All nodes tab
 
-  QList<QToolButton*> helpToolButtons =
-    d->LoadAddSceneButton->findChildren<QToolButton*>(
-      QRegExp("*HelpToolButton", Qt::CaseSensitive, QRegExp::Wildcard));
-  foreach(QToolButton* help, helpToolButtons)
-    {
-    // Set the help icon
-    help->setIcon(this->style()->standardIcon(QStyle::SP_MessageBoxQuestion));
-    // hide the text
-    help->setChecked(false);
-    }
+  d->AllNodesMRMLTreeView->sceneModel()->setIDColumn(1);
+  d->AllNodesMRMLTreeView->sceneModel()->setHorizontalHeaderLabels(QStringList() << "Nodes" << "IDs");
+  d->AllNodesMRMLTreeView->header()->setStretchLastSection(false);
+  d->AllNodesMRMLTreeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+  d->AllNodesMRMLTreeView->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+
+  // Edit properties
+  connect( d->AllNodesMRMLTreeView, SIGNAL(editNodeRequested(vtkMRMLNode*)),
+           qSlicerApplication::application(), SLOT(openNodeModule(vtkMRMLNode*)) );
+  // Checkboxes
+  connect( d->AllNodesDisplayMRMLIDsCheckBox, SIGNAL(toggled(bool)),
+          this, SLOT(setMRMLIDsVisible(bool)) );
+  connect( d->AllNodesTransformShowHiddenCheckBox, SIGNAL(toggled(bool)),
+          d->AllNodesMRMLTreeView->sortFilterProxyModel(), SLOT(setShowHidden(bool)) );
+  connect( d->AllNodesTransformShowHiddenCheckBox, SIGNAL(toggled(bool)),
+          d->TransformShowHiddenCheckBox, SLOT(setChecked(bool)) );
+  // Filter on all the columns
+  d->AllNodesMRMLTreeView->sortFilterProxyModel()->setFilterKeyColumn(-1);
+  connect( d->FilterLineEdit, SIGNAL(textChanged(QString)),
+          d->AllNodesMRMLTreeView->sortFilterProxyModel(), SLOT(setFilterWildcard(QString)) );
+  // Make connections for the attribute table widget
+  connect( d->AllNodesMRMLTreeView, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+          d->MRMLNodeAttributeTableWidget, SLOT(setMRMLNode(vtkMRMLNode*)) );
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerDataModuleWidget::setMRMLScene(vtkMRMLScene* scene)
+{
+  Q_D(qSlicerDataModuleWidget);
+
+  Superclass::setMRMLScene(scene);
+
+  this->setMRMLIDsVisible(d->SubjectHierarchyDisplayDataNodeIDsCheckBox->isChecked());
+  this->setTransformsVisible(d->SubjectHierarchyDisplayTransformsCheckBox->isChecked());
 }
 
 //-----------------------------------------------------------------------------
@@ -176,48 +279,77 @@ void qSlicerDataModuleWidget::setMRMLIDsVisible(bool visible)
 {
   Q_D(qSlicerDataModuleWidget);
 
-  d->MRMLTreeView->setColumnHidden(1, !visible);
-  const int columnCount = d->MRMLTreeView->header()->count();
-  for(int i = 0; i < columnCount; ++i)
+  // Subject hierarchy view
+  d->SubjectHierarchyTreeView->setColumnHidden(d->SubjectHierarchyTreeView->model()->idColumn(), !visible);
+
+  // Transform hierarchy view
+  d->TransformMRMLTreeView->setColumnHidden(d->TransformMRMLTreeView->sceneModel()->idColumn(), !visible);
+  int columnCount = d->TransformMRMLTreeView->header()->count();
+  for (int i=0; i<columnCount; ++i)
     {
-    d->MRMLTreeView->resizeColumnToContents(i);
+    d->TransformMRMLTreeView->resizeColumnToContents(i);
     }
-  d->DisplayMRMLIDsCheckBox->setChecked(visible);
-}
 
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::setMRMLScene(vtkMRMLScene* scene)
-{
-  Q_D(qSlicerDataModuleWidget);
-  this->qSlicerAbstractModuleWidget::setMRMLScene(scene);
-  this->setMRMLIDsVisible(d->DisplayMRMLIDsCheckBox->isChecked());
-}
-
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::insertTransformNode()
-{
-  Q_D(qSlicerDataModuleWidget);
-  vtkNew<vtkMRMLLinearTransformNode> linearTransform;
-  this->mrmlScene()->AddNode(linearTransform.GetPointer());
-
-  vtkMRMLNode* parent = vtkMRMLTransformNode::SafeDownCast(
-    d->MRMLTreeView->currentNode());
-  if (parent)
+  // All nodes view
+  d->AllNodesMRMLTreeView->setColumnHidden(d->AllNodesMRMLTreeView->sceneModel()->idColumn(), !visible);
+  columnCount = d->AllNodesMRMLTreeView->header()->count();
+  for (int i=0; i<columnCount; ++i)
     {
-    linearTransform->SetAndObserveTransformNodeID( parent->GetID() );
+    d->AllNodesMRMLTreeView->resizeColumnToContents(i);
     }
+
+  // Update each checkbox that represent the same thing
+  bool wereSignalsBlocked = d->SubjectHierarchyDisplayDataNodeIDsCheckBox->blockSignals(true);
+  d->SubjectHierarchyDisplayDataNodeIDsCheckBox->setChecked(visible);
+  d->SubjectHierarchyDisplayDataNodeIDsCheckBox->blockSignals(wereSignalsBlocked);
+
+  wereSignalsBlocked = d->TransformDisplayMRMLIDsCheckBox->blockSignals(true);
+  d->TransformDisplayMRMLIDsCheckBox->setChecked(visible);
+  d->TransformDisplayMRMLIDsCheckBox->blockSignals(wereSignalsBlocked);
+
+  wereSignalsBlocked = d->AllNodesDisplayMRMLIDsCheckBox->blockSignals(true);
+  d->AllNodesDisplayMRMLIDsCheckBox->setChecked(visible);
+  d->AllNodesDisplayMRMLIDsCheckBox->blockSignals(wereSignalsBlocked);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::printObject()
+void qSlicerDataModuleWidget::onCurrentTabChanged(int tabIndex)
 {
   Q_D(qSlicerDataModuleWidget);
-  vtkObject* object = d->MRMLTreeView->currentNode() ?
-    vtkObject::SafeDownCast(d->MRMLTreeView->currentNode()) :
-    vtkObject::SafeDownCast(this->mrmlScene());
-  if (object)
+
+  if (tabIndex == TabIndexSubjectHierarchy)
     {
-    object->Print(std::cout);
+    // Prevent the taller widget affect the size of the other
+    d->TransformMRMLTreeView->setVisible(false);
+    d->SubjectHierarchyTreeView->setVisible(true);
+    d->AllNodesMRMLTreeView->setVisible(false);
+
+    // Make sure MRML node attribute widget is updated
+    this->setDataNodeFromSubjectHierarchyItem(d->SubjectHierarchyTreeView->currentItem());
+    }
+  else if (tabIndex == TabIndexTransformHierarchy)
+    {
+    // Prevent the taller widget affect the size of the other
+    d->TransformMRMLTreeView->setVisible(true);
+    d->SubjectHierarchyTreeView->setVisible(false);
+    d->AllNodesMRMLTreeView->setVisible(false);
+
+    // MRML node attribute widget always enabled in transform mode
+    d->MRMLNodeAttributeTableWidget->setEnabled(true);
+    // Make sure MRML node attribute widget is updated
+    d->MRMLNodeAttributeTableWidget->setMRMLNode(d->TransformMRMLTreeView->currentNode());
+    }
+  else if (tabIndex == TabIndexAllNodes)
+    {
+    // Prevent the taller widget affect the size of the other
+    d->TransformMRMLTreeView->setVisible(false);
+    d->SubjectHierarchyTreeView->setVisible(false);
+    d->AllNodesMRMLTreeView->setVisible(true);
+
+    // MRML node attribute widget always enabled in all nodes mode
+    d->MRMLNodeAttributeTableWidget->setEnabled(true);
+    // Make sure MRML node attribute widget is updated
+    d->MRMLNodeAttributeTableWidget->setMRMLNode(d->AllNodesMRMLTreeView->currentNode());
     }
 }
 
@@ -228,106 +360,192 @@ void qSlicerDataModuleWidget::onCurrentNodeChanged(vtkMRMLNode* newCurrentNode)
   vtkMRMLTransformableNode* transformableNode =
     vtkMRMLTransformableNode::SafeDownCast(newCurrentNode);
   vtkMRMLTransformNode* transformNode =
-    transformableNode ? transformableNode->GetParentTransformNode() : 0;
+    transformableNode ? transformableNode->GetParentTransformNode() : nullptr;
   if (transformNode &&
       (transformNode->CanApplyNonLinearTransforms() ||
       transformNode->IsTransformToWorldLinear()))
     {
-    d->MRMLTreeView->prependNodeMenuAction(d->HardenTransformAction);
+    d->TransformMRMLTreeView->prependNodeMenuAction(d->HardenTransformAction);
     }
   else
     {
-    d->MRMLTreeView->removeNodeMenuAction(d->HardenTransformAction);
+    d->TransformMRMLTreeView->removeNodeMenuAction(d->HardenTransformAction);
     }
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::onSceneModelChanged(const QString& modelType)
+void qSlicerDataModuleWidget::insertTransformNode()
 {
   Q_D(qSlicerDataModuleWidget);
-  d->MRMLTreeView->setSceneModelType( modelType );
+  vtkNew<vtkMRMLLinearTransformNode> linearTransform;
+  this->mrmlScene()->AddNode(linearTransform.GetPointer());
 
-  d->MRMLTreeView->sceneModel()->setIDColumn(1);
-  d->MRMLTreeView->sceneModel()->setHorizontalHeaderLabels(
-    QStringList() << "Nodes" << "IDs");
-
-  d->MRMLTreeView->header()->setStretchLastSection(false);
-  d->MRMLTreeView->header()->setResizeMode(0, QHeaderView::Stretch);
-  d->MRMLTreeView->header()->setResizeMode(1, QHeaderView::ResizeToContents);
-
-  this->setMRMLIDsVisible(d->DisplayMRMLIDsCheckBox->isChecked());
-
-  connect(d->ShowHiddenCheckBox, SIGNAL(toggled(bool)),
-          d->MRMLTreeView->sortFilterProxyModel(), SLOT(setShowHidden(bool)));
-
-  d->MRMLTreeView->sortFilterProxyModel()->invalidate();
+  vtkMRMLNode* parent = vtkMRMLTransformNode::SafeDownCast(
+    d->TransformMRMLTreeView->currentNode());
+  if (parent)
+    {
+    linearTransform->SetAndObserveTransformNodeID( parent->GetID() );
+    }
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerDataModuleWidget::hardenTransformOnCurrentNode()
 {
   Q_D(qSlicerDataModuleWidget);
-  vtkMRMLNode* node = d->MRMLTreeView->currentNode();
-  vtkSlicerTransformLogic::hardenTransform(
-    vtkMRMLTransformableNode::SafeDownCast(node));
+  vtkMRMLNode* node = d->TransformMRMLTreeView->currentNode();
+  vtkMRMLTransformableNode* transformableNode = vtkMRMLTransformableNode::SafeDownCast(node);
+  if (transformableNode)
+    {
+    transformableNode->HardenTransform();
+    }
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::loadScene()
+void qSlicerDataModuleWidget::setTransformsVisible(bool visible)
 {
-  qSlicerApplication::application()->ioManager()->openLoadSceneDialog();
+  Q_D(qSlicerDataModuleWidget);
+
+  qMRMLSubjectHierarchyModel* model = qobject_cast<qMRMLSubjectHierarchyModel*>(d->SubjectHierarchyTreeView->model());
+  d->SubjectHierarchyTreeView->setColumnHidden(model->transformColumn(), !visible);
+  d->SubjectHierarchyTreeView->header()->resizeSection(model->transformColumn(), 60);
+
+  bool wereSignalsBlocked = d->SubjectHierarchyDisplayTransformsCheckBox->blockSignals(true);
+  d->SubjectHierarchyDisplayTransformsCheckBox->setChecked(visible);
+  d->SubjectHierarchyDisplayTransformsCheckBox->blockSignals(wereSignalsBlocked);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addScene()
+void qSlicerDataModuleWidget::setDataNodeFromSubjectHierarchyItem(vtkIdType itemID)
 {
-  qSlicerApplication::application()->ioManager()->openAddSceneDialog();
+  Q_D(qSlicerDataModuleWidget);
+
+  vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (!shNode)
+    {
+    qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
+    return;
+    }
+
+  vtkMRMLNode* dataNode = nullptr;
+  if (itemID != vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+    {
+    dataNode = shNode->GetItemDataNode(itemID);
+    }
+  d->MRMLNodeAttributeTableWidget->setEnabled(dataNode);
+  d->MRMLNodeAttributeTableWidget->setMRMLNode(dataNode);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addData()
+void qSlicerDataModuleWidget::setInfoLabelFromSubjectHierarchyItem(vtkIdType itemID)
 {
-  qSlicerApplication::application()->ioManager()->openAddDataDialog();
+  Q_D(qSlicerDataModuleWidget);
+
+  vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+  if (!shNode)
+    {
+    qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
+    return;
+    }
+
+  if (itemID != vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+    {
+    std::stringstream infoStream;
+    shNode->PrintItem(itemID, infoStream, vtkIndent(0));
+    d->SubjectHierarchyItemInfoLabel->setText(infoStream.str().c_str());
+
+    // Connect node for updating info label
+    if (!shNode->HasObserver(vtkMRMLSubjectHierarchyNode::SubjectHierarchyItemModifiedEvent, d->CallBack))
+      {
+      d->SubjectHierarchyObservationTag = shNode->AddObserver(vtkMRMLSubjectHierarchyNode::SubjectHierarchyItemModifiedEvent, d->CallBack, -10.0);
+      }
+    }
+  else
+    {
+    d->SubjectHierarchyItemInfoLabel->setText("No item selected");
+    }
+
+  // Store item ID in the label object
+  d->SubjectHierarchyItemInfoLabel->setProperty("itemID", itemID);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addVolumes()
+void qSlicerDataModuleWidget::onSubjectHierarchyItemEvent(
+  vtkObject* caller, unsigned long event, void* clientData, void* callData )
 {
-  qSlicerApplication::application()->ioManager()->openAddVolumeDialog();
+  vtkMRMLSubjectHierarchyNode* shNode = reinterpret_cast<vtkMRMLSubjectHierarchyNode*>(caller);
+  qSlicerDataModuleWidget* widget = reinterpret_cast<qSlicerDataModuleWidget*>(clientData);
+  if (!widget || !shNode)
+    {
+    qCritical() << Q_FUNC_INFO << ": Invalid event parameters";
+    return;
+    }
+
+  // Get item ID
+  vtkIdType itemID = vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID;
+  if (callData)
+    {
+    vtkIdType* itemIdPtr = reinterpret_cast<vtkIdType*>(callData);
+    if (itemIdPtr)
+      {
+      itemID = *itemIdPtr;
+      }
+    }
+
+  switch (event)
+    {
+    case vtkMRMLSubjectHierarchyNode::SubjectHierarchyItemModifiedEvent:
+      widget->onSubjectHierarchyItemModified(itemID);
+      break;
+    }
+}
+
+//------------------------------------------------------------------------------
+void qSlicerDataModuleWidget::onSubjectHierarchyItemModified(vtkIdType itemID)
+{
+  Q_D(qSlicerDataModuleWidget);
+
+  // Get displayed item's ID from label object
+  vtkIdType displayedItemID = d->SubjectHierarchyItemInfoLabel->property("itemID").toLongLong();
+
+  // Update label if the displayed item is the one that changed
+  if (displayedItemID == itemID && displayedItemID != vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+    {
+    vtkMRMLSubjectHierarchyNode* shNode = d->SubjectHierarchyTreeView->subjectHierarchyNode();
+    if (!shNode)
+      {
+      qCritical() << Q_FUNC_INFO << ": Invalid subject hierarchy";
+      return;
+      }
+
+    std::stringstream infoStream;
+    shNode->PrintItem(itemID, infoStream, vtkIndent(0));
+    d->SubjectHierarchyItemInfoLabel->setText(infoStream.str().c_str());
+    }
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addModels()
+qMRMLSubjectHierarchyModel* qSlicerDataModuleWidget::subjectHierarchySceneModel()const
 {
-  qSlicerApplication::application()->ioManager()->openAddModelDialog();
+  Q_D(const qSlicerDataModuleWidget);
+
+  qMRMLSubjectHierarchyModel* model = qobject_cast<qMRMLSubjectHierarchyModel*>(d->SubjectHierarchyTreeView->model());
+  return model;
 }
 
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addScalarOverlay()
+//------------------------------------------------------------------------------
+void qSlicerDataModuleWidget::onHelpButtonClicked()
 {
-  qSlicerApplication::application()->ioManager()->openAddScalarOverlayDialog();
-}
+  Q_D(qSlicerDataModuleWidget);
 
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addTransformation()
-{
-  qSlicerApplication::application()->ioManager()->openAddTransformDialog();
-}
+  // Reset counter so that it is shown
+  if (d->ContextMenusHintShown >= 2)
+    {
+    d->ContextMenusHintShown = 0;
+    }
 
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addFiducialList()
-{
-  qSlicerApplication::application()->ioManager()->openAddFiducialDialog();
-}
-
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addColorTable()
-{
-  qSlicerApplication::application()->ioManager()->openAddColorTableDialog();
-}
-
-//-----------------------------------------------------------------------------
-void qSlicerDataModuleWidget::addFiberBundle()
-{
-  qSlicerApplication::application()->ioManager()->openAddFiberBundleDialog();
+  // Show first or second tooltip
+  if (d->SubjectHierarchyTreeView->showContextMenuHint(d->ContextMenusHintShown > 0))
+    {
+    d->ContextMenusHintShown++;
+    }
 }

@@ -1,5 +1,5 @@
-#ifndef __itkMRMLIDIOPlugin_h
-#define __itkMRMLIDIOPlugin_h
+#ifndef itkMRMLIDIOPlugin_h
+#define itkMRMLIDIOPlugin_h
 
 #include "itkObjectFactoryBase.h"
 
@@ -10,7 +10,7 @@
 #define MRMLIDIOPlugin_EXPORT __declspec(dllimport)
 #endif
 #else
-#define MRMLIDIOPlugin_EXPORT 
+#define MRMLIDIOPlugin_EXPORT
 #endif
 
 /**
@@ -21,5 +21,5 @@
  */
 extern "C" {
     MRMLIDIOPlugin_EXPORT itk::ObjectFactoryBase* itkLoad();
-} 
-#endif  
+}
+#endif

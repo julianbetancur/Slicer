@@ -21,6 +21,17 @@
 #ifndef __qSlicerViewersToolBar_p_h
 #define __qSlicerViewersToolBar_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // Qt includes
 #include <QToolBar>
 #include <QMenu>
@@ -74,9 +85,9 @@ public slots:
   void onSliceCompositeNodeChangedEvent();
 
   void setCrosshairMode(int);
-  void setCrosshairMode(bool); // used to toggle between last style and off
+  void setCrosshairEnabled(bool); // used to toggle between last style and off
   void setCrosshairThickness(int);
-  void setNavigation(bool);
+  void setCrosshairJumpSlicesMode(int);
   void setSliceIntersectionVisible(bool);
 
 public:
@@ -86,9 +97,13 @@ public:
   /// Crosshair
   QToolButton *CrosshairToolButton;
   QMenu*        CrosshairMenu;
-  
+
+  ctkSignalMapper* CrosshairJumpSlicesMapper;
+  QAction*      CrosshairJumpSlicesDisabledAction;
+  QAction*      CrosshairJumpSlicesOffsetAction;
+  QAction*      CrosshairJumpSlicesCenteredAction;
+
   ctkSignalMapper* CrosshairMapper;
-  QAction*      CrosshairNavigationAction;
   QAction*      CrosshairNoAction;
   QAction*      CrosshairBasicAction;
   QAction*      CrosshairBasicIntersectionAction;

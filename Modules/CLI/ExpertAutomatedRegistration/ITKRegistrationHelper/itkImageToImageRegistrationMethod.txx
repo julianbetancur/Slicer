@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __ImageToImageRegistrationMethod_txx
-#define __ImageToImageRegistrationMethod_txx
+#ifndef itkImageToImageRegistrationMethod_txx
+#define itkImageToImageRegistrationMethod_txx
 
 #include "itkImageToImageRegistrationMethod.h"
 
@@ -24,39 +24,36 @@ namespace itk
 {
 
 template <class TImage>
-ImageToImageRegistrationMethod<TImage>
-::ImageToImageRegistrationMethod( void )
+ImageToImageRegistrationMethod<TImage>::ImageToImageRegistrationMethod()
 {
   this->SetNumberOfRequiredOutputs( 1 ); // the transform
 
-  this->m_Transform = 0;
+  this->m_Transform = nullptr;
   typename TransformOutputType::Pointer transformDecorator =
     static_cast<TransformOutputType *>
-    ( this->MakeOutput(0).GetPointer() );
+    ( this->MakeOutput(static_cast<DataObjectPointerArraySizeType>(0)).GetPointer() );
 
   this->ProcessObject::SetNthOutput( 0, transformDecorator.GetPointer() );
 
   this->m_RegistrationNumberOfThreads = this->GetNumberOfThreads();
   this->GetMultiThreader()->SetNumberOfThreads( this->m_RegistrationNumberOfThreads );
 
-  this->m_FixedImage = 0;
-  this->m_MovingImage = 0;
+  this->m_FixedImage = nullptr;
+  this->m_MovingImage = nullptr;
   this->m_UseFixedImageMaskObject = false;
-  this->m_FixedImageMaskObject = 0;
+  this->m_FixedImageMaskObject = nullptr;
   this->m_UseMovingImageMaskObject = false;
-  this->m_MovingImageMaskObject = 0;
-  this->m_Observer = 0;
+  this->m_MovingImageMaskObject = nullptr;
+  this->m_Observer = nullptr;
   this->m_ReportProgress = false;
 
   this->m_UseRegionOfInterest = false;
   this->m_RegionOfInterestPoint1.Fill(0);
   this->m_RegionOfInterestPoint2.Fill(0);
-
 }
 
 template <class TImage>
-ImageToImageRegistrationMethod<TImage>
-::~ImageToImageRegistrationMethod( void )
+ImageToImageRegistrationMethod<TImage>::~ImageToImageRegistrationMethod()
 {
 }
 
@@ -153,7 +150,7 @@ const typename ImageToImageRegistrationMethod<TImage>::TransformOutputType
 template <class TImage>
 DataObject::Pointer
 ImageToImageRegistrationMethod<TImage>
-::MakeOutput( unsigned int idx )
+::MakeOutput( DataObjectPointerArraySizeType idx )
 {
   switch( idx )
     {
@@ -164,14 +161,12 @@ ImageToImageRegistrationMethod<TImage>
     default:
       itkExceptionMacro(
         "MakeOutput request for an output number larger than the expected number of outputs" );
-      return 0;
+      return nullptr;
     }
 }
 
 template <class TImage>
-unsigned long
-ImageToImageRegistrationMethod<TImage>
-::GetMTime( void ) const
+ModifiedTimeType ImageToImageRegistrationMethod<TImage>::GetMTime() const
 {
   unsigned long mtime = Superclass::GetMTime();
   unsigned long m;
@@ -210,9 +205,7 @@ ImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-void
-ImageToImageRegistrationMethod<TImage>
-::Initialize( void )
+void ImageToImageRegistrationMethod<TImage>::Initialize()
 {
   this->GetMultiThreader()->SetNumberOfThreads( m_RegistrationNumberOfThreads );
 
@@ -235,13 +228,10 @@ ImageToImageRegistrationMethod<TImage>
     static_cast<TransformOutputType *>( this->ProcessObject::GetOutput( 0 ) );
 
   transformOutput->Set( m_Transform.GetPointer() );
-
 }
 
 template <class TImage>
-void
-ImageToImageRegistrationMethod<TImage>
-::GenerateData( void )
+void ImageToImageRegistrationMethod<TImage>::GenerateData()
 {
   this->Update();
 }
@@ -322,6 +312,6 @@ ImageToImageRegistrationMethod<TImage>
 
 }
 
-};
+}
 
 #endif

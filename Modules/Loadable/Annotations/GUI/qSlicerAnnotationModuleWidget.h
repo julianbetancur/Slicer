@@ -12,6 +12,7 @@ class qSlicerAnnotationModulePropertyDialog;
 class qSlicerAnnotationModuleReportDialog;
 class qSlicerAnnotationModuleWidgetPrivate;
 class vtkMRMLInteractionNode;
+class vtkMRMLNode;
 
 /// \ingroup Slicer_QtModules_Annotation
 class Q_SLICER_QTMODULES_ANNOTATIONS_EXPORT qSlicerAnnotationModuleWidget :
@@ -21,12 +22,8 @@ class Q_SLICER_QTMODULES_ANNOTATIONS_EXPORT qSlicerAnnotationModuleWidget :
   QVTK_OBJECT
 public:
     typedef qSlicerAbstractModuleWidget Superclass;
-    qSlicerAnnotationModuleWidget(QWidget *parent=0);
-    ~qSlicerAnnotationModuleWidget();
-
-
-  
-
+    qSlicerAnnotationModuleWidget(QWidget *parent=nullptr);
+    ~qSlicerAnnotationModuleWidget() override;
 
     /// Different Annotation Types
     enum
@@ -47,10 +44,15 @@ public:
     /// get it from the scene.
     void updateWidgetFromInteractionMode(vtkMRMLInteractionNode *interactionNode);
 
+    bool setEditedNode(vtkMRMLNode* node, QString role = QString(), QString context = QString()) override;
+
 protected:
 
 public slots:
+    /// a public slot that will refresh the tree view
     void refreshTree();
+    /// a public slot that will expand a newly added hierarchy node item
+    void onHierarchyNodeAddedEvent(vtkObject *caller, vtkObject *obj);
 
     /// a public slot allowing other modules to open up the screen capture
     /// dialog
@@ -67,7 +69,7 @@ protected slots:
 
     // Table and Property Modify
     void moveDownSelected();
-    void moveUpSelected();  
+    void moveUpSelected();
 
 
   //------------------------------------------------------------------
@@ -117,7 +119,7 @@ private:
   Q_DECLARE_PRIVATE(qSlicerAnnotationModuleWidget);
   Q_DISABLE_COPY(qSlicerAnnotationModuleWidget);
 
-  virtual void setup();
+  void setup() override;
 
   qSlicerAnnotationModulePropertyDialog* m_PropertyDialog;
   qSlicerAnnotationModuleReportDialog* m_ReportDialog;

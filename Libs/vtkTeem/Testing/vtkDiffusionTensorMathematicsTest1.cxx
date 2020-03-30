@@ -25,17 +25,16 @@
 #include <vtkDataArray.h>
 #include <vtkImageData.h>
 #include <vtkMultiThreader.h>
+#include <vtkNew.h>
 #include <vtkPointData.h>
-#include <vtkSmartPointer.h>
-
-// STD includes
+#include <vtkVersion.h>
 
 //----------------------------------------------------------------------------
 int vtkDiffusionTensorMathematicsTest1(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
 {
   vtkMultiThreader::SetGlobalMaximumNumberOfThreads(1);
   // Generate a 2x2x2 tensor image with identity at each voxel
-  vtkSmartPointer<vtkImageData> tensorImage = vtkSmartPointer<vtkImageData>::New();
+  vtkNew<vtkImageData> tensorImage;
   int dimensions[3] = {2, 2, 2};
   tensorImage->SetDimensions(dimensions);
   tensorImage->SetSpacing(1.5, 10., 100.);
@@ -69,13 +68,11 @@ int vtkDiffusionTensorMathematicsTest1(int vtkNotUsed(argc), char* vtkNotUsed(ar
 
   // Generate mask
   // Generate a 2x2x2 tensor image with identity at each voxel
-  vtkSmartPointer<vtkImageData> maskImage = vtkSmartPointer<vtkImageData>::New();
+  vtkNew<vtkImageData> maskImage;
   maskImage->SetDimensions(dimensions);
   maskImage->SetSpacing(1.5, 10., 100.);
   maskImage->SetOrigin(-10., 40, 0.1);
-  maskImage->SetScalarTypeToShort();
-  maskImage->SetNumberOfScalarComponents(9);
-  maskImage->AllocateScalars();
+  maskImage->AllocateScalars(VTK_SHORT, 9);
 
   short* maskPtr = reinterpret_cast<short*>(maskImage->GetScalarPointer());
   for (int z=0; z < dimensions[2]; ++z )
@@ -93,19 +90,18 @@ int vtkDiffusionTensorMathematicsTest1(int vtkNotUsed(argc), char* vtkNotUsed(ar
   maskPtr[1] = 1;
 
   // Execute the filter
-  vtkSmartPointer<vtkDiffusionTensorMathematics> filter =
-    vtkSmartPointer<vtkDiffusionTensorMathematics>::New();
-  filter->SetInput(tensorImage);
-  filter->SetScalarMask(maskImage);
+  vtkNew<vtkDiffusionTensorMathematics> filter;
+  filter->SetInputData(tensorImage.GetPointer());
+  filter->SetScalarMask(maskImage.GetPointer());
   filter->SetMaskLabelValue(0);  // mask all the labels different from 0
   filter->SetMaskWithScalars(1); // turn on masking
   for (int i = vtkDiffusionTensorMathematics::VTK_TENS_TRACE;
-       i <=vtkDiffusionTensorMathematics::VTK_TENS_PERPENDICULAR_DIFFUSIVITY;
+       i <=vtkDiffusionTensorMathematics::VTK_TENS_MEAN_DIFFUSIVITY;
        ++i)
     {
     filter->SetOperation(i);
     filter->Update();
-    
+
     std::cout << "Operation " << i << ":" << std::endl;
     // Checkout the results
     vtkImageData* output = filter->GetOutput();

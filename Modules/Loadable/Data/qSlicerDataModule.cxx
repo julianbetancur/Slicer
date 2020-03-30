@@ -18,9 +18,6 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // SlicerQt includes
 #include "qSlicerApplication.h"
 #include "qSlicerIOManager.h"
@@ -31,11 +28,11 @@
 #include "qSlicerDataModule.h"
 #include "qSlicerDataModuleWidget.h"
 #include "qSlicerSaveDataDialog.h"
-#include "qSlicerSceneIO.h"
-#include "qSlicerSceneBundleIO.h"
+#include "qSlicerSceneBundleReader.h"
+#include "qSlicerSceneReader.h"
 #include "qSlicerSceneWriter.h"
 #include "qSlicerSlicer2SceneReader.h"
-#include "qSlicerXcedeCatalogIO.h"
+#include "qSlicerXcedeCatalogReader.h"
 
 // SlicerLogic includes
 #include <vtkSlicerApplicationLogic.h>
@@ -49,9 +46,6 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
-
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerDataModule, qSlicerDataModule);
 
 //-----------------------------------------------------------------------------
 class qSlicerDataModulePrivate
@@ -68,13 +62,12 @@ qSlicerDataModule::qSlicerDataModule(QObject* parentObject)
 
 //-----------------------------------------------------------------------------
 qSlicerDataModule::~qSlicerDataModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QIcon qSlicerDataModule::icon()const
 {
-  return QIcon(":/Icons/Data.png");
+  return QIcon(":/Icons/SubjectHierarchy.png");
 }
 
 //-----------------------------------------------------------------------------
@@ -88,7 +81,7 @@ QStringList qSlicerDataModule::dependencies() const
 {
   QStringList moduleDependencies;
   // Colors: Required to have a valid color logic for XcedeCatalogUI.
-  // Cameras: Required in qSlicerSceneIO
+  // Cameras: Required in qSlicerSceneReader
   moduleDependencies << "Colors" << "Cameras";
   return moduleDependencies;
 }
@@ -101,20 +94,20 @@ void qSlicerDataModule::setup()
   qSlicerAbstractCoreModule* colorsModule =
     qSlicerCoreApplication::application()->moduleManager()->module("Colors");
   vtkMRMLColorLogic* colorLogic =
-    vtkMRMLColorLogic::SafeDownCast(colorsModule ? colorsModule->logic() : 0);
+    vtkMRMLColorLogic::SafeDownCast(colorsModule ? colorsModule->logic() : nullptr);
 
   qSlicerAbstractCoreModule* camerasModule =
     qSlicerCoreApplication::application()->moduleManager()->module("Cameras");
   vtkSlicerCamerasModuleLogic* camerasLogic =
-    vtkSlicerCamerasModuleLogic::SafeDownCast(camerasModule ? camerasModule->logic() : 0);
+    vtkSlicerCamerasModuleLogic::SafeDownCast(camerasModule ? camerasModule->logic() : nullptr);
 
   qSlicerIOManager* ioManager = qSlicerApplication::application()->ioManager();
 
   // Readers
-  ioManager->registerIO(new qSlicerSceneIO(camerasLogic, this));
-  ioManager->registerIO(new qSlicerSceneBundleIO(this));
+  ioManager->registerIO(new qSlicerSceneReader(camerasLogic, this));
+  ioManager->registerIO(new qSlicerSceneBundleReader(this));
   ioManager->registerIO(new qSlicerSlicer2SceneReader(this->appLogic(), this));
-  ioManager->registerIO(new qSlicerXcedeCatalogIO(colorLogic, this));
+  ioManager->registerIO(new qSlicerXcedeCatalogReader(colorLogic, this));
 
   // Writers
   ioManager->registerIO(new qSlicerSceneWriter(this));
@@ -140,13 +133,14 @@ vtkMRMLAbstractLogic* qSlicerDataModule::createLogic()
 //-----------------------------------------------------------------------------
 QString qSlicerDataModule::helpText()const
 {
-  QString help =
-    "The Data Module displays and permits operations on the MRML tree, and "
-    "creates and edits transformation hierarchies.<br>"
-    "The Load panels exposes options for loading data. Helpful comments can be "
-    "opened by clicking on the \"information\" icons in each load panel.<br>"
+  QString help = QString(
+    "The Data module is the central data-organizing point where all loaded data is "
+    "presented for access and manipulation is the Data module. It allows organizing "
+    "the data in folders or patient/study trees (automatically done for DICOM), "
+    "visualizing any displayable data, transformation of whole branches, and a "
+    "multitude of data type specific features.<br>"
     "<a href=\"%1/Documentation/%2.%3/Modules/Data\">"
-    "%1/Documentation/%2.%3/Modules/Data</a>";
+    "%1/Documentation/%2.%3/Modules/Data</a>");
   return help.arg(this->slicerWikiUrl()).arg(Slicer_VERSION_MAJOR).arg(Slicer_VERSION_MINOR);
 }
 
@@ -171,9 +165,9 @@ QString qSlicerDataModule::acknowledgementText()const
 QStringList qSlicerDataModule::contributors()const
 {
   QStringList moduleContributors;
+  moduleContributors << QString("Csaba Pinter (Queen's)");
   moduleContributors << QString("Julien Finet (Kitware)");
   moduleContributors << QString("Alex Yarmarkovich (Isomics)");
   moduleContributors << QString("Nicole Aucoin (SPL, BWH)");
-  moduleContributors << QString("Csaba Pinter (Queen's)");
   return moduleContributors;
 }

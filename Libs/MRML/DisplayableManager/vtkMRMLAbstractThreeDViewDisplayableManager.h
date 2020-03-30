@@ -24,7 +24,7 @@
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractDisplayableManager.h"
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkMRMLViewNode;
 
@@ -36,29 +36,38 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLAbstractThreeDViewDisplayableMan
     public vtkMRMLAbstractDisplayableManager
 {
 public:
-  
+
   static vtkMRMLAbstractThreeDViewDisplayableManager *New();
-  void PrintSelf(ostream& os, vtkIndent indent);
-  vtkTypeRevisionMacro(vtkMRMLAbstractThreeDViewDisplayableManager,
-                       vtkMRMLAbstractDisplayableManager);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+  vtkTypeMacro(vtkMRMLAbstractThreeDViewDisplayableManager, vtkMRMLAbstractDisplayableManager);
 
   /// Get MRML ViewNode
   vtkMRMLViewNode * GetMRMLViewNode();
 
+
+  /// Find display node managed by the displayable manager at a specified world RAS position.
+  /// \return Non-zero in case a node is found at the position, 0 otherwise
+  virtual int Pick3D(double vtkNotUsed(ras)[3]) { return 0; }
+
+  /// Get the MRML ID of the picked node, returns empty string if no pick
+  virtual const char* GetPickedNodeID() { return nullptr; }
+
 protected:
 
   vtkMRMLAbstractThreeDViewDisplayableManager();
-  virtual ~vtkMRMLAbstractThreeDViewDisplayableManager();
+  ~vtkMRMLAbstractThreeDViewDisplayableManager() override;
 
-  virtual void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller);
+  void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller) override;
 
   /// Could be overloaded in DisplayableManager subclass
   virtual void OnMRMLViewNodeModifiedEvent(){}
-  
+
+  virtual void PassThroughInteractorStyleEvent(int eventid);
+
 private:
 
-  vtkMRMLAbstractThreeDViewDisplayableManager(const vtkMRMLAbstractThreeDViewDisplayableManager&); // Not implemented
-  void operator=(const vtkMRMLAbstractThreeDViewDisplayableManager&);                    // Not implemented
+  vtkMRMLAbstractThreeDViewDisplayableManager(const vtkMRMLAbstractThreeDViewDisplayableManager&) = delete;
+  void operator=(const vtkMRMLAbstractThreeDViewDisplayableManager&) = delete;
 };
 
 #endif

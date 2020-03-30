@@ -25,12 +25,13 @@
 
 // MRMLDisplayableManager includes
 #include <vtkMRMLDisplayableManagerGroup.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
 
 // MRML includes
+#include <vtkMRMLScene.h>
 #include <vtkMRMLScalarVolumeDisplayNode.h>
 #include <vtkMRMLScalarVolumeNode.h>
 #include <vtkMRMLViewNode.h>
@@ -45,6 +46,7 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkVersion.h>
 #include <vtkWindowToImageFilter.h>
 
 // STD includes
@@ -66,7 +68,7 @@ void SetupRenderer(vtkRenderWindow* renderWindow, vtkRenderer* renderer)
 void SetupScene(vtkRenderer* renderer, vtkMRMLScene* scene, vtkMRMLApplicationLogic* applicationLogic, vtkMRMLDisplayableManagerGroup* displayableManagerGroup)
 {
   // Application logic - Handle creation of vtkMRMLSelectionNode and vtkMRMLInteractionNode
-  if (applicationLogic != 0)
+  if (applicationLogic != nullptr)
     {
     applicationLogic->SetMRMLScene(scene);
     }
@@ -92,9 +94,7 @@ void SetupImageData(vtkImageData* imageData)
   const int dimY = 3;
   const int dimZ = 3;
   imageData->SetDimensions(dimX, dimY, dimZ);
-  imageData->SetScalarTypeToUnsignedChar();
-  imageData->SetNumberOfScalarComponents(1);
-  imageData->AllocateScalars();
+  imageData->AllocateScalars(VTK_UNSIGNED_CHAR, 1);
   unsigned char* ptr = reinterpret_cast<unsigned char*>(
     imageData->GetScalarPointer(0,0,0));
   for (int z = 0; z < dimZ; ++z)
@@ -138,7 +138,7 @@ class vtkChangeImageCallback : public vtkCommand
 public:
   static vtkChangeImageCallback *New(){return new vtkChangeImageCallback;}
   vtkChangeImageCallback();
-  virtual void Execute(vtkObject *caller, unsigned long, void*);
+  void Execute(vtkObject *caller, unsigned long, void*) override;
 
   enum ChangeImageBehavior
   {
@@ -156,11 +156,11 @@ public:
 
 //----------------------------------------------------------------------------
 vtkChangeImageCallback::vtkChangeImageCallback()
-  : VolumeNode(0)
+  : VolumeNode(nullptr)
   , ChangeImageBehavior(DeepCopyImage)
   , ImageDataCollection(vtkSmartPointer<vtkCollection>::New())
   , CurrentImageData(-1)
-  , Interactor(0)
+  , Interactor(nullptr)
 {
   const int imageCount = 5;
   for (int i = 0; i < imageCount; ++i)
@@ -226,6 +226,8 @@ bool TestChangeImageData(int copyBehavior, vtkImageData* screenShot)
   changeImageCallback->Interactor = renderWindow->GetInteractor();
   changeImageCallback->ChangeImageBehavior = copyBehavior;
 
+  renderer->ResetCamera();
+
   renderWindow->GetInteractor()->AddObserver(
     vtkCommand::KeyPressEvent, changeImageCallback.GetPointer());
   displayableManagerGroup->AddObserver(
@@ -275,8 +277,8 @@ int vtkMRMLVolumeRenderingMultiVolumeTest(int vtkNotUsed(argc),
       screenShots->GetItemAsObject(i));
 
     vtkNew<vtkImageDifference> diff;
-    diff->SetInput(referenceScreenShot.GetPointer());
-    diff->SetImage(screenShotImage);
+    diff->SetInputData(referenceScreenShot.GetPointer());
+    diff->SetImageData(screenShotImage);
     diff->Update();
     double error = diff->GetThresholdedError();
     if (error > 0)

@@ -44,10 +44,10 @@ class QMRML_WIDGETS_EXPORT qMRMLSliceInformationWidget : public qMRMLWidget
 public:
   /// Superclass typedef
   typedef qMRMLWidget Superclass;
-  
+
   /// Constructors
-  explicit qMRMLSliceInformationWidget(QWidget* parent = 0);
-  virtual ~qMRMLSliceInformationWidget();
+  explicit qMRMLSliceInformationWidget(QWidget* parent = nullptr);
+  ~qMRMLSliceInformationWidget() override;
 
   /// Get \a sliceNode
   /// \sa setMRMLSliceCompositeNode();
@@ -70,6 +70,9 @@ public slots:
 
   /// Set widget visible.
   void setWidgetVisible(bool visible);
+
+  /// Set view group
+  void setViewGroup(int viewGroup);
 
   /// Set lightbox layout row count
   void setLightboxLayoutRows(int rowCount);

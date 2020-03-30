@@ -21,6 +21,17 @@
 #ifndef __qMRMLSliceWidget_p_h
 #define __qMRMLSliceWidget_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 /// CTK includes
 #include <ctkPimpl.h>
 #include <ctkVTKObject.h>
@@ -36,7 +47,7 @@ class vtkMRMLDisplayableManagerGroup;
 class QResizeEvent;
 
 //-----------------------------------------------------------------------------
-class qMRMLSliceWidgetPrivate
+class QMRML_WIDGETS_EXPORT qMRMLSliceWidgetPrivate
   : public QObject
   , public Ui_qMRMLSliceWidget
 {
@@ -47,14 +58,17 @@ protected:
   qMRMLSliceWidget* const q_ptr;
 public:
   qMRMLSliceWidgetPrivate(qMRMLSliceWidget& object);
-  ~qMRMLSliceWidgetPrivate();
+  ~qMRMLSliceWidgetPrivate() override;
 
   void init();
 
 public slots:
+  void setSliceViewSize(const QSize& size);
+  void resetSliceViewSize();
   void endProcessing();
   /// Set the image data to the slice view
-  void setImageData(vtkImageData * imageData);
+  void setImageDataConnection(vtkAlgorithmOutput * imageDataConnection);
+
 
 };
 

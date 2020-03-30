@@ -1,13 +1,18 @@
 import os
 import unittest
-from __main__ import vtk, qt, ctk, slicer
+import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
 
 #
 # slicerCloseCrashBug2590
 #
 
-class slicerCloseCrashBug2590:
+class slicerCloseCrashBug2590(ScriptedLoadableModule):
+  """Uses ScriptedLoadableModule base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
   def __init__(self, parent):
+    ScriptedLoadableModule.__init__(self, parent)
     parent.title = "slicerCloseCrashBug2590" # TODO make this more human readable by adding spaces
     parent.categories = ["Testing.TestCases"]
     parent.dependencies = []
@@ -18,57 +23,19 @@ class slicerCloseCrashBug2590:
     parent.acknowledgementText = """
     This file was originally developed by Steve Pieper, Isomics, Inc.  and was partially funded by NIH grant 3P41RR013218-12S1.
 """ # replace with organization, grant and thanks.
-    self.parent = parent
-
-    # Add this test to the SelfTest module's list for discovery when the module
-    # is created.  Since this module may be discovered before SelfTests itself,
-    # create the list if it doesn't already exist.
-    try:
-      slicer.selfTests
-    except AttributeError:
-      slicer.selfTests = {}
-    slicer.selfTests['slicerCloseCrashBug2590'] = self.runTest
-
-  def runTest(self):
-    tester = slicerCloseCrashBug2590Test()
-    tester.runTest()
 
 #
 # qslicerCloseCrashBug2590Widget
 #
 
-class slicerCloseCrashBug2590Widget:
-  def __init__(self, parent = None):
-    if not parent:
-      self.parent = slicer.qMRMLWidget()
-      self.parent.setLayout(qt.QVBoxLayout())
-      self.parent.setMRMLScene(slicer.mrmlScene)
-    else:
-      self.parent = parent
-    self.layout = self.parent.layout()
-    if not parent:
-      self.setup()
-      self.parent.show()
+class slicerCloseCrashBug2590Widget(ScriptedLoadableModuleWidget):
+  """Uses ScriptedLoadableModuleWidget base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
 
   def setup(self):
+    ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
-
-    # reload button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadButton = qt.QPushButton("Reload")
-    self.reloadButton.toolTip = "Reload this module."
-    self.reloadButton.name = "slicerCloseCrashBug2590 Reload"
-    self.layout.addWidget(self.reloadButton)
-    self.reloadButton.connect('clicked()', self.onReload)
-
-    # reload and test button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadAndTestButton = qt.QPushButton("Reload and Test")
-    self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
-    self.layout.addWidget(self.reloadAndTestButton)
-    self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
 
     # Collapsible button
     testsCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -92,100 +59,13 @@ class slicerCloseCrashBug2590Widget:
     tester.setUp()
     tester.test_Part3ChangeTracker()
 
-  def onReload(self,moduleName="slicerCloseCrashBug2590"):
-    """Generic reload method for any scripted module.
-    ModuleWizard will subsitute correct default moduleName.
-    """
-    import imp, sys, os, slicer
 
-    widgetName = moduleName + "Widget"
-
-    # reload the source code
-    # - set source file path
-    # - load the module to the global space
-    filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-    p = os.path.dirname(filePath)
-    if not sys.path.__contains__(p):
-      sys.path.insert(0,p)
-    fp = open(filePath, "r")
-    globals()[moduleName] = imp.load_module(
-        moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-    fp.close()
-
-    # rebuild the widget
-    # - find and hide the existing widget
-    # - create a new widget in the existing parent
-    parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent()
-    for child in parent.children():
-      try:
-        child.hide()
-      except AttributeError:
-        pass
-    # Remove spacer items
-    item = parent.layout().itemAt(0)
-    while item:
-      parent.layout().removeItem(item)
-      item = parent.layout().itemAt(0)
-    # create new widget inside existing parent
-    globals()[widgetName.lower()] = eval(
-        'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-    globals()[widgetName.lower()].setup()
-
-  def onReloadAndTest(self,moduleName="slicerCloseCrashBug2590"):
-    self.onReload()
-    evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
-    tester = eval(evalString)
-    tester.runTest()
-
-#
-# slicerCloseCrashBug2590Logic
-#
-
-class slicerCloseCrashBug2590Logic:
-  """This class should implement all the actual 
-  computation done by your module.  The interface 
-  should be such that other python code can import
-  this class and make use of the functionality without
-  requiring an instance of the Widget
-  """
-  def __init__(self):
-    pass
-
-  def hasImageData(self,volumeNode):
-    """This is a dummy logic method that 
-    returns true if the passed in volume
-    node has valid image data
-    """
-    if not volumeNode:
-      print('no volume node')
-      return False
-    if volumeNode.GetImageData() == None:
-      print('no image data')
-      return False
-    return True
-
-
-class slicerCloseCrashBug2590Test(unittest.TestCase):
+class slicerCloseCrashBug2590Test(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
+  Uses ScriptedLoadableModuleTest base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
 
   def setUp(self):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
@@ -194,46 +74,6 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
     layoutManager = slicer.app.layoutManager()
     layoutManager.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutConventionalView)
     slicer.mrmlScene.Clear(0)
-
-  def clickAndDrag(self,widget,button='Left',start=(10,10),end=(10,40),steps=20,modifiers=[]):
-    """Send synthetic mouse events to the specified widget (qMRMLSliceWidget or qMRMLThreeDView)
-    button : "Left", "Middle", "Right", or "None"
-    start, end : window coordinates for action
-    steps : number of steps to move in
-    modifiers : list containing zero or more of "Shift" or "Control"
-    """
-    style = widget.interactorStyle()
-    interator = style.GetInteractor()
-    if button == 'Left':
-      down = style.OnLeftButtonDown
-      up = style.OnLeftButtonUp
-    elif button == 'Right':
-      down = style.OnRightButtonDown
-      up = style.OnRightButtonUp
-    elif button == 'Middle':
-      down = style.OnMiddleButtonDown
-      up = style.OnMiddleButtonUp
-    elif button == 'None' or not button:
-      down = lambda : None
-      up = lambda : None
-    else:
-      raise Exception("Bad button - should be Left or Right, not %s" % button)
-    if 'Shift' in modifiers:
-      interator.SetShiftKey(1)
-    if 'Control' in modifiers:
-      interator.SetControlKey(1)
-    interator.SetEventPosition(*start)
-    down()
-    for step in xrange(steps):
-      frac = float(step)/steps
-      x = int(start[0] + frac*(end[0]-start[0]))
-      y = int(start[1] + frac*(end[1]-start[1]))
-      interator.SetEventPosition(x,y)
-      style.OnMouseMove()
-    up()
-    interator.SetShiftKey(0)
-    interator.SetControlKey(0)
-
 
   def runTest(self):
     """Run as few or as many tests as needed here.
@@ -246,23 +86,15 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
     #
     # first, get some data
     #
-    import urllib
-    downloads = (
-        ('http://slicer.kitware.com/midas3/download?items=8986', 'RSNA2011_ChangeTracker_data.zip', slicer.util.loadScene),
-        )
+    self.delayDisplay("Starting the test")
 
-    for url,name,loader in downloads:
-      filePath = slicer.app.temporaryPath + '/' + name
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        print('Requesting download %s from %s...\n' % (name, url))
-        urllib.urlretrieve(url, filePath)
-      if loader:
-        print('Loading %s...\n' % (name,))
-        loader(filePath)
-    self.delayDisplay('Finished with download and loading\n')
+    import SampleData
+    SampleData.downloadFromURL(
+      fileNames='RSNA2011_ChangeTracker_data.zip',
+      uris='http://slicer.kitware.com/midas3/download?items=8986',
+      checksums='SHA256:256bf00a83884fab173edc9f83c028f654bd5eb44aeed28d2203ec76fab941ce')
 
     try:
-      logic = slicerCloseCrashBug2590Logic()
       mainWindow = slicer.util.mainWindow()
       layoutManager = slicer.app.layoutManager()
       threeDView = layoutManager.threeDWidget(0).threeDView()
@@ -289,10 +121,10 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
       changeTracker.workflow.goForward()
 
       self.delayDisplay('Inspect - zoom')
-      self.clickAndDrag(redWidget,button='Right')
+      slicer.util.clickAndDrag(redWidget,button='Right')
 
       self.delayDisplay('Inspect - pan')
-      self.clickAndDrag(redWidget,button='Middle')
+      slicer.util.clickAndDrag(redWidget,button='Middle')
 
       self.delayDisplay('Inspect - scroll')
       for offset in xrange(-20,20,2):
@@ -302,7 +134,7 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
       roi = changeTracker.defineROIStep._ChangeTrackerDefineROIStep__roi
       roi.SetXYZ(-2.81037, 28.7629, 28.4536)
       roi.SetRadiusXYZ(22.6467, 22.6804, 22.9897)
-    
+
       self.delayDisplay('Go Forward')
       changeTracker.workflow.goForward()
 
@@ -311,7 +143,7 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
 
       self.delayDisplay('Go Forward')
       changeTracker.workflow.goForward()
-        
+
       self.delayDisplay('Pick Metric')
       checkList = changeTracker.analyzeROIStep._ChangeTrackerAnalyzeROIStep__metricCheckboxList
       index = checkList.values().index('IntensityDifferenceMetric')
@@ -327,16 +159,16 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
       self.delayDisplay('Crosshairs')
       compareWidget = layoutManager.sliceWidget('Compare1')
       style = compareWidget.interactorStyle()
-      interator = style.GetInteractor()
+      interactor = style.GetInteractor()
       for step in xrange(100):
-        interator.SetEventPosition(10,step)
+        interactor.SetEventPosition(10,step)
         style.OnMouseMove()
 
       self.delayDisplay('Zoom')
-      self.clickAndDrag(compareWidget,button='Right')
+      slicer.util.clickAndDrag(compareWidget,button='Right')
 
       self.delayDisplay('Pan')
-      self.clickAndDrag(compareWidget,button='Middle')
+      slicer.util.clickAndDrag(compareWidget,button='Middle')
 
       self.delayDisplay('Inspect - scroll')
       compareController = redWidget.sliceController()
@@ -345,12 +177,12 @@ class slicerCloseCrashBug2590Test(unittest.TestCase):
 
       self.delayDisplay('Close Scene')
       slicer.mrmlScene.Clear(0)
-
-      self.delayDisplay('Test passed!')
       '''
 
+      self.delayDisplay('Test passed!')
+
       # intentionally do not close the scene -- the issue is reproduced on close
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e))

@@ -21,7 +21,6 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QToolButton>
-#include <QWebFrame>
 
 // STD includes
 #include <vector>
@@ -53,7 +52,7 @@ static ctkLogger logger("org.slicer.libs.qmrmlwidgets.qMRMLChartView");
 //--------------------------------------------------------------------------
 
 
-const char *plotPreamble = 
+const char *plotPreamble =
   "<!DOCTYPE html>"
   "<html>"
   "<head>"
@@ -85,29 +84,29 @@ const char *plotPostscript =
 qMRMLChartViewPrivate::qMRMLChartViewPrivate(qMRMLChartView& object)
   : q_ptr(&object)
 {
-  this->MRMLScene = 0;
-  this->MRMLChartViewNode = 0;
-  this->MRMLChartNode = 0;
-  this->ColorLogic = 0;
-  this->PinButton = 0;
-  this->PopupWidget = 0;
+  this->MRMLScene = nullptr;
+  this->MRMLChartViewNode = nullptr;
+  this->MRMLChartNode = nullptr;
+  this->ColorLogic = nullptr;
+  this->PinButton = nullptr;
+  this->PopupWidget = nullptr;
 }
 
 //---------------------------------------------------------------------------
 qMRMLChartViewPrivate::~qMRMLChartViewPrivate()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 void qMRMLChartViewPrivate::init()
 {
   Q_Q(qMRMLChartView);
-  
+
   // Let the QWebView expand in both directions
-  q->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);  
+  q->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
   // Expose the ChartView class to Javascript
-  q->page()->mainFrame()->addToJavaScriptWindowObject(QString("qtobject"), this);
+  // q->page()->mainFrame()->addToJavaScriptWindowObject(QString("qtobject"), this);
+  // XXX Change to webchannel
 
   this->PopupWidget = new ctkPopupWidget;
   QHBoxLayout* popupLayout = new QHBoxLayout;
@@ -115,7 +114,7 @@ void qMRMLChartViewPrivate::init()
   this->PopupWidget->setLayout(popupLayout);
 
   q->setHtml("");
-  q->show();
+  //q->show();
 }
 
 //---------------------------------------------------------------------------
@@ -166,7 +165,7 @@ void qMRMLChartViewPrivate::onChartNodeChanged()
 {
   //qDebug() << "onChartNodeChanged()";
 
-  vtkMRMLChartNode *newChartNode=0;
+  vtkMRMLChartNode *newChartNode=nullptr;
 
   if (this->MRMLChartViewNode && this->MRMLChartViewNode->GetChartNodeID())
     {
@@ -202,7 +201,7 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   if (!chartnodeid)
     {
     q->setHtml("");
-    q->show();
+    //q->show();
     return;
     }
 
@@ -211,7 +210,7 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   if (!cn)
     {
     q->setHtml("");
-    q->show();
+    //q->show();
     return;
     }
 
@@ -219,7 +218,7 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   // Generate javascript for the data, ticks, options
   //
   //
-  QStringList plotData;
+  QStringList plotSeries;
   QStringList plotXAxisTicks;
   QStringList plotOptions;
 
@@ -228,25 +227,25 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   if (!type || (type && !strcmp(type, "Line")))
     {
     // line charts are the default
-    plotData << this->lineData(cn);
+    plotSeries << this->lineData(cn);
     plotXAxisTicks << this->lineXAxisTicks(cn);
     plotOptions << this->lineOptions(cn);
     }
   else if (type && !strcmp(type, "Scatter"))
     {
-    plotData << this->scatterData(cn);
+    plotSeries << this->scatterData(cn);
     plotXAxisTicks << this->scatterXAxisTicks(cn);
     plotOptions << this->scatterOptions(cn);
     }
   else if (type && !strcmp(type, "Bar"))
     {
-    plotData << this->barData(cn);
+    plotSeries << this->barData(cn);
     plotXAxisTicks << this->barXAxisTicks(cn);
     plotOptions << this->barOptions(cn);
     }
   else if (type && !strcmp(type, "Box"))
     {
-    plotData << this->boxData(cn);
+    plotSeries << this->boxData(cn);
     plotXAxisTicks << this->boxXAxisTicks(cn);
     plotOptions << this->boxOptions(cn);
     }
@@ -254,7 +253,7 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   // resize slot - represented in javascript
   // pass in resetAxes: true option to get rid of old ticks and axis properties
   QStringList plotResizeSlot;
-  plotResizeSlot << 
+  plotResizeSlot <<
     "var resizeSlot = function() {"
     "$('#chart').css('width', 0.95*$(window).width());"
     "$('#chart').css('height', 0.95*$(window).height());"
@@ -266,7 +265,7 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
 
   // an initial call to the resize slot - represented in javascript
   QStringList plotInitialResize;
-  plotInitialResize << 
+  plotInitialResize <<
     "resizeSlot();";
 
   // resize hook - represented in javascript
@@ -276,8 +275,8 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
     "$(window).resize( resizeSlot );";
 
   // data mouse over slot - represented in javascript
-  QStringList plotDataMouseOverSlot;
-  plotDataMouseOverSlot <<
+  QStringList plotSeriesMouseOverSlot;
+  plotSeriesMouseOverSlot <<
     "var dataMouseOverSlot = function(ev, seriesIndex, pointIndex, data) {"
     "try {"
     "qtobject.onDataMouseOver(seriesIndex, pointIndex, data[0], data[1]);"
@@ -285,8 +284,8 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
     "};";
 
   // data point click slot - represented in javascript
-  QStringList plotDataPointClickedSlot;
-  plotDataPointClickedSlot <<
+  QStringList plotSeriesPointClickedSlot;
+  plotSeriesPointClickedSlot <<
     "var dataPointClickedSlot = function(ev, seriesIndex, pointIndex, data) {"
     "try {"
     "qtobject.onDataPointClicked(seriesIndex, pointIndex, data[0], data[1]);"
@@ -294,15 +293,15 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
     "};";
 
   // bind a data point clicked to the slot
-  QStringList plotDataMouseOverHook;
-  plotDataMouseOverHook <<
-    "$('#chart').bind('jqplotDataMouseOver', dataMouseOverSlot);";
+  QStringList plotSeriesMouseOverHook;
+  plotSeriesMouseOverHook <<
+    "$('#chart').bind('jqplotSeriesMouseOver', dataMouseOverSlot);";
 
 
   // bind a data point clicked to the slot
-  QStringList plotDataPointClickedHook;
-  plotDataPointClickedHook <<
-    "$('#chart').bind('jqplotDataClick', dataPointClickedSlot);";
+  QStringList plotSeriesPointClickedHook;
+  plotSeriesPointClickedHook <<
+    "$('#chart').bind('jqplotSeriesClick', dataPointClickedSlot);";
 
   // Assemble the plot
   //
@@ -315,39 +314,40 @@ void qMRMLChartViewPrivate::updateWidgetFromMRML()
   QStringList plot;
   plot << plotPreamble;       // 1. page header, css, javascript
 
-  plot << 
+  plot <<
     "<div id=\"chart\"></div>"                       // 2. container for the chart
     "<script class=\"code\" type=\"text/javascript\">"    // 3. container for js
-    "$(document).ready(function(){";                 // 4. ready function     
-  plot << plotData;     // insert data
+    "$(document).ready(function(){";                 // 4. ready function
+  plot << plotSeries;     // insert data
   plot << plotXAxisTicks;  // insert ticks if needed
   plot << plotOptions;  // insert options
-  plot << 
+  plot <<
     "var plot1 = $.jqplot ('chart', data, options);";  // call the plot
   plot << plotResizeSlot;        // insert definition of the resizeSlot
-  plot << plotInitialResize;     // insert an initial call to resizeSlot 
+  plot << plotInitialResize;     // insert an initial call to resizeSlot
   plot << plotResizeHook;        // insert hook to call resizeSlot on page resize
-  plot << plotDataMouseOverSlot; // insert definition of the data mouse over slot
-  plot << plotDataMouseOverHook; // insert the binding to the slot
-  plot << plotDataPointClickedSlot; // insert definition of the data clicked slot
-  plot << plotDataPointClickedHook; // insert the binding to the slot
+  plot << plotSeriesMouseOverSlot; // insert definition of the data mouse over slot
+  plot << plotSeriesMouseOverHook; // insert the binding to the slot
+  plot << plotSeriesPointClickedSlot; // insert definition of the data clicked slot
+  plot << plotSeriesPointClickedHook; // insert the binding to the slot
 
-  plot << 
+  plot <<
     "});"                   // end of function and end of call to ready()
     "</script>";            // end of the javascript
-      
+
   plot << plotPostscript;   // 5. page postscript, additional javascript
-  
+
   //qDebug() << plot.join("");
 
   // show the plot
-  q->setHtml(plot.join("")); 
-  q->show();
+  q->setHtml(plot.join(""));
+  //q->show();
 
 
   // expose this object to the Javascript code so Javascript can call
   // slots in this Qt object, e.g. onDataPointClicked()
-  q->page()->mainFrame()->addToJavaScriptWindowObject(QString("qtobject"), this);
+  // q->page()->mainFrame()->addToJavaScriptWindowObject(QString("qtobject"), this);
+  // XXX Change to webchannel
 
 }
 
@@ -363,7 +363,7 @@ QString qMRMLChartViewPrivate::seriesColorsString(vtkMRMLColorNode *colorNode)
     double c[4];
     QColor qc;
     QString sc;
-    
+
     for (int i=0; i < colorNode->GetNumberOfColors(); ++i)
       {
       colorNode->GetColor(i, c);
@@ -375,7 +375,7 @@ QString qMRMLChartViewPrivate::seriesColorsString(vtkMRMLColorNode *colorNode)
         }
       }
     }
-  
+
   seriesColors << "]";
 
   return seriesColors.join("");
@@ -393,7 +393,7 @@ QString qMRMLChartViewPrivate::seriesColorsString(vtkMRMLColorNode *colorNode, v
     double c[4], x, y;
     QColor qc;
     QString sc;
-    
+
     // Loop over the values in the array and lookup their color from
     // the colortable
     for (unsigned int i=0; i < arrayNode->GetSize(); ++i)
@@ -408,7 +408,7 @@ QString qMRMLChartViewPrivate::seriesColorsString(vtkMRMLColorNode *colorNode, v
         }
       }
     }
-  
+
   seriesColors << "]";
 
   return seriesColors.join("");
@@ -457,7 +457,7 @@ QString qMRMLChartViewPrivate::arrayTicksString(vtkStringArray *arrayNames)
       data << ", ";
       }
     }
-  
+
   data << "]";
 
   return data.join("");
@@ -698,7 +698,7 @@ QString qMRMLChartViewPrivate::genericOptions(vtkMRMLChartNode *cn, bool rotateX
   QStringList options;
 
   // plot level properties: title, axis labels, grid, ...
-  options << 
+  options <<
     "highlighter: {show: true, useAxesFormatters: false, formatString: '%.3g, %.3g'}, cursor: {show: true, zoom: true}";
 
   // title
@@ -719,7 +719,7 @@ QString qMRMLChartViewPrivate::genericOptions(vtkMRMLChartNode *cn, bool rotateX
   const char *yAxisPad = cn->GetProperty("default", "yAxisPad");
   const char *xAxisType = cn->GetProperty("default", "xAxisType");
   const char *yAxisType = cn->GetProperty("default", "yAxisType");
-  
+
   bool showx = false, showy = false;
   if (showXAxisLabel && !strcmp(showXAxisLabel, "on") && xAxisLabel)
     {
@@ -755,7 +755,7 @@ QString qMRMLChartViewPrivate::genericOptions(vtkMRMLChartNode *cn, bool rotateX
         // date axis, use a category axis
         options << ", renderer: $.jqplot.CategoryAxisRenderer"
                     << ", tickRenderer: $.jqplot.CanvasAxisTickRenderer"
-                    << ", ticks: xAxisTicks" 
+                    << ", ticks: xAxisTicks"
                     << ", tickOptions: { angle: -30 }";
         }
       options << "}";
@@ -808,7 +808,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
 
   // add the options that are the same for all charts
   options << this->genericOptions(cn, false);
-  
+
   // legend
   const char *legend = cn->GetProperty("default", "showLegend");
 
@@ -826,7 +826,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
   // work. If seriesColors is defined in seriesDefaults, then only bar
   // charts observe it.
   const char* defaultChartColorNodeID =
-    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : 0;
+    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : nullptr;
   vtkMRMLColorNode *defaultColorNode = vtkMRMLColorNode::SafeDownCast(
     this->MRMLScene->GetNodeByID(defaultChartColorNodeID));
   vtkMRMLColorNode *colorNode = defaultColorNode;
@@ -840,6 +840,17 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
     {
     options << ", seriesColors: " << this->seriesColorsString(colorNode);
     }
+
+  // markerOptions
+  options << ", markerOptions: {" ;
+  // markers size
+  const char *markersSize = cn->GetProperty("default", "size");
+  if (markersSize && QString(markersSize).toInt() > 0)  // Checks if given size is an integer and if larger than 0
+    {
+    options << "size: " << markersSize;
+    }
+  options << "}" ;
+  // end of markerOptions
 
   // default properties for a series
   //
@@ -862,7 +873,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
 
   // markers
   const char *markers = cn->GetProperty("default", "showMarkers");
-    
+
   if ((markers && !strcmp(markers, "on")) || defaultMarkers == 1)
     {
     options << ", showMarker: true";
@@ -871,10 +882,10 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
     {
     options << ", showMarker: false";
     }
-  
+
   // lines
   const char *lines = cn->GetProperty("default", "showLines");
-  
+
   if ((lines && !strcmp(lines, "on") && defaultLines != -1) || defaultLines == 1)
     {
     options << ", showLine: true";
@@ -886,7 +897,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
 
   // line pattern
   const char *linePattern = cn->GetProperty("default", "linePattern");
-  
+
   if (linePattern && !strcmp(linePattern, "solid"))
     {
     // By default the line pattern is solid
@@ -904,9 +915,16 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
     options << ", linePattern: '-.'";
     }
 
+  // line width
+  const char *lineWidth = cn->GetProperty("default", "lineWidth");
+  if (lineWidth && QString(lineWidth).toInt() > 0)  // Checks if given lineWidth is an integer and if larger than 0
+    {
+    options << ", lineWidth: " << lineWidth;
+    }
+
   // end of seriesDefaults properties
   options << "}";
-  
+
   // series level properties
   //
   //
@@ -922,7 +940,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
 
     // markers
     const char *markers = cn->GetProperty(arrayName.c_str(), "showMarkers");
-    
+
     if (markers && !strcmp(markers, "on"))
       {
       options << ", showMarker: true";
@@ -946,7 +964,7 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
 
     // line pattern
     const char *linePattern = cn->GetProperty(arrayName.c_str(), "linePattern");
-    
+
     if (linePattern && !strcmp(linePattern, "solid"))
       {
       options << ", linePattern: 'solid'";
@@ -964,14 +982,31 @@ QString qMRMLChartViewPrivate::lineOptions(vtkMRMLChartNode *cn)
       options << ", linePattern: '-.'";
       }
 
+    // line width
+  const char *lineWidth = cn->GetProperty(arrayName.c_str(), "lineWidth");
+  if (lineWidth && QString(lineWidth).toInt() > 0)  // Checks if given lineWidth is an integer and if larger than 0
+    {
+    options << ", lineWidth: " << lineWidth;
+    }
+
     // color
     const char *color = cn->GetProperty(arrayName.c_str(), "color");
-    
+
     if (color)
       {
       options << ", color: '" << color << "'";
       }
 
+    // markerOptions
+    options << ", markerOptions: {" ;
+    // markers size
+    const char *markersSize = cn->GetProperty(arrayName.c_str(), "size");
+    if (markersSize && QString(markersSize).toInt() > 0)  // Checks if given size is an integer and if larger than 0
+      {
+      options << "size: " << markersSize;
+      }
+    options << "}" ;
+    // end of markerOptions
     // end of a series
     options << "}";
     if (idx < arrayNames->GetNumberOfValues()-1)
@@ -1024,8 +1059,8 @@ QString qMRMLChartViewPrivate::barData(vtkMRMLChartNode *cn)
 
     if (dn)
       {
-      vtkMRMLColorNode *seriesColorNode = 0;
-      const char *seriesLookupTable 
+      vtkMRMLColorNode *seriesColorNode = nullptr;
+      const char *seriesLookupTable
         = cn->GetProperty(arrayNames->GetValue(idx).c_str(), "lookupTable");
       if (seriesLookupTable)
         {
@@ -1033,7 +1068,7 @@ QString qMRMLChartViewPrivate::barData(vtkMRMLChartNode *cn)
         }
 
       if (xAxisType && !strcmp(xAxisType, "categorical")
-          && seriesColorNode) 
+          && seriesColorNode)
         {
         // convert the data into a string by using just the dependent
         // variables. we'll use the color names (tissue names) as
@@ -1078,7 +1113,11 @@ QString qMRMLChartViewPrivate::barXAxisTicks(vtkMRMLChartNode *cn)
   vtkStringArray *arrayNames = cn->GetArrayNames();
   const char *xAxisType = cn->GetProperty("default", "xAxisType");
 
-  if (!xAxisType || (xAxisType && !strcmp(xAxisType, "categorical")))
+  if (!arrayIDs || arrayIDs->GetNumberOfValues() <= 0)
+    {
+    // no axis ticks by default
+    }
+  else if (!xAxisType || (xAxisType && !strcmp(xAxisType, "categorical")))
     {
     // define the ticks from the first curve (could do better)
     vtkMRMLDoubleArrayNode *dn = vtkMRMLDoubleArrayNode::SafeDownCast(this->MRMLScene->GetNodeByID( arrayIDs->GetValue(0).c_str() ));
@@ -1089,8 +1128,8 @@ QString qMRMLChartViewPrivate::barXAxisTicks(vtkMRMLChartNode *cn)
       if (seriesLookupTable)
         {
         vtkMRMLColorNode *seriesColorNode = vtkMRMLColorNode::SafeDownCast(this->MRMLScene->GetNodeByID(seriesLookupTable));
-        
-        ticks << "var xAxisTicks = " 
+
+        ticks << "var xAxisTicks = "
               << this->seriesLabelTicksString(dn, seriesColorNode)
               << ";";
         }
@@ -1103,7 +1142,7 @@ QString qMRMLChartViewPrivate::barXAxisTicks(vtkMRMLChartNode *cn)
 
     if (dn)
       {
-      ticks << "var xAxisTicks = " 
+      ticks << "var xAxisTicks = "
             << this->seriesDateTicksString(dn)
             << ";";
       }
@@ -1125,7 +1164,11 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
 
   // Do we need to rotate the x-axis tick labels?
   bool rotateXTickLabels = false;
-  if (xAxisType && !strcmp(xAxisType, "categorical"))
+  if (!arrayIDs || arrayIDs->GetNumberOfValues() <= 0)
+    {
+    // no bar options by default
+    }
+  else if (xAxisType && !strcmp(xAxisType, "categorical"))
     {
     // if we have a color table for the first series
     vtkMRMLDoubleArrayNode *dn = vtkMRMLDoubleArrayNode::SafeDownCast(this->MRMLScene->GetNodeByID( arrayIDs->GetValue(0).c_str() ));
@@ -1139,12 +1182,12 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
           rotateXTickLabels = true;
           }
         }
-      }    
+      }
     }
 
   // add the options that are the same for all charts
   options << this->genericOptions(cn, rotateXTickLabels);
-  
+
   // jqplot bar charts (BarRenderer) were designed for categorical
   // data.  For numeric x-axis data, the bar widths are calculated
   // incorrectly. But if the bar charts are set to be "stacked", then
@@ -1157,7 +1200,7 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
   // can only assign a color node to nonquantitative data.
   if (!xAxisType || (xAxisType && !strcmp(xAxisType, "quantitative")))
     {
-    // use stacking for "quantitative" 
+    // use stacking for "quantitative"
     options << ", stackSeries: true";
     }
 
@@ -1178,7 +1221,7 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
   // work. If seriesColors is defined in seriesDefaults, then only bar
   // charts observe it.
   const char* defaultChartColorNodeID =
-    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : 0;
+    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : nullptr;
   vtkMRMLColorNode *defaultColorNode = vtkMRMLColorNode::SafeDownCast(
     this->MRMLScene->GetNodeByID(defaultChartColorNodeID));
   vtkMRMLColorNode *colorNode = defaultColorNode;
@@ -1203,7 +1246,7 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
 
   // end of seriesDefaults properties
   options << "}";
-  
+
 
   // series level properties
   //
@@ -1220,7 +1263,7 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
 
     // color
     const char *color = cn->GetProperty(arrayName.c_str(), "color");
-    
+
     if (color)
       {
       options << ", color: '" << color << "'";
@@ -1251,7 +1294,7 @@ QString qMRMLChartViewPrivate::barOptions(vtkMRMLChartNode *cn)
   options << "]";
   // end of properties
   options << "};";
-    
+
 
   return options.join("");
 }
@@ -1278,7 +1321,7 @@ QString qMRMLChartViewPrivate::boxData(vtkMRMLChartNode *cn)
       {
       if (xAxisType && !strcmp(xAxisType, "categorical"))
         {
-        // all the MRML series get lumped into one jqPlot series 
+        // all the MRML series get lumped into one jqPlot series
         // (need to surround the data with an extra [])
         if (idx == 0)
           {
@@ -1298,7 +1341,7 @@ QString qMRMLChartViewPrivate::boxData(vtkMRMLChartNode *cn)
         // associated with each series.  This will get used for the
         // ticks.
 
-        // all the MRML series get lumped into one jqPlot series 
+        // all the MRML series get lumped into one jqPlot series
         // (need to surround the data with an extra [])
         if (idx == 0)
           {
@@ -1336,14 +1379,18 @@ QString qMRMLChartViewPrivate::boxXAxisTicks(vtkMRMLChartNode *cn)
   vtkStringArray *arrayNames = cn->GetArrayNames();
   const char *xAxisType = cn->GetProperty("default", "xAxisType");
 
-  if (xAxisType && !strcmp(xAxisType, "categorical"))
+  if (!arrayIDs || arrayIDs->GetNumberOfValues() <= 0)
+    {
+    // no axis ticks by default
+    }
+  else if (xAxisType && !strcmp(xAxisType, "categorical"))
     {
     // define the ticks from the first curve (could do better)
     vtkMRMLDoubleArrayNode *dn = vtkMRMLDoubleArrayNode::SafeDownCast(this->MRMLScene->GetNodeByID( arrayIDs->GetValue(0).c_str() ));
 
     if (dn)
       {
-      ticks << "var xAxisTicks = " 
+      ticks << "var xAxisTicks = "
             << this->arrayTicksString(arrayNames)
             << ";";
       }
@@ -1377,9 +1424,9 @@ QString qMRMLChartViewPrivate::boxOptions(vtkMRMLChartNode *cn)
   options << this->genericOptions(cn, rotateXTickLabels);
 
   // Use a default set of colors defined by Slicer or specified by the
-  // chart node. 
+  // chart node.
   const char* defaultChartColorNodeID =
-    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : 0;
+    this->ColorLogic ? this->ColorLogic->GetDefaultChartColorNodeID() : nullptr;
   vtkMRMLColorNode *defaultColorNode = vtkMRMLColorNode::SafeDownCast(
     this->MRMLScene->GetNodeByID(defaultChartColorNodeID));
   vtkMRMLColorNode *colorNode = defaultColorNode;
@@ -1404,16 +1451,16 @@ QString qMRMLChartViewPrivate::boxOptions(vtkMRMLChartNode *cn)
 
   // end of seriesDefaults properties
   options << "}";
-  
+
   // series level properties. only one jqplot series in a box plot
   //
   //
   options << ", series: [";
   options << "{";
-  
+
   // color
   const char *color = cn->GetProperty("default", "color");
-    
+
   if (color)
     {
     options << ", color: '" << color << "'";
@@ -1447,7 +1494,7 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
     // third quantile is the median of the upper half of the data
     double x, y;
     double q1, q3, median, low, high;
-    
+
     // copy data into an STL vector
     std::vector<double> values;
     for (unsigned int j = 0; j < dn->GetSize(); ++j)
@@ -1468,7 +1515,7 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
       // odd number of elements, just select median
       median = *medIt;
 
-      // median is a datum, include it in both halfs 
+      // median is a datum, include it in both halves
       q1BeginIt = values.begin();
       q1EndIt = medIt + 1; // one past median so median is included
 
@@ -1481,7 +1528,7 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
       // two items
       median = (*medIt + *(medIt-1))/2.0;
 
-      // median is not a datum, exclude it from both halfs
+      // median is not a datum, exclude it from both halves
       q1BeginIt = values.begin();
       q1EndIt = medIt; // excludes the median
 
@@ -1507,7 +1554,7 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
       // even number of elements, average
       q1 = (*q1It + *(q1It-1))/2.0;
       }
-    
+
 
     if ((q3EndIt - q3BeginIt) % 2 == 1)
       {
@@ -1522,7 +1569,7 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
 
     // find the fences
     double IQR;
-    
+
     IQR = q3 - q1;
     low = q1 - 1.5 * IQR;
     high = q3 + 1.5 * IQR;
@@ -1531,15 +1578,15 @@ QString qMRMLChartViewPrivate::seriesBoxDataString(vtkMRMLDoubleArrayNode *dn, u
     //
 
     // Output the values: index, low, q1, median, q3, high
-    data << QString("%1").arg(idx+1) << ", " 
-         << QString("%1").arg(low) << ", " 
+    data << QString("%1").arg(idx+1) << ", "
+         << QString("%1").arg(low) << ", "
          << QString("%1").arg(q1) << ", "
-         << QString("%1").arg(median) << ", " 
-         << QString("%1").arg(q3) << ", " 
+         << QString("%1").arg(median) << ", "
+         << QString("%1").arg(q3) << ", "
          << QString("%1").arg(high);
-    
-    // Output any outliers, points outside [low, high]. 
-    for (std::vector<double>::iterator vit = values.begin(); 
+
+    // Output any outliers, points outside [low, high].
+    for (std::vector<double>::iterator vit = values.begin();
          vit != values.end(); ++vit)
       {
       if (*vit < low || *vit > high)
@@ -1561,7 +1608,7 @@ void qMRMLChartViewPrivate::onDataMouseOver(int series, int pointidx, double x, 
   Q_Q(qMRMLChartView);
 
   //qDebug() << "Series: " << series << ", Pointid: " << pointidx << ": " << x << ", " << y;
-  
+
   // map from series to MRML ID
   if (!this->MRMLScene || !this->MRMLChartViewNode)
     {
@@ -1606,7 +1653,7 @@ void qMRMLChartViewPrivate::onDataPointClicked(int series, int pointidx, double 
   Q_Q(qMRMLChartView);
 
   //qDebug() << "Series: " << series << ", Pointid: " << pointidx << ": " << x << ", " << y;
-  
+
   // map from series to MRML ID
   if (!this->MRMLScene || !this->MRMLChartViewNode)
     {
@@ -1659,7 +1706,7 @@ qMRMLChartView::qMRMLChartView(QWidget* _parent) : Superclass(_parent)
 // --------------------------------------------------------------------------
 qMRMLChartView::~qMRMLChartView()
 {
-  this->setMRMLScene(0);
+  this->setMRMLScene(nullptr);
 }
 
 
@@ -1676,7 +1723,7 @@ void qMRMLChartView::setMRMLScene(vtkMRMLScene* newScene)
 
   if (d->MRMLChartViewNode && newScene != d->MRMLChartViewNode->GetScene())
     {
-    this->setMRMLChartViewNode(0);
+    this->setMRMLChartViewNode(nullptr);
     }
 
   emit mrmlSceneChanged(newScene);
@@ -1699,7 +1746,7 @@ void qMRMLChartView::setMRMLChartViewNode(vtkMRMLChartViewNode* newChartViewNode
   // connect on ChartNodeChangedEvent (e.g. ChartView is looking at a
   // different ChartNode
   d->qvtkReconnect(
-    d->MRMLChartViewNode, newChartViewNode, 
+    d->MRMLChartViewNode, newChartViewNode,
     vtkMRMLChartViewNode::ChartNodeChangedEvent, d, SLOT(onChartNodeChanged()));
 
   // cache the ChartViewNode
@@ -1708,7 +1755,7 @@ void qMRMLChartView::setMRMLChartViewNode(vtkMRMLChartViewNode* newChartViewNode
   // ... and connect modified event on the ChartViewNode's ChartNode
   // to update the widget
   d->onChartNodeChanged();
-  
+
   // make sure the gui is up to date
   d->updateWidgetFromMRML();
 }
@@ -1747,8 +1794,3 @@ QSize qMRMLChartView::sizeHint()const
   // return a default size hint (invalid size)
   return QSize();
 }
-
-
-
-
-

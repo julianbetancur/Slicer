@@ -22,6 +22,9 @@
 #include <QTimer>
 #include <QWidget>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQt includes
 #include <qSlicerAbstractModuleRepresentation.h>
 #include <qSlicerApplication.h>
@@ -33,14 +36,18 @@
 // MRML includes
 #include <vtkMRMLModelHierarchyNode.h>
 #include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
 
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 //-----------------------------------------------------------------------------
 int qSlicerModelsModuleWidgetTest1( int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   qSlicerApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   if (argc < 2)
     {
@@ -50,7 +57,7 @@ int qSlicerModelsModuleWidgetTest1( int argc, char * argv[] )
     }
 
   qSlicerModelsModule module;
-  module.initialize(0);
+  module.initialize(nullptr);
 
   vtkNew<vtkMRMLScene> scene;
 

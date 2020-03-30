@@ -45,10 +45,10 @@ class QMRML_WIDGETS_EXPORT qMRMLChartWidget : public qMRMLWidget
 public:
   /// Superclass typedef
   typedef qMRMLWidget Superclass;
-  
+
   /// Constructors
-  explicit qMRMLChartWidget(QWidget* parent = 0);
-  virtual ~qMRMLChartWidget();
+  explicit qMRMLChartWidget(QWidget* parent = nullptr);
+  ~qMRMLChartWidget() override;
 
   /// Get the chart node observed by view.
   vtkMRMLChartViewNode* mrmlChartViewNode()const;
@@ -72,10 +72,12 @@ public:
   void setColorLogic(vtkMRMLColorLogic* colorLogic);
   vtkMRMLColorLogic* colorLogic()const;
 
-
 public slots:
   /// Set the current \a viewNode to observe
   void setMRMLChartViewNode(vtkMRMLChartViewNode* newChartViewNode);
+
+protected slots:
+  void onAppAboutToQuit();
 
 protected:
   QScopedPointer<qMRMLChartWidgetPrivate> d_ptr;

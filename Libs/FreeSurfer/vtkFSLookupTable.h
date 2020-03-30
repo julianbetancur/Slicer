@@ -5,18 +5,13 @@
   See COPYRIGHT.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   3D Slicer
-  Module:    $RCSfile: vtkFSLookupTable.h,v $
-  Date:      $Date: 2006/02/28 20:50:07 $
-  Version:   $Revision: 1.4 $
-
 =========================================================================auto=*/
 
 #ifndef __vtkFSLookupTable_h
 #define __vtkFSLookupTable_h
 
 #include <FreeSurferConfigure.h>
-#include "vtkFreeSurferWin32Header.h"
+#include "vtkFreeSurferExport.h"
 
 // VTK includes
 #include <vtkLookupTable.h>
@@ -29,9 +24,11 @@ class VTK_FreeSurfer_EXPORT vtkFSLookupTable : public vtkLookupTable
 public:
     static vtkFSLookupTable *New();
     vtkTypeMacro(vtkFSLookupTable,vtkLookupTable);
-    void PrintSelf(ostream& os, vtkIndent indent);
+    void PrintSelf(ostream& os, vtkIndent indent) override;
 
-
+    // Description:
+    // Copy the contents from another LookupTable
+    void DeepCopy(vtkScalarsToColors *lut) override;
 
     vtkGetMacro(LowThresh,float);
     vtkSetMacro(LowThresh,float);
@@ -75,22 +72,23 @@ public:
 
     ///
     /// from vtkScalarsToColors
-    double *GetRange();
+    double *GetRange() override;
     ///
     /// don't do anything as it's overriding the LUTs low threshold with the
     /// scalar values' lowest value
-    void SetRange(double, double);
+    using vtkLookupTable::SetRange;
+    void SetRange(double, double) override;
     ///
     /// Given a scalar value val, return an rgba color value
     /// returns array of length 3, 0-255
-    unsigned char *MapValue(double val);
+    const unsigned char *MapValue(double val) override;
     ///
     /// passes val to MapValue
-    void GetColor(double, double[3]);
+    void GetColor(double, double[3]) override;
     ///
     /// take input scalars and push them through the calculation to get colours
     /// to put int the output array
-    void MapScalarsThroughTable2(void* input, unsigned char* outupt, int inputDataType, int numberOfValues, int inputIncrement, int outputIncrement);
+    void MapScalarsThroughTable2(void* input, unsigned char* output, int inputDataType, int numberOfValues, int inputIncrement, int outputIncrement) override;
 
     ///
     /// Type constant, can have different types of colour scales
@@ -106,10 +104,10 @@ public:
 
     // Description:
     // Get the number of available colors for mapping to.
-    virtual vtkIdType GetNumberOfAvailableColors();
+    vtkIdType GetNumberOfAvailableColors() override;
 protected:
     vtkFSLookupTable();
-    ~vtkFSLookupTable();
+    ~vtkFSLookupTable() override;
 
     ///
     /// Low cut off, values passed in that are below this level are mapped to

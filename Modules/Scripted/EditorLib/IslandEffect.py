@@ -1,24 +1,28 @@
 import os
-from __main__ import vtk
-from __main__ import qt
-from __main__ import ctk
-from __main__ import slicer
-from EditOptions import EditOptions
-import EditUtil
-import Effect
+import vtk
+import qt
+import ctk
+import slicer
+from . import EffectOptions, EffectTool, EffectLogic, Effect
 
+__all__ = [
+  'IslandEffectOptions',
+  'IslandEffectTool',
+  'IslandEffectLogic',
+  'IslandEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
-  IslandEffect is a subclass of Effect (for tools that plug into the 
-  slicer Editor module) and a superclass for tools edit the 
-  currently selected label map using 
+  IslandEffect is a subclass of Effect (for tools that plug into the
+  slicer Editor module) and a superclass for tools edit the
+  currently selected label map using
   island (connected component) operations
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -27,7 +31,7 @@ comment = """
 # IslandEffectOptions - see EditOptions and Effect for superclasses
 #
 
-class IslandEffectOptions(Effect.EffectOptions):
+class IslandEffectOptions(EffectOptions):
   """ IslandEffect-specfic gui
   """
 
@@ -96,9 +100,9 @@ class IslandEffectOptions(Effect.EffectOptions):
         return
     super(IslandEffectOptions,self).updateGUIFromMRML(caller,event)
     self.disconnectWidgets()
-    self.fullyConnected.setChecked( 
+    self.fullyConnected.setChecked(
                 int(self.parameterNode.GetParameter("IslandEffect,fullyConnected")) )
-    self.minimumSize.setValue( 
+    self.minimumSize.setValue(
                 int(self.parameterNode.GetParameter("IslandEffect,minimumSize")) )
     self.connectWidgets()
 
@@ -110,7 +114,7 @@ class IslandEffectOptions(Effect.EffectOptions):
       self.parameterNode.SetParameter( "IslandEffect,fullyConnected", "1" )
     else:
       self.parameterNode.SetParameter( "IslandEffect,fullyConnected", "0" )
-    self.parameterNode.SetParameter( 
+    self.parameterNode.SetParameter(
                 "IslandEffect,minimumSize", str(self.minimumSize.value) )
     self.parameterNode.SetDisableModifiedEvent(disableState)
     if not disableState:
@@ -119,8 +123,8 @@ class IslandEffectOptions(Effect.EffectOptions):
 #
 # IslandEffectTool
 #
- 
-class IslandEffectTool(Effect.EffectTool):
+
+class IslandEffectTool(EffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -140,13 +144,13 @@ class IslandEffectTool(Effect.EffectTool):
 #
 # IslandEffectLogic
 #
- 
-class IslandEffectLogic(Effect.EffectLogic):
+
+class IslandEffectLogic(EffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an IslandEffectTool
   or IslandEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the IslandEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -156,10 +160,10 @@ class IslandEffectLogic(Effect.EffectLogic):
     super(IslandEffectLogic,self).__init__(sliceLogic)
 
 #
-# The IslandEffect class definition 
+# The IslandEffect class definition
 #
 
-class IslandEffect(Effect.Effect):
+class IslandEffect(Effect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """

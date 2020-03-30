@@ -40,12 +40,12 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerModuleFactoryManager
   Q_OBJECT
 public:
   typedef qSlicerAbstractModuleFactoryManager Superclass;
-  qSlicerModuleFactoryManager(QObject* newParent = 0);
+  qSlicerModuleFactoryManager(QObject* newParent = nullptr);
 
   /// Unloads all the modules previously loaded.
-  virtual ~qSlicerModuleFactoryManager();
+  ~qSlicerModuleFactoryManager() override;
 
-  virtual void printAdditionalInfo();
+  void printAdditionalInfo() override;
 
   /// Load all the instantiated modules.
   /// To register and initialize modules, please use
@@ -78,9 +78,18 @@ public:
   /// Return the mrml scene passed to loaded modules
   vtkMRMLScene* mrmlScene()const;
 
+  /// Load specified modules.
+  ///
+  /// This attempts to load the specified modules, instantiating them first if
+  /// necessary.
+  Q_INVOKABLE bool loadModules(const QStringList& modules);
+
   /// Load module identified by \a name
   /// \todo move it as protected
   bool loadModule(const QString& name);
+
+  /// Return all module paths that are direct child of \a basePath.
+  QStringList modulePaths(const QString& basePath);
 
 public slots:
   /// Set the MRML scene to pass to modules at "load" time.
@@ -107,7 +116,7 @@ protected:
   void unloadModule(const QString& name);
 
   /// Uninstantiate a module given its \a moduleName
-  virtual void uninstantiateModule(const QString& moduleName);
+  void uninstantiateModule(const QString& moduleName) override;
 
   /// Reimplemented to ensure order
   virtual void uninstantiateModules();

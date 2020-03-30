@@ -24,8 +24,9 @@
 // MRMLLogic includes
 #include "vtkMRMLAbstractLogic.h"
 
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
+class vtkMRMLInteractionEventData;
 class vtkMRMLInteractionNode;
 class vtkMRMLSelectionNode;
 class vtkMRMLDisplayableManagerGroup;
@@ -48,15 +49,15 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLAbstractDisplayableManager
 {
 public:
   static vtkMRMLAbstractDisplayableManager *New();
-  void PrintSelf(ostream& os, vtkIndent indent);
-  vtkTypeRevisionMacro(vtkMRMLAbstractDisplayableManager, vtkMRMLAbstractLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+  vtkTypeMacro(vtkMRMLAbstractDisplayableManager, vtkMRMLAbstractLogic);
 
   /// Return True if Create() method has been invoked
   /// \sa CreateIfPossible() Create()
   bool IsCreated();
 
   /// Set the LightBoxRendererManager proxy. This proxy provides a
-  /// method GetRenderer(int) that returns the renderer for the ith
+  /// method GetRenderer(int) that returns the renderer for the Nth
   /// lightbox pane. The DisplayableManagers use this method to map
   /// coordinates to the proper lightbox pane, e.g. in placing
   /// crosshairs or annotations in the proper renderer.
@@ -66,13 +67,13 @@ public:
   /// \sa SetLightBoxRendererManagerProxy(vtkMRMLLightBoxRendererManagerProxy *)
   virtual vtkMRMLLightBoxRendererManagerProxy* GetLightBoxRendererManagerProxy();
 
-  /// Get the default renderer for this displayable manager. 
+  /// Get the default renderer for this displayable manager.
   vtkRenderer* GetRenderer();
 
-  /// Get the renderer for the ith lightbox pane. This method uses the
+  /// Get the renderer for the Nth lightbox pane. This method uses the
   /// LightBoxRendererManagerProxy if one has been configured for the
   /// DisplayableManager. If no LightBoxRendererManagerProxy has been
-  /// set, this method returns the default renderer by deferring to 
+  /// set, this method returns the default renderer by deferring to
   /// GetRenderer(),
   vtkRenderer* GetRenderer(int idx);
 
@@ -85,10 +86,38 @@ public:
   /// Convenient method to get the current SelectionNode
   vtkMRMLSelectionNode* GetSelectionNode();
 
+  /// Assemble and return info string to display in Data probe for a given viewer XYZ position.
+  /// \return Invalid string by default, meaning no information to display.
+  virtual std::string GetDataProbeInfoStringForPosition(
+      double vtkNotUsed(xyz)[3]) { return ""; }
+
+  /// Return true if the displayable manager can process the event.
+  /// Distance2 is the squared distance in display coordinates from the closest interaction position.
+  /// The displayable manager with the closest distance will get the chance to process the interaction event.
+  virtual bool CanProcessInteractionEvent(vtkMRMLInteractionEventData* eventData, double &distance2);
+
+  /// Process an interaction event.
+  /// Returns true if the event should be aborted (not processed any further by other event observers).
+  virtual bool ProcessInteractionEvent(vtkMRMLInteractionEventData* eventData);
+
+  /// Set if the widget gets/loses focus (interaction events are processed by this displayable manager).
+  virtual void SetHasFocus(bool hasFocus);
+
+  /// Displayable manager can indicate that it would like to get all events (even when mouse pointer is outside the window).
+  virtual bool GetGrabFocus();
+
+  /// Displayable manager can indicate that the window is in interactive mode (faster updates).
+  virtual bool GetInteractive();
+
+  /// Displayable manager returns ID of the mouse cursor shape that should be displayed
+  virtual int GetMouseCursor();
+
+  void SetMouseCursor(int cursor);
+
 protected:
 
   vtkMRMLAbstractDisplayableManager();
-  virtual ~vtkMRMLAbstractDisplayableManager();
+  ~vtkMRMLAbstractDisplayableManager() override;
 
   /// Get MRML Displayable Node
   vtkMRMLNode * GetMRMLDisplayableNode();
@@ -107,15 +136,15 @@ protected:
   virtual void AdditionalInitializeStep(){}
 
   /// Subclass can overload this method to specify under which InteractionNode modes
-  /// this Displayable Manger InteractorStyle events.
+  /// this Displayable Manager InteractorStyle events.
   /// By default events only arrive when in Place mode (good for annotations)
   /// but if you want a continuous read out of, for example, slice positions while
   /// the mouse moves set this to include Place and ViewTransform
   virtual int ActiveInteractionModes();
 
-  virtual void ProcessMRMLNodesEvents(vtkObject* caller,
+  void ProcessMRMLNodesEvents(vtkObject* caller,
                                       unsigned long event,
-                                      void * callData);
+                                      void * callData) override;
 
   /// Receives all the events fired by any graphical object interacted by the
   /// user (typically vtk widgets).
@@ -146,14 +175,14 @@ protected:
   /// Called by SetMRMLScene - Used to initialize the Scene
   /// Observe all the events of the scene and call OnMRMLSceneEndClose()
   /// or OnMRMLSceneEndImport() if the new scene is valid
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
+  void SetMRMLSceneInternal(vtkMRMLScene* newScene) override;
 
   /// ProcessMRMLNodesEvents calls OnMRMLDisplayableNodeModifiedEvent when the
   /// displayable node (e.g. vtkMRMLSliceNode, vtkMRMLViewNode) is Modified.
   /// Could be overloaded in DisplayableManager subclass.
   virtual void OnMRMLDisplayableNodeModifiedEvent(vtkObject* caller);
 
-  /// \brief Allow to specify additonal events that the DisplayableNode will observe
+  /// \brief Allow to specify additional events that the DisplayableNode will observe
   /// \warning Should be called within AdditionalInitializeStep() method
   /// \sa AdditionalInitializeStep()
   void AddMRMLDisplayableManagerEvent(int eventId);
@@ -248,8 +277,8 @@ protected:
 
 private:
 
-  vtkMRMLAbstractDisplayableManager(const vtkMRMLAbstractDisplayableManager&); // Not implemented
-  void operator=(const vtkMRMLAbstractDisplayableManager&);                    // Not implemented
+  vtkMRMLAbstractDisplayableManager(const vtkMRMLAbstractDisplayableManager&) = delete;
+  void operator=(const vtkMRMLAbstractDisplayableManager&) = delete;
 
   class vtkInternal;
   vtkInternal* Internal;

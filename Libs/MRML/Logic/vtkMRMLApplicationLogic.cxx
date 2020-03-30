@@ -25,22 +25,29 @@
 #include "vtkMRMLApplicationLogic.h"
 #include "vtkMRMLColorLogic.h"
 #include "vtkMRMLSliceLogic.h"
-#include <vtkMRMLSliceLinkLogic.h>
-#include <vtkMRMLModelHierarchyLogic.h>
+#include "vtkMRMLSliceLinkLogic.h"
+#include "vtkMRMLViewLogic.h"
+#include "vtkMRMLViewLinkLogic.h"
 
 // MRML includes
-#include <vtkMRMLInteractionNode.h>
-#include <vtkMRMLSelectionNode.h>
-#include <vtkMRMLSliceCompositeNode.h>
-#include <vtkMRMLSliceNode.h>
-#include <vtkMRMLStorableNode.h>
-#include <vtkMRMLStorageNode.h>
-#include <vtkMRMLSceneViewNode.h>
+#include "vtkMRMLInteractionNode.h"
+#include "vtkMRMLPlotViewNode.h"
+#include "vtkMRMLScene.h"
+#include "vtkMRMLSelectionNode.h"
+#include "vtkMRMLSliceCompositeNode.h"
+#include "vtkMRMLSliceNode.h"
+#include "vtkMRMLStorableNode.h"
+#include "vtkMRMLStorageNode.h"
+#include "vtkMRMLSceneViewNode.h"
+#include "vtkMRMLTableViewNode.h"
+#include "vtkMRMLViewNode.h"
 
 // VTK includes
 #include <vtkCollection.h>
 #include <vtkImageData.h>
 #include <vtkNew.h>
+#include <vtkObjectFactory.h>
+#include <vtkPNGWriter.h>
 #include <vtkSmartPointer.h>
 
 // VTKSYS includes
@@ -60,22 +67,25 @@
 #endif
 
 //----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkMRMLApplicationLogic, "$Revision$");
 vtkStandardNewMacro(vtkMRMLApplicationLogic);
 
 //----------------------------------------------------------------------------
 class vtkMRMLApplicationLogic::vtkInternal
 {
 public:
-  vtkInternal();
+  vtkInternal(vtkMRMLApplicationLogic* external);
+  void PropagateVolumeSelection(int layer, int fit);
   ~vtkInternal();
 
-  vtkSmartPointer<vtkMRMLSelectionNode>    SelectionNode;
-  vtkSmartPointer<vtkMRMLInteractionNode>  InteractionNode;
+  vtkMRMLApplicationLogic* External;
+  vtkSmartPointer<vtkMRMLSelectionNode> SelectionNode;
+  vtkSmartPointer<vtkMRMLInteractionNode> InteractionNode;
   vtkSmartPointer<vtkCollection> SliceLogics;
+  vtkSmartPointer<vtkCollection> ViewLogics;
   vtkSmartPointer<vtkMRMLSliceLinkLogic> SliceLinkLogic;
-  vtkSmartPointer<vtkMRMLModelHierarchyLogic> ModelHierarchyLogic;
+  vtkSmartPointer<vtkMRMLViewLinkLogic> ViewLinkLogic;
   vtkSmartPointer<vtkMRMLColorLogic> ColorLogic;
+  std::string TemporaryPath;
 
 };
 
@@ -83,27 +93,68 @@ public:
 // vtkInternal methods
 
 //----------------------------------------------------------------------------
-vtkMRMLApplicationLogic::vtkInternal::vtkInternal()
+vtkMRMLApplicationLogic::vtkInternal::vtkInternal(vtkMRMLApplicationLogic* external)
 {
+  this->External = external;
   this->SliceLinkLogic = vtkSmartPointer<vtkMRMLSliceLinkLogic>::New();
-  this->ModelHierarchyLogic = vtkSmartPointer<vtkMRMLModelHierarchyLogic>::New();
+  this->ViewLinkLogic = vtkSmartPointer<vtkMRMLViewLinkLogic>::New();
   this->ColorLogic = vtkSmartPointer<vtkMRMLColorLogic>::New();
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLApplicationLogic::vtkInternal::~vtkInternal()
-{
-}
+= default;
 
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::vtkInternal::PropagateVolumeSelection(int layer, int fit)
+{
+  if ( !this->SelectionNode || !this->External->GetMRMLScene() )
+    {
+    return;
+    }
+
+  char* ID = this->SelectionNode->GetActiveVolumeID();
+  char* secondID = this->SelectionNode->GetSecondaryVolumeID();
+  char* labelID = this->SelectionNode->GetActiveLabelVolumeID();
+
+  vtkMRMLSliceCompositeNode* cnode;
+  const int nnodes = this->External->GetMRMLScene()->GetNumberOfNodesByClass("vtkMRMLSliceCompositeNode");
+
+  for (int i = 0; i < nnodes; i++)
+    {
+    cnode = vtkMRMLSliceCompositeNode::SafeDownCast (
+      this->External->GetMRMLScene()->GetNthNodeByClass( i, "vtkMRMLSliceCompositeNode" ) );
+    if(!cnode->GetDoPropagateVolumeSelection())
+      {
+      continue;
+      }
+    if (layer & vtkMRMLApplicationLogic::BackgroundLayer)
+      {
+      cnode->SetBackgroundVolumeID( ID );
+      }
+    if (layer & vtkMRMLApplicationLogic::ForegroundLayer)
+      {
+      cnode->SetForegroundVolumeID( secondID );
+      }
+    if (layer & vtkMRMLApplicationLogic::LabelLayer)
+      {
+      cnode->SetLabelVolumeID( labelID );
+      }
+    }
+  if (fit)
+    {
+    this->External->FitSliceToAll(true);
+    }
+}
 //----------------------------------------------------------------------------
 // vtkMRMLApplicationLogic methods
 
 //----------------------------------------------------------------------------
 vtkMRMLApplicationLogic::vtkMRMLApplicationLogic()
 {
-  this->Internal = new vtkInternal;
+  this->Internal = new vtkInternal(this);
   this->Internal->SliceLinkLogic->SetMRMLApplicationLogic(this);
-  this->Internal->ModelHierarchyLogic->SetMRMLApplicationLogic(this);
+  this->Internal->ViewLinkLogic->SetMRMLApplicationLogic(this);
   this->Internal->ColorLogic->SetMRMLApplicationLogic(this);
 }
 
@@ -120,21 +171,15 @@ void vtkMRMLApplicationLogic::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //----------------------------------------------------------------------------
-vtkMRMLSelectionNode * vtkMRMLApplicationLogic::GetSelectionNode()const
+vtkMRMLSelectionNode* vtkMRMLApplicationLogic::GetSelectionNode()const
 {
   return this->Internal->SelectionNode;
 }
 
 //----------------------------------------------------------------------------
-vtkMRMLInteractionNode * vtkMRMLApplicationLogic::GetInteractionNode()const
+vtkMRMLInteractionNode* vtkMRMLApplicationLogic::GetInteractionNode()const
 {
   return this->Internal->InteractionNode;
-}
-
-//----------------------------------------------------------------------------
-vtkMRMLModelHierarchyLogic* vtkMRMLApplicationLogic::GetModelHierarchyLogic()const
-{
-  return this->Internal->ModelHierarchyLogic;
 }
 
 //----------------------------------------------------------------------------
@@ -159,7 +204,12 @@ vtkCollection* vtkMRMLApplicationLogic::GetSliceLogics()const
 //----------------------------------------------------------------------------
 void vtkMRMLApplicationLogic::SetSliceLogics(vtkCollection* sliceLogics)
 {
+  if (sliceLogics == this->Internal->SliceLogics)
+    {
+    return;
+    }
   this->Internal->SliceLogics = sliceLogics;
+  this->Modified();
 }
 
 //---------------------------------------------------------------------------
@@ -168,10 +218,10 @@ GetSliceLogic(vtkMRMLSliceNode* sliceNode) const
 {
   if(!sliceNode || !this->Internal->SliceLogics)
     {
-    return 0;
+    return nullptr;
     }
 
-  vtkMRMLSliceLogic* logic = 0;
+  vtkMRMLSliceLogic* logic = nullptr;
   vtkCollectionSimpleIterator it;
   vtkCollection* logics = this->Internal->SliceLogics;
 
@@ -183,7 +233,7 @@ GetSliceLogic(vtkMRMLSliceNode* sliceNode) const
       break;
       }
 
-    logic = 0;
+    logic = nullptr;
     }
 
   return logic;
@@ -195,10 +245,10 @@ GetSliceLogicByLayoutName(const char* layoutName) const
 {
   if(!layoutName || !this->Internal->SliceLogics)
     {
-    return 0;
+    return nullptr;
     }
 
-  vtkMRMLSliceLogic* logic = 0;
+  vtkMRMLSliceLogic* logic = nullptr;
   vtkCollectionSimpleIterator it;
   vtkCollection* logics = this->Internal->SliceLogics;
 
@@ -209,24 +259,119 @@ GetSliceLogicByLayoutName(const char* layoutName) const
       {
       if ( !strcmp( logic->GetSliceNode()->GetLayoutName(), layoutName) )
         {
-        break;
+        return logic;
         }
       }
+    }
 
-    logic = 0;
+  return nullptr;
+}
+
+//---------------------------------------------------------------------------
+vtkMRMLSliceLogic* vtkMRMLApplicationLogic::
+GetSliceLogicByModelDisplayNode(vtkMRMLModelDisplayNode* displayNode) const
+{
+  if (!displayNode || !this->Internal->SliceLogics)
+    {
+    return nullptr;
+    }
+
+  vtkMRMLSliceLogic* logic = nullptr;
+  vtkCollectionSimpleIterator it;
+  vtkCollection* logics = this->Internal->SliceLogics;
+
+  for (logics->InitTraversal(it);
+    (logic = vtkMRMLSliceLogic::SafeDownCast(logics->GetNextItemAsObject(it)));)
+    {
+    if (logic->GetSliceModelDisplayNode() == displayNode)
+      {
+      return logic;
+      }
+    }
+
+  return nullptr;
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::SetViewLogics(vtkCollection* viewLogics)
+{
+  if (viewLogics == this->Internal->ViewLogics)
+    {
+    return;
+    }
+  this->Internal->ViewLogics = viewLogics;
+  this->Modified();
+}
+
+//---------------------------------------------------------------------------
+vtkCollection* vtkMRMLApplicationLogic::GetViewLogics() const
+{
+  return this->Internal->ViewLogics;
+}
+
+//---------------------------------------------------------------------------
+vtkMRMLViewLogic* vtkMRMLApplicationLogic::
+GetViewLogic(vtkMRMLViewNode* viewNode) const
+{
+  if(!viewNode || !this->Internal->ViewLogics)
+    {
+    return nullptr;
+    }
+
+  vtkMRMLViewLogic* logic = nullptr;
+  vtkCollectionSimpleIterator it;
+  vtkCollection* logics = this->Internal->ViewLogics;
+
+  for (logics->InitTraversal(it);
+      (logic=vtkMRMLViewLogic::SafeDownCast(logics->GetNextItemAsObject(it)));)
+    {
+    if (logic->GetViewNode() == viewNode)
+      {
+      break;
+      }
+
+    logic = nullptr;
     }
 
   return logic;
 }
 
 //---------------------------------------------------------------------------
-void vtkMRMLApplicationLogic::SetMRMLSceneInternal(vtkMRMLScene *newScene)
+vtkMRMLViewLogic* vtkMRMLApplicationLogic::
+GetViewLogicByLayoutName(const char* layoutName) const
 {
-  vtkMRMLNode * selectionNode = 0;
+  if(!layoutName || !this->Internal->ViewLogics)
+    {
+    return nullptr;
+    }
+
+  vtkMRMLViewLogic* logic = nullptr;
+  vtkCollectionSimpleIterator it;
+  vtkCollection* logics = this->Internal->ViewLogics;
+
+  for (logics->InitTraversal(it);
+      (logic=vtkMRMLViewLogic::SafeDownCast(logics->GetNextItemAsObject(it)));)
+    {
+    if (logic->GetViewNode())
+      {
+      if ( !strcmp( logic->GetViewNode()->GetLayoutName(), layoutName) )
+        {
+        return logic;
+        }
+      }
+    }
+
+  return nullptr;
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::SetMRMLSceneInternal(vtkMRMLScene* newScene)
+{
+  vtkMRMLNode* selectionNode = nullptr;
   if (newScene)
     {
     // Selection Node
-    selectionNode = newScene->GetNthNodeByClass(0, "vtkMRMLSelectionNode");
+    selectionNode = newScene->GetNodeByID("vtkMRMLSelectionNodeSingleton");
     if (!selectionNode)
       {
       selectionNode = newScene->AddNode(vtkNew<vtkMRMLSelectionNode>().GetPointer());
@@ -235,11 +380,11 @@ void vtkMRMLApplicationLogic::SetMRMLSceneInternal(vtkMRMLScene *newScene)
     }
   this->SetSelectionNode(vtkMRMLSelectionNode::SafeDownCast(selectionNode));
 
-  vtkMRMLNode * interactionNode = 0;
+  vtkMRMLNode* interactionNode = nullptr;
   if (newScene)
     {
     // Interaction Node
-    interactionNode = newScene->GetNthNodeByClass(0, "vtkMRMLInteractionNode");
+    interactionNode = newScene->GetNodeByID("vtkMRMLInteractionNodeSingleton");
     if (!interactionNode)
       {
       interactionNode = newScene->AddNode(vtkNew<vtkMRMLInteractionNode>().GetPointer());
@@ -248,14 +393,17 @@ void vtkMRMLApplicationLogic::SetMRMLSceneInternal(vtkMRMLScene *newScene)
     }
   this->SetInteractionNode(vtkMRMLInteractionNode::SafeDownCast(interactionNode));
 
+  // Add default slice orientation presets
+  vtkMRMLSliceNode::AddDefaultSliceOrientationPresets(newScene);
+
   this->Superclass::SetMRMLSceneInternal(newScene);
 
   this->Internal->SliceLinkLogic->SetMRMLScene(newScene);
-  this->Internal->ModelHierarchyLogic->SetMRMLScene(newScene);
+  this->Internal->ViewLinkLogic->SetMRMLScene(newScene);
 }
 
 //----------------------------------------------------------------------------
-void vtkMRMLApplicationLogic::SetSelectionNode(vtkMRMLSelectionNode *selectionNode)
+void vtkMRMLApplicationLogic::SetSelectionNode(vtkMRMLSelectionNode* selectionNode)
 {
   if (selectionNode == this->Internal->SelectionNode)
     {
@@ -266,7 +414,7 @@ void vtkMRMLApplicationLogic::SetSelectionNode(vtkMRMLSelectionNode *selectionNo
 }
 
 //----------------------------------------------------------------------------
-void vtkMRMLApplicationLogic::SetInteractionNode(vtkMRMLInteractionNode *interactionNode)
+void vtkMRMLApplicationLogic::SetInteractionNode(vtkMRMLInteractionNode* interactionNode)
 {
   if (interactionNode == this->Internal->InteractionNode)
     {
@@ -279,65 +427,118 @@ void vtkMRMLApplicationLogic::SetInteractionNode(vtkMRMLInteractionNode *interac
 //----------------------------------------------------------------------------
 void vtkMRMLApplicationLogic::PropagateVolumeSelection(int fit)
 {
+  this->PropagateVolumeSelection(
+        BackgroundLayer | ForegroundLayer | LabelLayer, fit);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PropagateBackgroundVolumeSelection(int fit)
+{
+  this->PropagateVolumeSelection(BackgroundLayer, fit);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PropagateForegroundVolumeSelection(int fit)
+{
+  this->PropagateVolumeSelection(ForegroundLayer, fit);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PropagateLabelVolumeSelection(int fit)
+{
+  this->PropagateVolumeSelection(LabelLayer, fit);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PropagateVolumeSelection(int layer, int fit)
+{
+  this->Internal->PropagateVolumeSelection(layer, fit);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PropagateTableSelection()
+{
   if ( !this->Internal->SelectionNode || !this->GetMRMLScene() )
     {
-    std::cout << this->Internal->SelectionNode << "    " << this->GetMRMLScene() << std::endl;
     return;
     }
 
-  char *ID = this->Internal->SelectionNode->GetActiveVolumeID();
-  char *secondID = this->Internal->SelectionNode->GetSecondaryVolumeID();
-  char *labelID = this->Internal->SelectionNode->GetActiveLabelVolumeID();
+  char* tableId = this->Internal->SelectionNode->GetActiveTableID();
 
-  vtkMRMLSliceCompositeNode *cnode;
-  const int nnodes = this->GetMRMLScene()->GetNumberOfNodesByClass("vtkMRMLSliceCompositeNode");
+  const int nnodes = this->GetMRMLScene()->GetNumberOfNodesByClass("vtkMRMLTableViewNode");
   for (int i = 0; i < nnodes; i++)
     {
-    cnode = vtkMRMLSliceCompositeNode::SafeDownCast (
-      this->GetMRMLScene()->GetNthNodeByClass( i, "vtkMRMLSliceCompositeNode" ) );
-    if(!cnode->GetDoPropagateVolumeSelection())
+    vtkMRMLTableViewNode* tnode = vtkMRMLTableViewNode::SafeDownCast (
+      this->GetMRMLScene()->GetNthNodeByClass( i, "vtkMRMLTableViewNode" ) );
+    if(!tnode->GetDoPropagateTableSelection())
       {
       continue;
       }
-    cnode->SetBackgroundVolumeID( ID );
-    cnode->SetForegroundVolumeID( secondID );
-    cnode->SetLabelVolumeID( labelID );
-    }
-
-  if (fit) {
-    this->FitSliceToAll();
+    tnode->SetTableNodeID( tableId );
   }
 }
 
-
 //----------------------------------------------------------------------------
-void vtkMRMLApplicationLogic::FitSliceToAll()
+void vtkMRMLApplicationLogic::PropagatePlotChartSelection()
 {
-  if (this->Internal->SliceLogics.GetPointer() == 0)
+  if ( !this->Internal->SelectionNode || !this->GetMRMLScene() )
     {
     return;
     }
-  vtkMRMLSliceLogic* sliceLogic = 0;
+
+  char* PlotChartId = this->Internal->SelectionNode->GetActivePlotChartID();
+
+  const int nnodes = this->GetMRMLScene()->GetNumberOfNodesByClass("vtkMRMLPlotViewNode");
+  for (int i = 0; i < nnodes; i++)
+    {
+    vtkMRMLPlotViewNode* pnode = vtkMRMLPlotViewNode::SafeDownCast (
+      this->GetMRMLScene()->GetNthNodeByClass( i, "vtkMRMLPlotViewNode" ) );
+    if(!pnode->GetDoPropagatePlotChartSelection())
+      {
+      continue;
+      }
+    pnode->SetPlotChartNodeID(PlotChartId);
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::FitSliceToAll(bool onlyIfPropagateVolumeSelectionAllowed /* =false */)
+{
+  if (this->Internal->SliceLogics.GetPointer() == nullptr)
+    {
+    return;
+    }
+  vtkMRMLSliceLogic* sliceLogic = nullptr;
   vtkCollectionSimpleIterator it;
   for(this->Internal->SliceLogics->InitTraversal(it);
       (sliceLogic = vtkMRMLSliceLogic::SafeDownCast(
         this->Internal->SliceLogics->GetNextItemAsObject(it)));)
     {
-    vtkMRMLSliceNode *sliceNode = sliceLogic->GetSliceNode();
-    int *dims = sliceNode->GetDimensions();
+    if (onlyIfPropagateVolumeSelectionAllowed)
+      {
+      vtkMRMLSliceCompositeNode* sliceCompositeNode = sliceLogic->GetSliceCompositeNode();
+      if (sliceCompositeNode!=nullptr && !sliceCompositeNode->GetDoPropagateVolumeSelection())
+        {
+        // propagate volume selection is disabled, skip this slice
+        continue;
+        }
+      }
+    vtkMRMLSliceNode* sliceNode = sliceLogic->GetSliceNode();
+    int* dims = sliceNode->GetDimensions();
     sliceLogic->FitSliceToAll(dims[0], dims[1]);
+    sliceLogic->SnapSliceOffsetToIJK();
     }
 }
 
 //----------------------------------------------------------------------------
-bool vtkMRMLApplicationLogic::Zip(const char *zipFileName, const char *directoryToZip)
+bool vtkMRMLApplicationLogic::Zip(const char* zipFileName, const char* directoryToZip)
 {
   // call function in vtkArchive
   return zip(zipFileName, directoryToZip);
 }
 
 //----------------------------------------------------------------------------
-bool vtkMRMLApplicationLogic::Unzip(const char *zipFileName, const char *destinationDirectory)
+bool vtkMRMLApplicationLogic::Unzip(const char* zipFileName, const char* destinationDirectory)
 {
   // call function in vtkArchive
   return unzip(zipFileName, destinationDirectory);
@@ -372,12 +573,12 @@ std::string vtkMRMLApplicationLogic::UnpackSlicerDataBundle(const char *sdbFileP
 }
 
 //----------------------------------------------------------------------------
-bool vtkMRMLApplicationLogic::OpenSlicerDataBundle(const char *sdbFilePath, const char *temporaryDirectory)
+bool vtkMRMLApplicationLogic::OpenSlicerDataBundle(const char* sdbFilePath, const char* temporaryDirectory)
 {
   if (!this->GetMRMLScene())
     {
     vtkErrorMacro("no scene");
-    return NULL;
+    return false;
     }
 
   std::string mrmlFile = this->UnpackSlicerDataBundle(sdbFilePath, temporaryDirectory);
@@ -389,8 +590,8 @@ bool vtkMRMLApplicationLogic::OpenSlicerDataBundle(const char *sdbFilePath, cons
     }
 
   this->GetMRMLScene()->SetURL( mrmlFile.c_str() );
-  int result = this->GetMRMLScene()->Connect();
-  if ( result )
+  int success = this->GetMRMLScene()->Connect();
+  if ( !success )
     {
     vtkErrorMacro("Could not connect to scene");
     return false;
@@ -401,7 +602,7 @@ bool vtkMRMLApplicationLogic::OpenSlicerDataBundle(const char *sdbFilePath, cons
 //----------------------------------------------------------------------------
 std::string vtkMRMLApplicationLogic::PercentEncode(std::string s)
 {
-  std::string validchars = "-_.,@#$%^&()[]{}<>+=";
+  std::string validchars = " -_.,@#$%^&()[]{}<>+=";
   std::ostringstream result;
 
   for (size_t i = 0; i < s.size(); i++)
@@ -423,43 +624,41 @@ std::string vtkMRMLApplicationLogic::PercentEncode(std::string s)
 }
 
 //----------------------------------------------------------------------------
-bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *sdbDir, vtkImageData *screenShot)
+bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char* sdbDir, vtkImageData* screenShot)
 {
 
+  // Overview:
+  // - confirm the arguments are valid and create directories if needed
+  // - save all current file storage paths in the scene
+  // - replace all file storage folders by sdbDir/Data
+  // - create a screenshot of the scene (for allowing preview of scene content without opening in Slicer)
+  // - save the scene (mrml files and all storable nodes)
+  // - revert all file storage paths to the original
   //
-  // first, confirm the arguments are valid and create directories if needed
-  // then, save all paths and filenames in the current scene
-  //  and replace them with paths to the sdbDir
-  // then create a scene view of the contents of the data bundle
-  // then save the scene
-  // -- replace the original paths
-  // -- remove the scene view
-  //
-  // at the end, the scene should be restored to its original state
-  // except that some storables will have default storage nodes
-  //
+  // At the end, the scene should be restored to its original state
+  // except that some storables will have default storage nodes.
 
   if (!this->GetMRMLScene())
     {
-    vtkErrorMacro("no scene to bundle!");
+    vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: invalid scene");
     return false;
     }
   if (!sdbDir)
     {
-    vtkErrorMacro("no directory given!");
+    vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: invalid subdirectory");
     return false;
     }
 
   // if the path to the directory is not absolute, return
   if (!vtksys::SystemTools::FileIsFullPath(sdbDir))
     {
-    vtkErrorMacro("given directory is not a full path: " << sdbDir);
+    vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: given directory is not a full path: " << sdbDir);
     return false;
     }
   // is it a directory?
   if (!vtksys::SystemTools::FileIsDirectory(sdbDir))
     {
-    vtkErrorMacro("given directory name is not actually a directory, try again!" << sdbDir);
+    vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: given directory name is not actually a directory" << sdbDir);
     return false;
     }
   std::string rootDir = std::string(sdbDir);
@@ -471,10 +670,9 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
   // remove the directory if it does exist
   if (vtksys::SystemTools::FileExists(rootDir.c_str(), false))
     {
-    vtkWarningMacro("removing SDB scene directory " << rootDir.c_str());
     if (!vtksys::SystemTools::RemoveADirectory(rootDir.c_str()))
       {
-      vtkErrorMacro("Error removing SDB scene directory " << rootDir.c_str() << ", cannot make a fresh archive.");
+      vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: Error removing SDB scene directory " << rootDir.c_str() << ", cannot make a fresh archive.");
       return false;
       }
     }
@@ -483,7 +681,7 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
     {
     if (!vtksys::SystemTools::MakeDirectory(rootDir.c_str()))
       {
-      vtkErrorMacro("Unable to make temporary directory " << rootDir);
+      vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: Unable to make temporary directory " << rootDir);
       return false;
       }
     }
@@ -515,7 +713,7 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
     {
     if (!vtksys::SystemTools::MakeDirectory(dataDir.c_str()))
       {
-      vtkErrorMacro("Unable to make data directory " << dataDir);
+      vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory failed: Unable to make data directory " << dataDir);
       return false;
       }
     }
@@ -527,128 +725,90 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
   this->GetMRMLScene()->SetRootDirectory(rootDir.c_str());
   this->GetMRMLScene()->SetURL(urlStr.c_str());
 
+  if (screenShot)
+    {
+    this->SaveSceneScreenshot(screenShot);
+    }
+
   // change all storage nodes and file names to be unique in the new directory
   // write the new data as we go; save old values
-  std::map<vtkMRMLStorageNode*, std::string> origStorageNodeDirs;
-  std::map<vtkMRMLStorageNode*, std::string> origStorageNodeFileNames;
+  this->OriginalStorageNodeFileNames.clear();
+
+  std::map<std::string, vtkMRMLNode *> storableNodes;
 
   int numNodes = this->GetMRMLScene()->GetNumberOfNodes();
   for (int i = 0; i < numNodes; ++i)
     {
-    vtkMRMLNode *mrmlNode = this->GetMRMLScene()->GetNthNode(i);
+    vtkMRMLNode* mrmlNode = this->GetMRMLScene()->GetNthNode(i);
     if (!mrmlNode)
       {
-      vtkErrorMacro("unable to get " << i << "th node from scene with " << numNodes << " nodes");
+      vtkErrorMacro("SaveSceneToSlicerDataBundleDirectory: unable to get " << i << "th node from scene with " << numNodes << " nodes");
       continue;
-      }
-    if (mrmlNode->IsA("vtkMRMLSceneViewNode"))
-      {
-      vtkMRMLSceneViewNode *sceneViewNode = vtkMRMLSceneViewNode::SafeDownCast(mrmlNode);
-      sceneViewNode->SetSceneViewRootDir(this->GetMRMLScene()->GetRootDirectory());
       }
     if (mrmlNode->IsA("vtkMRMLStorableNode"))
       {
-      // adjust the file paths
-      vtkMRMLStorableNode *storableNode = vtkMRMLStorableNode::SafeDownCast(mrmlNode);
-      if (storableNode && storableNode->GetSaveWithScene())
+      // get all storable nodes in the main scene
+      // and store them in the map by ID to avoid duplicates for the scene views
+      vtkMRMLStorableNode* storableNode = vtkMRMLStorableNode::SafeDownCast(mrmlNode);
+
+      this->SaveStorableNodeToSlicerDataBundleDirectory(storableNode, dataDir);
+
+      storableNodes[std::string(storableNode->GetID())] = storableNode;
+      }
+    }
+  // Update all storage nodes in all scene views.
+  // Nodes that are not present in the main scene are actually saved to file, others just have their paths updated.
+  for (int i = 0; i < numNodes; ++i)
+    {
+    vtkMRMLSceneViewNode* sceneViewNode = vtkMRMLSceneViewNode::SafeDownCast(this->GetMRMLScene()->GetNthNode(i));
+    if (!sceneViewNode)
+      {
+      continue;
+      }
+    sceneViewNode->SetSceneViewRootDir(this->GetMRMLScene()->GetRootDirectory());
+
+    std::vector<vtkMRMLNode *> snodes;
+    sceneViewNode->GetNodesByClass("vtkMRMLStorableNode", snodes);
+    std::vector<vtkMRMLNode *>::iterator sit;
+    for (sit = snodes.begin(); sit != snodes.end(); sit++)
+      {
+      vtkMRMLStorableNode* storableNode = vtkMRMLStorableNode::SafeDownCast(*sit);
+      std::map<std::string, vtkMRMLNode *>::iterator storableNodeIt = storableNodes.find(std::string(storableNode->GetID()));
+      if (storableNodeIt == storableNodes.end())
         {
-        vtkMRMLStorageNode *storageNode = storableNode->GetStorageNode();
-        if (!storageNode)
-          {
-          // have to create one!
-          vtkWarningMacro("creating a new storage node for " << storableNode->GetID());
-          storageNode = storableNode->CreateDefaultStorageNode();
-          if (storageNode)
-            {
-            std::string fileBaseName = this->PercentEncode(std::string(storableNode->GetName()));
-            std::string extension = storageNode->GetDefaultWriteFileExtension();
-            std::string storageFileName = fileBaseName + std::string(".") + extension;
-            vtkDebugMacro("new file name = " << storageFileName.c_str());
-            storageNode->SetFileName(storageFileName.c_str());
-            this->GetMRMLScene()->AddNode(storageNode);
-            storableNode->SetAndObserveStorageNodeID(storageNode->GetID());
-            storageNode->Delete();
-            storageNode = storableNode->GetStorageNode();
-            }
-          else
-            {
-            vtkErrorMacro("cannot make a new storage node for storable node " << storableNode->GetID());
-            }
-          }
+        // this storable node has been deleted from the main scene: save it
+        storableNode->SetAddToScene(1);
+        storableNode->UpdateScene(this->GetMRMLScene());
+        this->SaveStorableNodeToSlicerDataBundleDirectory(storableNode, dataDir);
+        storableNodes[std::string(storableNode->GetID())] = storableNode;
+        storableNode->SetAddToScene(0);
+        }
+      else
+        {
+        // this storable node is still in the main scene, just save and update the path
+        vtkMRMLStorageNode* storageNodeInMainScene = vtkMRMLStorableNode::SafeDownCast(storableNodeIt->second)->GetStorageNode();
+        vtkMRMLStorageNode* storageNode = storableNode->GetStorageNode();
         if (storageNode)
           {
-          // save the old values
-          std::string fileName(storageNode->GetFileName());
-          origStorageNodeFileNames[storageNode] = fileName;
-
-          std::vector<std::string> pathComponents;
-          vtksys::SystemTools::SplitPath(fileName.c_str(), pathComponents);
-          pathComponents.pop_back();
-          origStorageNodeDirs[storageNode] = vtksys::SystemTools::JoinPath(pathComponents);
-
-          storageNode->SetDataDirectory(dataDir.c_str());
-          vtkDebugMacro("set data directory to "
-            << dataDir.c_str() << ", storable node " << storableNode->GetID()
-            << " file name is now: " << storageNode->GetFileName());
-          // deal with existing files
-          if (vtksys::SystemTools::FileExists(storageNode->GetFileName(), true))
+          // Save original file names
+          this->OriginalStorageNodeFileNames[storageNode].push_back(storageNode->GetFileName() ? storageNode->GetFileName() : "");
+          for (int i = 0; i < storageNode->GetNumberOfFileNames(); ++i)
             {
-            vtkWarningMacro("file " << storageNode->GetFileName() << " already exists, renaming!");
-            std::string baseName = vtksys::SystemTools::GetFilenameWithoutExtension(storageNode->GetFileName());
-            std::string ext = vtksys::SystemTools::GetFilenameExtension(storageNode->GetFileName());
-            bool uniqueName = false;
-            std::string uniqueFileName;
-            int v = 1;
-            while (!uniqueName)
-              {
-              std::stringstream ss;
-              ss << v;
-              uniqueFileName = baseName + ss.str() + ext;
-              if (vtksys::SystemTools::FileExists(uniqueFileName.c_str()) == 0)
-                {
-                uniqueName = true;
-                }
-              else
-                {
-                ++v;
-                }
-              }
-            vtkDebugMacro("found unique file name " << uniqueFileName.c_str());
-            storageNode->SetFileName(uniqueFileName.c_str());
+            this->OriginalStorageNodeFileNames[storageNode].push_back(storageNode->GetNthFileName(i) ? storageNode->GetNthFileName(i) : "");
             }
-          storageNode->WriteData(storableNode);
+          // Update file names (to match the file names in the main scene)
+          if (storageNodeInMainScene)
+            {
+            storageNode->SetFileName(storageNodeInMainScene->GetFileName());
+            storageNode->ResetFileNameList();
+            for (int i = 0; i < storageNodeInMainScene->GetNumberOfFileNames(); ++i)
+              {
+              storageNode->AddFileName(storageNodeInMainScene->GetNthFileName(i));
+              }
+            }
           }
         }
       }
-    }
-
-  //
-  // create a scene view, using the snapshot passed in if any
-  //
-  vtkMRMLSceneViewNode * newSceneViewNode = vtkMRMLSceneViewNode::New();
-  newSceneViewNode->SetScene(this->GetMRMLScene());
-  newSceneViewNode->SetName(this->GetMRMLScene()->GetUniqueNameByString("Slicer Data Bundle Scene View"));
-  newSceneViewNode->SetSceneViewDescription("Scene at MRML file save point");
-  // save the scene view
-  newSceneViewNode->StoreScene();
-  this->GetMRMLScene()->AddNode(newSceneViewNode);
-
-  vtkMRMLStorageNode *sceneViewStorageNode = 0;
-  if (screenShot)
-    {
-    // assumes has been passed a screen shot of the full layout
-    newSceneViewNode->SetScreenShotType(4);
-    newSceneViewNode->SetScreenShot(screenShot);
-    // create a storage node
-    vtkMRMLStorageNode *sceneViewStorageNode = newSceneViewNode->CreateDefaultStorageNode();
-    // set the file name from the node name, using a relative path, it will go
-    // at the same level as the  .mrml file
-    std::string sceneViewFileName = std::string(newSceneViewNode->GetName()) + std::string(".png");
-    sceneViewStorageNode->SetFileName(sceneViewFileName.c_str());
-    this->GetMRMLScene()->AddNode(sceneViewStorageNode);
-    newSceneViewNode->SetAndObserveStorageNodeID(sceneViewStorageNode->GetID());
-    // force a write
-    sceneViewStorageNode->WriteData(newSceneViewNode);
     }
 
   // write the scene to disk, changes paths to relative
@@ -659,20 +819,14 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
   // Now, restore the state of the scene
   //
 
-  // clean up scene views
-  this->GetMRMLScene()->RemoveNode(newSceneViewNode);
-  newSceneViewNode->Delete();
-  if (sceneViewStorageNode)
-    {
-    this->GetMRMLScene()->RemoveNode(sceneViewStorageNode);
-    sceneViewStorageNode->Delete();
-    }
+  this->GetMRMLScene()->SetURL(origURL.c_str());
+  this->GetMRMLScene()->SetRootDirectory(origRootDirectory.c_str());
 
   // reset the storage paths
   numNodes = this->GetMRMLScene()->GetNumberOfNodes();
   for (int i = 0; i < numNodes; ++i)
     {
-    vtkMRMLNode *mrmlNode = this->GetMRMLScene()->GetNthNode(i);
+    vtkMRMLNode* mrmlNode = this->GetMRMLScene()->GetNthNode(i);
     if (!mrmlNode)
       {
       vtkErrorMacro("unable to get " << i << "th node from scene with " << numNodes << " nodes");
@@ -680,20 +834,58 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
       }
     if (mrmlNode->IsA("vtkMRMLSceneViewNode"))
       {
-      vtkMRMLSceneViewNode *sceneViewNode = vtkMRMLSceneViewNode::SafeDownCast(mrmlNode);
+      vtkMRMLSceneViewNode* sceneViewNode = vtkMRMLSceneViewNode::SafeDownCast(mrmlNode);
+      sceneViewNode->GetScene()->SetURL(origURL.c_str());
       sceneViewNode->SetSceneViewRootDir(origRootDirectory.c_str());
+
+      // get all additional storable nodes for all scene views
+      std::vector<vtkMRMLNode *> snodes;
+      sceneViewNode->GetNodesByClass("vtkMRMLStorableNode", snodes);
+      std::vector<vtkMRMLNode *>::iterator sit;
+      for (sit = snodes.begin(); sit != snodes.end(); sit++)
+        {
+        vtkMRMLStorableNode* storableNode = vtkMRMLStorableNode::SafeDownCast(*sit);
+        vtkMRMLStorageNode* storageNode = storableNode->GetStorageNode();
+
+        if (storageNode && this->OriginalStorageNodeFileNames.find( storageNode ) != this->OriginalStorageNodeFileNames.end() )
+          {
+          storageNode->ResetFileNameList();
+          std::vector< std::string > &originalFileNames = this->OriginalStorageNodeFileNames[storageNode];
+          for (size_t index = 0; index < originalFileNames.size(); index++)
+            {
+            if (index == 0)
+              {
+              storageNode->SetFileName(originalFileNames[index].c_str());
+              }
+            else
+              {
+              storageNode->AddFileName(originalFileNames[index].c_str());
+              }
+            }
+          }
+        }
       }
     if (mrmlNode->IsA("vtkMRMLStorableNode"))
       {
-      vtkMRMLStorableNode *storableNode = vtkMRMLStorableNode::SafeDownCast(mrmlNode);
-      vtkMRMLStorageNode *storageNode = storableNode->GetStorageNode();
-      if (storageNode && origStorageNodeFileNames.find( storageNode ) != origStorageNodeFileNames.end() )
+      vtkMRMLStorableNode* storableNode = vtkMRMLStorableNode::SafeDownCast(mrmlNode);
+      vtkMRMLStorageNode* storageNode = storableNode->GetStorageNode();
+      if (storageNode && this->OriginalStorageNodeFileNames.find( storageNode ) != this->OriginalStorageNodeFileNames.end() )
         {
-        storageNode->SetFileName(origStorageNodeFileNames[storageNode].c_str());
-        }
-      if (storageNode && origStorageNodeDirs.find( storageNode ) != origStorageNodeDirs.end() )
-        {
-        storageNode->SetDataDirectory(origStorageNodeDirs[storageNode].c_str());
+        // std::cout << "Resetting filename on storage node " << storageNode->GetID() << " from " << storageNode->GetFileName() << " back to " << this->OriginalStorageNodeFileNames[storageNode][0].c_str() << "\n\tmodified since read = " << storableNode->GetModifiedSinceRead() << std::endl;
+
+        storageNode->ResetFileNameList();
+        std::vector< std::string > &originalFileNames = this->OriginalStorageNodeFileNames[storageNode];
+        for (size_t index = 0; index < originalFileNames.size(); index++)
+          {
+          if (index == 0)
+            {
+            storageNode->SetFileName(originalFileNames[index].c_str());
+            }
+          else
+            {
+            storageNode->AddFileName(originalFileNames[index].c_str());
+            }
+          }
         }
       }
     }
@@ -705,7 +897,149 @@ bool vtkMRMLApplicationLogic::SaveSceneToSlicerDataBundleDirectory(const char *s
 }
 
 //----------------------------------------------------------------------------
-int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene *scene,
+void vtkMRMLApplicationLogic::SaveStorableNodeToSlicerDataBundleDirectory(vtkMRMLStorableNode* storableNode,
+                                                                          std::string &dataDir)
+{
+  if (!storableNode || !storableNode->GetSaveWithScene())
+    {
+    return;
+    }
+  // adjust the file paths for storable nodes
+  vtkMRMLStorageNode* storageNode = storableNode->GetStorageNode();
+  if (!storageNode)
+    {
+    vtkDebugMacro("creating a new storage node for " << storableNode->GetID());
+    storableNode->AddDefaultStorageNode();
+    storageNode = storableNode->GetStorageNode();
+    if (!storageNode)
+      {
+      // no need for storage node to store this node
+      return;
+      }
+    }
+
+  // Save the original storage filenames (absolute paths) into this->OriginalStorageNodeFileNames
+  std::string fileName(storageNode->GetFileName()?storageNode->GetFileName():"");
+  this->OriginalStorageNodeFileNames[storageNode].push_back(fileName);
+  for (int i = 0; i < storageNode->GetNumberOfFileNames(); ++i)
+    {
+    this->OriginalStorageNodeFileNames[storageNode].push_back(storageNode->GetNthFileName(i) ? storageNode->GetNthFileName(i) : "");
+    }
+
+  // Clear out the additional file list since it's assumed that the default write format needs only a single file
+  // (if more files are needed then storage node must generate appropriate additional file names based on the primary file name).
+  storageNode->ResetFileNameList();
+
+  // Update primary file name (set name from node name if empty, encode special characters, use default file extension)
+  if (fileName.empty())
+    {
+    // Default storage node usually has empty file name (if Save dialog is not opened yet)
+    // file name is encoded to handle : or / characters in the node names
+    std::string fileBaseName = this->PercentEncode(std::string(storableNode->GetName()));
+    std::string extension = storageNode->GetDefaultWriteFileExtension();
+    std::string storageFileName = fileBaseName + std::string(".") + extension;
+    vtkDebugMacro("new file name = " << storageFileName.c_str());
+    storageNode->SetFileName(storageFileName.c_str());
+    }
+  else
+    {
+    // new file name is encoded to handle : or / characters in the node names
+    std::string storageFileName = this->PercentEncode(vtksys::SystemTools::GetFilenameName(fileName));
+    std::string defaultWriteExtension = std::string(".") + vtksys::SystemTools::LowerCase(storageNode->GetDefaultWriteFileExtension());
+    std::string currentExtension = storageNode->GetSupportedFileExtension(storageFileName.c_str());
+    if (defaultWriteExtension != currentExtension)
+      {
+      // for saving to MRB all nodes will be written in their default format
+      storageFileName = storageNode->GetFileNameWithoutExtension(storageFileName.c_str()) + defaultWriteExtension;
+      }
+    vtkDebugMacro("updated file name = " << storageFileName.c_str());
+    storageNode->SetFileName(storageFileName.c_str());
+    }
+
+  storageNode->SetDataDirectory(dataDir.c_str());
+  vtkDebugMacro("Set data directory to " << dataDir.c_str() << ". Storable node " << storableNode->GetID()
+    << " file name is now: " << storageNode->GetFileName());
+
+  // Make sure the filename is unique (default filenames may be the same if for example there are multiple
+  // nodes with the same name).
+  std::string existingFileName = (storageNode->GetFileName() ? storageNode->GetFileName() : "");
+  if (vtksys::SystemTools::FileExists(existingFileName, true))
+    {
+    std::string currentExtension = storageNode->GetSupportedFileExtension(existingFileName.c_str());
+    std::string uniqueFileName = this->CreateUniqueFileName(existingFileName, currentExtension);
+    vtkDebugMacro("file " << existingFileName << " already exists, use " << uniqueFileName << " filename instead");
+    storageNode->SetFileName(uniqueFileName.c_str());
+    }
+
+  storageNode->WriteData(storableNode);
+ }
+
+//----------------------------------------------------------------------------
+std::string vtkMRMLApplicationLogic::CreateUniqueFileName(const std::string &filename, const std::string& knownExtension)
+{
+  if (!vtksys::SystemTools::FileExists(filename.c_str()))
+    {
+    // filename is unique already
+    return filename;
+    }
+
+  std::string extension = knownExtension;
+  if (extension.empty())
+    {
+    // if there is no information about the file extension then we
+    // assume it is the last extension
+    extension = vtksys::SystemTools::GetFilenameLastExtension(filename);
+    }
+
+  std::string baseName = filename.substr(0, filename.size()-extension.size());
+
+  // If there is a numeric suffix, separated by underscore (somefile_23)
+  // then use the string before the separator (somefile) as basename and increment the suffix value.
+  int suffix = 0;
+
+  std::size_t filenameStartPosition1 = baseName.find_last_of("/");
+  std::size_t filenameStartPosition2 = baseName.find_last_of("\\");
+  std::size_t filenameStartPosition = 0;
+  if (filenameStartPosition1 != std::string::npos && filenameStartPosition < filenameStartPosition1)
+    {
+    filenameStartPosition = filenameStartPosition1;
+    }
+  if (filenameStartPosition2 != std::string::npos && filenameStartPosition < filenameStartPosition2)
+    {
+    filenameStartPosition = filenameStartPosition2;
+    }
+
+  std::size_t separatorPosition = baseName.find_last_of("_");
+  if (separatorPosition != std::string::npos && separatorPosition > filenameStartPosition)
+    {
+    std::string suffixStr = baseName.substr(separatorPosition + 1, baseName.size() - separatorPosition - 1);
+    std::stringstream ss(suffixStr);
+    if (!(ss >> suffix).fail())
+      {
+      // numeric suffix found successfully
+      // remove the suffix from the base name
+      baseName = baseName.substr(0, separatorPosition);
+      }
+    }
+
+  std::string uniqueFilename;
+  while (true)
+    {
+    ++suffix;
+    std::stringstream ss;
+    ss << baseName << "_" << suffix << extension;
+    uniqueFilename = ss.str();
+    if (!vtksys::SystemTools::FileExists(uniqueFilename))
+      {
+      // found unique filename
+      break;
+      }
+    }
+  return uniqueFilename;
+}
+
+//----------------------------------------------------------------------------
+int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene* scene,
                                                       const std::vector<std::string>& directories)
 {
 
@@ -718,7 +1052,7 @@ int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene *scene,
 //   UserParameterSetsPath to the object and some window
 //
 //   // add the list of dirs set from the application
-//   if (this->UserColorFilePaths != NULL)
+//   if (this->UserColorFilePaths != nullptr)
 //     {
 //     vtkDebugMacro("\nFindColorFiles: got user color file paths = " << this->UserColorFilePaths);
 //     // parse out the list, breaking at delimiter strings
@@ -728,12 +1062,12 @@ int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene *scene,
 //     const char *delim = ":";
 // #endif
 //     char *ptr = strtok(this->UserColorFilePaths, delim);
-//     while (ptr != NULL)
+//     while (ptr != nullptr)
 //       {
 //       std::string dir = std::string(ptr);
 //       vtkDebugMacro("\nFindColorFiles: Adding user dir " << dir.c_str() << " to the directories to check");
 //       DirectoriesToCheck.push_back(dir);
-//       ptr = strtok(NULL, delim);
+//       ptr = strtok(nullptr, delim);
 //       }
 //     } else { vtkDebugMacro("\nFindColorFiles: oops, the user color file paths aren't set!"); }
 
@@ -765,15 +1099,15 @@ int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene *scene,
         // file type using the full path
         filesVector.push_back(std::string(findData.cFileName));
 #else
-    DIR *dp;
-    struct dirent *dirp;
-    if ((dp  = opendir(dirString.c_str())) == NULL)
+    DIR* dp;
+    struct dirent* dirp;
+    if ((dp  = opendir(dirString.c_str())) == nullptr)
       {
       vtkGenericWarningMacro("Error(" << errno << ") opening " << dirString.c_str());
       }
     else
       {
-      while ((dirp = readdir(dp)) != NULL)
+      while ((dirp = readdir(dp)) != nullptr)
         {
         // add this file to the vector holding the base dir name
         filesVector.push_back(std::string(dirp->d_name));
@@ -824,4 +1158,94 @@ int vtkMRMLApplicationLogic::LoadDefaultParameterSets(vtkMRMLScene *scene,
   scene->SetRootDirectory(rootdir.c_str());
 
   return static_cast<int>(filesToLoad.size());
+}
+
+//----------------------------------------------------------------------------
+vtkMRMLApplicationLogic
+::InvokeRequest::InvokeRequest()
+  : Delay (100)
+  , Caller(nullptr)
+  , EventID(vtkCommand::ModifiedEvent)
+  , CallData(nullptr)
+{
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic
+::InvokeEventWithDelay(unsigned int delayInMs, vtkObject* caller, unsigned long eventID,
+              void* callData)
+{
+  InvokeRequest request;
+  request.Delay = delayInMs;
+  request.Caller = caller;
+  request.EventID = eventID;
+  request.CallData = callData;
+  this->InvokeEvent(vtkMRMLApplicationLogic::RequestInvokeEvent, &request);
+}
+
+//----------------------------------------------------------------------------
+const char* vtkMRMLApplicationLogic::GetTemporaryPath()
+{
+  return this->Internal->TemporaryPath.c_str();
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::SetTemporaryPath(const char* path)
+{
+    if (path == nullptr)
+      {
+      this->Internal->TemporaryPath.clear();
+      }
+    else if (this->Internal->TemporaryPath == std::string(path))
+      {
+      return;
+      }
+    else
+      {
+      this->Internal->TemporaryPath = std::string(path);
+      }
+    this->Modified();
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::SaveSceneScreenshot(vtkImageData* screenshot)
+{
+  if (this->GetMRMLScene() == nullptr || this->GetMRMLScene()->GetURL() == nullptr)
+  {
+    vtkErrorMacro("vtkMRMLApplicationLogic::SaveSceneScreenshot failed: invalid scene or URL");
+    return;
+  }
+  std::string screenshotFilePath = this->GetMRMLScene()->GetURL();
+
+  // Write screenshot with the same name and folder as the mrml file but with .png extension
+
+  // Strip file extension (.mrml)
+  std::string::size_type dot_pos = screenshotFilePath.rfind('.');
+  if (dot_pos != std::string::npos)
+    {
+    screenshotFilePath = screenshotFilePath.substr(0, dot_pos);
+    }
+
+  screenshotFilePath += std::string(".png");
+
+  vtkNew<vtkPNGWriter> screenShotWriter;
+  screenShotWriter->SetInputData(screenshot);
+  screenShotWriter->SetFileName(screenshotFilePath.c_str());
+  screenShotWriter->Write();
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::PauseRender()
+{
+  // Observers in qSlicerCoreApplication listen for PauseRenderEvent and call pauseRender
+  // to temporarily stop rendering in all views in the current layout
+  this->InvokeEvent(PauseRenderEvent);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLApplicationLogic::ResumeRender()
+{
+  // Observers in qSlicerCoreApplication listen for ResumeRenderEvent and call resumeRender
+  // to resume rendering in all views in the current layout
+  this->InvokeEvent(ResumeRenderEvent);
 }

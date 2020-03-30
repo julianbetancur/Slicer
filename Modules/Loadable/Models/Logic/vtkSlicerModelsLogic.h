@@ -19,90 +19,91 @@
 #include "vtkSlicerModuleLogic.h"
 #include "vtkSlicerModelsModuleLogicExport.h"
 
+// MRML includes
+#include "vtkMRMLStorageNode.h"
+
+// VTK includes
+#include <vtkVersion.h>
+
 class vtkMRMLModelNode;
 class vtkMRMLStorageNode;
 class vtkMRMLTransformNode;
+class vtkAlgorithmOutput;
 class vtkPolyData;
 
 class VTK_SLICER_MODELS_MODULE_LOGIC_EXPORT vtkSlicerModelsLogic
   : public vtkSlicerModuleLogic
 {
   public:
-  
+
   /// The Usual vtk class functions
   static vtkSlicerModelsLogic *New();
-  vtkTypeRevisionMacro(vtkSlicerModelsLogic, vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkSlicerModelsLogic, vtkSlicerModuleLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  ///
   /// The color logic is used to retrieve the default color node ID for
   /// model nodes.
   virtual void SetColorLogic(vtkMRMLColorLogic* colorLogic);
   vtkGetObjectMacro(ColorLogic, vtkMRMLColorLogic);
 
-  /// 
-  /// The currently active mrml volume node 
-  vtkGetObjectMacro (ActiveModelNode, vtkMRMLModelNode);
-  void SetActiveModelNode (vtkMRMLModelNode *ActiveModelNode);
-
-  ///
   /// Add into the scene a new mrml model node with an existing polydata
   /// A display node is also added into the scene.
-  /// \tbd Add a storage node ?
-  vtkMRMLModelNode* AddModel(vtkPolyData* polyData = 0);
+  ///param polyData surface mesh in RAS coordinate system.
+  vtkMRMLModelNode* AddModel(vtkPolyData* polyData = nullptr);
 
-  /// 
+  /// Add into the scene a new mrml model node with an existing polydata
+  /// A display node is also added into the scene.
+  ///param polyData surface mesh algorithm output in RAS coordinate system.
+  vtkMRMLModelNode* AddModel(vtkAlgorithmOutput* polyData = nullptr);
+
   /// Add into the scene a new mrml model node and
   /// read it's polydata from a specified file
   /// A display node and a storage node are also added into the scene
-  vtkMRMLModelNode* AddModel (const char* filename);
+  /// \param coordinateSystem If coordinate system is not specified
+  ///   in the file then this coordinate system is used. Default is LPS.
+  vtkMRMLModelNode* AddModel(const char* filename, int coordinateSystem = vtkMRMLStorageNode::CoordinateSystemLPS);
 
-  /// 
   /// Create model nodes and
   /// read their polydata from a specified directory
-  int AddModels (const char* dirname, const char* suffix );
+  /// \param coordinateSystem If coordinate system is not specified
+  ///   in the file then this coordinate system is used. Default is LPS.
+  int AddModels(const char* dirname, const char* suffix, int coordinateSystem = vtkMRMLStorageNode::CoordinateSystemLPS);
 
-  /// 
   /// Write model's polydata  to a specified file
-  int SaveModel (const char* filename, vtkMRMLModelNode *modelNode);
+  /// \param coordinateSystem If coordinate system is not specified
+  ///   in the file then this coordinate system is used. Default is -1, which means that
+  ///   the coordinate system specified in the storage node will be used.
+  int SaveModel(const char* filename, vtkMRMLModelNode *modelNode, int coordinateSystem = vtkMRMLStorageNode::CoordinateSystemLPS);
 
-  /// 
   /// Read in a scalar overlay and add it to the model node
-  vtkMRMLStorageNode* AddScalar(const char* filename, vtkMRMLModelNode *modelNode);
+  /// \return True on success
+  bool AddScalar(const char* filename, vtkMRMLModelNode *modelNode);
 
-  /// Transfor models's polydata
-  static void TransformModel(vtkMRMLTransformNode *tnode, 
-                              vtkMRMLModelNode *modelNode, 
+  /// Transform models's polydata
+  static void TransformModel(vtkMRMLTransformNode *tnode,
+                              vtkMRMLModelNode *modelNode,
                               int transformNormals,
                               vtkMRMLModelNode *modelOut);
 
+  /// Iterate through all models in the scene, find all their display nodes
+  /// and set their visibility flag to flag. Does not touch model hierarchy
+  /// nodes with display nodes
+  void SetAllModelsVisibility(int flag);
+
 protected:
   vtkSlicerModelsLogic();
-  ~vtkSlicerModelsLogic();
+  ~vtkSlicerModelsLogic() override;
   vtkSlicerModelsLogic(const vtkSlicerModelsLogic&);
   void operator=(const vtkSlicerModelsLogic&);
 
-  /// Reimplemented to:
-  ///  - make sure the singleton vtkMRMLClipModelsNode is instantiated
-  ///  - observe the scene
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
+  /// Reimplemented to observe the NodeRemovedEvent scene event.
+  void SetMRMLSceneInternal(vtkMRMLScene* newScene) override;
 
-  /// Reimplemented to delete the storage/display nodes when a displayable
-  /// node is being removed.
-  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* removedNode);
+  /// Reimplemented to make sure the singleton vtkMRMLClipModelsNode is
+  /// instantiated.
+  void ObserveMRMLScene() override;
 
-  ///
-  /// This property controls whether the removal from the scene of a model node
-  /// automatically removes its display and storage nodes or not.
-  /// This automatic behavior (true by default) is used to prevent the user
-  /// from seeing a model (display node) in a 3D view after a model node
-  /// has been deleted/removed (delete from a tree view qt widget).
-  /// If the nodes were not removed/deleted, the display and storage nodes
-  /// would be zombie nodes in the scene with no one pointing on them.
-  bool AutoRemoveDisplayAndStorageNodes;
-
-  //
-  vtkMRMLModelNode *ActiveModelNode;
+  void OnMRMLSceneEndImport() override;
 
   /// Color logic
   vtkMRMLColorLogic* ColorLogic;

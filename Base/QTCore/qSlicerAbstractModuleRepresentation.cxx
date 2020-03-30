@@ -10,6 +10,9 @@
 
 =========================================================================auto=*/
 
+// Qt includes
+#include <QDebug>
+
 // SlicerQt includes
 #include "qSlicerAbstractCoreModule.h"
 #include "qSlicerAbstractModuleRepresentation.h"
@@ -33,7 +36,7 @@ public:
 qSlicerAbstractModuleRepresentationPrivate
 ::qSlicerAbstractModuleRepresentationPrivate()
 {
-  this->Module = 0;
+  this->Module = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -48,7 +51,7 @@ qSlicerAbstractModuleRepresentation::~qSlicerAbstractModuleRepresentation()
   Q_D(qSlicerAbstractModuleRepresentation);
   if (d->Module)
     {
-    d->Module->representationDeleted();
+    d->Module->representationDeleted(this);
     }
 }
 
@@ -78,6 +81,29 @@ void qSlicerAbstractModuleRepresentation::setModule(qSlicerAbstractCoreModule* m
 {
   Q_D(qSlicerAbstractModuleRepresentation);
   d->Module = module;
-  d->Logic = module ? module->logic() : 0;
+  d->Logic = module ? module->logic() : nullptr;
   this->setup();
+}
+
+//-----------------------------------------------------------
+bool qSlicerAbstractModuleRepresentation::setEditedNode(vtkMRMLNode* node,
+                                                        QString role /* = QString()*/,
+                                                        QString context /* = QString() */)
+{
+  Q_UNUSED(node);
+  Q_UNUSED(role);
+  Q_UNUSED(context);
+  qWarning() << Q_FUNC_INFO << " failed: method is not implemented in " << this->moduleName();
+  return false;
+}
+
+//-----------------------------------------------------------
+double qSlicerAbstractModuleRepresentation::nodeEditable(vtkMRMLNode* node)
+{
+  Q_UNUSED(node);
+  // It is assumed that only associated nodes will be tried to be edited,
+  // so most of the time using the recommended neutral confidence value is
+  // reasonable. If a module is more or less confident than default
+  // then that module has to override this method.
+  return 0.5;
 }

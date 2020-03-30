@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
- Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+ Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
  All Rights Reserved.
 
  See COPYRIGHT.txt
@@ -23,6 +23,8 @@ class ModuleParameter;
 
 // MRML include
 #include "vtkMRMLScene.h"
+class vtkMRMLModelHierarchyNode;
+class MRMLIDMap;
 
 // STL includes
 #include <string>
@@ -35,24 +37,32 @@ typedef enum { CommandLineModule, SharedObjectModule, PythonModule } CommandLine
 ///
 /// vtkSlicerCLIModuleLogic logic allows to run a either synchronously or asynchronously CLI
 /// using parameters of a \a vtkMRMLCommandLineModuleNode.
+/// While a CLI module logic can run any CLI node, the logic can uniquely be
+/// assigned a specific CLI by setting a DefaultModuleDescription.
 class Q_SLICER_BASE_QTCLI_EXPORT vtkSlicerCLIModuleLogic :
   public vtkSlicerModuleLogic
 {
 public:
   static vtkSlicerCLIModuleLogic *New();
   vtkTypeMacro(vtkSlicerCLIModuleLogic,vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
+  /// The default module description is used when creating new nodes.
+  /// \sa CreateNode()
   void SetDefaultModuleDescription(const ModuleDescription& moduleDescription);
   const ModuleDescription& GetDefaultModuleDescription()const;
 
   /// Instantiate a default command line module node.
+  /// If a default module description has been given, the node is initialized
+  /// with the description.
   /// Warning: The caller is responsible for deleting it.
+  /// \sa CreateNodeInScene(), SetDefaultModuleDescription()
   vtkMRMLCommandLineModuleNode* CreateNode();
 
   /// Instantiate a default command line module node and add it into the
   /// scene.
   /// The caller is responsible for remove the node from the scene.
+  /// \sa CreateNode(), SetDefaultModuleDescription()
   vtkMRMLCommandLineModuleNode* CreateNodeInScene();
 
   // TODO: do we need to observe MRML here?
@@ -65,6 +75,10 @@ public:
   virtual void DeleteTemporaryFilesOff();
   void SetDeleteTemporaryFiles(int value);
   int GetDeleteTemporaryFiles() const;
+
+  // Control use of in-memory data transfer by this specific CLI.
+  void SetAllowInMemoryTransfer(int value);
+  int GetAllowInMemoryTransfer() const;
 
   /// For debugging, control redirection of cout and cerr
   virtual void RedirectModuleStreamsOn();
@@ -88,14 +102,27 @@ public:
   /// in the node selectors.
   void ApplyAndWait ( vtkMRMLCommandLineModuleNode* node, bool updateDisplay = true);
 
-  /// Set/Get the directory to use for temporary files
-  void SetTemporaryDirectory(const char *tempdir);
+  void KillProcesses();
 
 //   void LazyEvaluateModuleTarget(ModuleDescription& moduleDescriptionObject);
-//   void LazyEvaluateModuleTarget(vtkMRMLCommandLineModuleNode* node) 
+//   void LazyEvaluateModuleTarget(vtkMRMLCommandLineModuleNode* node)
 //     { this->LazyEvaluateModuleTarget(node->GetModuleDescription()); }
 
+  /// Set the application logic
+  void SetMRMLApplicationLogic(vtkMRMLApplicationLogic* logic) override;
+
 protected:
+  /// Reimplemented to observe NodeAddedEvent.
+  void SetMRMLSceneInternal(vtkMRMLScene * newScene) override;
+  /// Reimplemented for AutoRun mode.
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  /// Reimplemented to observe CLI node.
+  void ProcessMRMLNodesEvents(vtkObject *caller, unsigned long event,
+                                      void *callData) override;
+  /// Reimplemented to observe vtkSlicerApplicationLogic.
+  void ProcessMRMLLogicsEvents(vtkObject*, long unsigned int, void*) override;
+
+
   std::string ConstructTemporaryFileName(const std::string& tag,
                                          const std::string& type,
                                          const std::string& name,
@@ -116,11 +143,24 @@ protected:
   bool IsCommandLineModuleNodeUpdatingDisplay(
     vtkMRMLCommandLineModuleNode* commandLineModuleNode)const;
 
+  /// Call apply because the node requests it.
+  void AutoRun(vtkMRMLCommandLineModuleNode* cliNode);
+
+    /// List of custom events fired by the class.
+  enum Events{
+    RequestHierarchyEditEvent = vtkCommand::UserEvent + 1
+  };
+
+  // Add a model hierarchy node and all its descendents to a scene (miniscene to sent to a CLI).
+  // The mapping of ids from the original scene to the mini scene is put in (added to) sceneToMiniSceneMap.
+  // Any files that will be created by writing out the miniscene are added to filesToDelete (i.e. models)
+  void AddCompleteModelHierarchyToMiniScene(vtkMRMLScene*, vtkMRMLModelHierarchyNode*, MRMLIDMap* sceneToMiniSceneMap, std::set<std::string> &filesToDelete);
+
 private:
   vtkSlicerCLIModuleLogic();
-  virtual ~vtkSlicerCLIModuleLogic();
-  vtkSlicerCLIModuleLogic(const vtkSlicerCLIModuleLogic&);
-  void operator=(const vtkSlicerCLIModuleLogic&);
+  ~vtkSlicerCLIModuleLogic() override;
+  vtkSlicerCLIModuleLogic(const vtkSlicerCLIModuleLogic&) = delete;
+  void operator=(const vtkSlicerCLIModuleLogic&) = delete;
 
   class vtkInternal;
   vtkInternal * Internal;

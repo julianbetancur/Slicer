@@ -22,6 +22,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QRegExp>
 #include <QStringList>
 
 // SlicerQt includes
@@ -50,11 +51,34 @@ bool qSlicerUtils::isExecutableName(const QString& name)
 //------------------------------------------------------------------------------
 bool qSlicerUtils::isCLIExecutable(const QString& filePath)
 {
+  if (isCLIScriptedExecutable(filePath))
+    {
+    return true;
+    }
+
 #ifdef _WIN32
-  return filePath.endsWith(".exe", Qt::CaseInsensitive);
+  return ( filePath.endsWith(".exe", Qt::CaseInsensitive) ||
+           filePath.endsWith(".bat", Qt::CaseInsensitive) );
 #else
   return !QFileInfo(filePath).fileName().contains('.');
 #endif
+}
+
+//------------------------------------------------------------------------------
+bool qSlicerUtils::isCLIScriptedExecutable(const QString& filePath)
+{
+  // check if .py file starts with `#!` magic
+  //   note: uses QTextStream to avoid issues with BOM.
+  QFile scriptFile(filePath);
+  QTextStream scriptStream(&scriptFile);
+
+  if ( (filePath.endsWith(".py", Qt::CaseInsensitive)) &&
+       (scriptFile.open(QIODevice::ReadOnly))          &&
+       (scriptStream.readLine(2).startsWith("#!")) )
+    {
+    return true;
+    }
+  return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -131,7 +155,7 @@ QString qSlicerUtils::extractModuleNameFromLibraryName(const QString& libraryNam
 
   // Remove suffix 'Lib' if needed
   index = moduleName.lastIndexOf("Lib");
-  if (index == (moduleName.size() - 3))
+  if (index != -1 && index == (moduleName.size() - 3))
     {
     moduleName.remove(index, 3);
     }
@@ -164,6 +188,12 @@ QString qSlicerUtils::extractModuleNameFromClassName(const QString& className)
 bool qSlicerUtils::isPluginInstalled(const QString& filePath, const QString& applicationHomeDir)
 {
   return vtkSlicerApplicationLogic::IsPluginInstalled(filePath.toStdString(), applicationHomeDir.toStdString());
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerUtils::isPluginBuiltIn(const QString& filePath, const QString& applicationHomeDir)
+{
+  return vtkSlicerApplicationLogic::IsPluginBuiltIn(filePath.toStdString(), applicationHomeDir.toStdString());
 }
 
 //-----------------------------------------------------------------------------
@@ -219,20 +249,40 @@ bool qSlicerUtils::setPermissionsRecursively(const QString &path,
     {
     if (info.isDir())
       {
-      if (!QFile::setPermissions(info.filePath(), directoryPermissions))
+      if (directoryPermissions & QFile::ExeOwner
+             || directoryPermissions & QFile::ExeGroup
+             || directoryPermissions & QFile::ExeOther)
         {
-        return false;
+        // If executable bit is on /a/b/c/d, we should start with a, b, c, then d
+        if (!QFile::setPermissions(info.filePath(), directoryPermissions))
+          {
+          qCritical() << "qSlicerUtils::setPermissionsRecursively: Failed to set permissions on directory" << info.filePath();
+          return false;
+          }
+        if (!qSlicerUtils::setPermissionsRecursively(info.filePath(), directoryPermissions, filePermissions))
+          {
+          return false;
+          }
         }
-      if (!qSlicerUtils::setPermissionsRecursively(info.filePath(), directoryPermissions, filePermissions))
+      else
         {
-        qCritical() << "qSlicerUtils::setPermissionsRecursively: Failed to set permissions on file" << info.filePath();
-        return false;
+        // .. otherwise we should start with d, c, b, then a
+        if (!qSlicerUtils::setPermissionsRecursively(info.filePath(), directoryPermissions, filePermissions))
+          {
+          return false;
+          }
+        if (!QFile::setPermissions(info.filePath(), directoryPermissions))
+          {
+          qCritical() << "qSlicerUtils::setPermissionsRecursively: Failed to set permissions on directory" << info.filePath();
+          return false;
+          }
         }
       }
     else if (info.isFile())
       {
       if (!QFile::setPermissions(info.filePath(), filePermissions))
         {
+        qCritical() << "qSlicerUtils::setPermissionsRecursively: Failed to set permissions on file" << info.filePath();
         return false;
         }
       }
@@ -242,4 +292,23 @@ bool qSlicerUtils::setPermissionsRecursively(const QString &path,
       }
     }
   return true;
+}
+
+//-----------------------------------------------------------------------------
+QString qSlicerUtils::replaceWikiUrlVersion(const QString& text, const QString& version)
+{
+  QString updatedText = text;
+  QRegExp rx("http[s]?\\:\\/\\/[a-zA-Z0-9\\-\\._\\?\\,\\'\\/\\\\\\+&amp;%\\$#\\=~]*");
+  int pos = 0;
+  while ((pos = rx.indexIn(updatedText, pos)) != -1)
+    {
+    // Given an URL matching the regular expression reported above, this second
+    // expression will replace the first occurrence of "Documentation/<StringWithLetterOrNumberOrDot>/"
+    // with "Documentation/<version>/"
+    QString updatedURL = rx.cap(0).replace(QRegExp("Documentation\\/[a-zA-Z0-9\\.]+"), "Documentation/" +version);
+    updatedText.replace(pos, rx.matchedLength(), updatedURL);
+    pos += updatedURL.length();
+    }
+
+  return updatedText;
 }

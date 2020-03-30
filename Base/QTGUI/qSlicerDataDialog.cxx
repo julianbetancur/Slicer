@@ -21,13 +21,19 @@
 /// Qt includes
 #include <QDebug>
 #include <QComboBox>
-#include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFileDialog>
+#include <QMimeData>
+#include <QMessageBox>
+#include <QTemporaryDir>
 
 /// CTK includes
 #include <ctkCheckableHeaderView.h>
 #include <ctkCheckableModelHelper.h>
+
+/// Slicer includes
+#include "vtkArchive.h"
+#include "vtkMRMLApplicationLogic.h"
 
 /// SlicerQt includes
 #include "qSlicerApplication.h"
@@ -53,8 +59,8 @@ qSlicerDataDialogPrivate::qSlicerDataDialogPrivate(QWidget* _parent)
   ctkCheckableHeaderView* headerView = new ctkCheckableHeaderView(
     Qt::Horizontal, this->FileWidget);
   // Copy the previous behavior of the header into the new checkable header view
-  headerView->setClickable(previousHeaderView->isClickable());
-  headerView->setMovable(previousHeaderView->isMovable());
+  headerView->setSectionsClickable(previousHeaderView->sectionsClickable());
+  headerView->setSectionsMovable(previousHeaderView->sectionsMovable());
   headerView->setHighlightSections(previousHeaderView->highlightSections());
   headerView->setStretchLastSection(previousHeaderView->stretchLastSection());
   // Propagate to top-level items only (depth = 1),no need to go deeper
@@ -64,9 +70,9 @@ qSlicerDataDialogPrivate::qSlicerDataDialogPrivate(QWidget* _parent)
   this->FileWidget->setHorizontalHeader(headerView);
 
   headerView->setStretchLastSection(false);
-  headerView->setResizeMode(FileColumn, QHeaderView::Stretch);
-  headerView->setResizeMode(TypeColumn, QHeaderView::ResizeToContents);
-  headerView->setResizeMode(OptionsColumn, QHeaderView::ResizeToContents);
+  headerView->setSectionResizeMode(FileColumn, QHeaderView::Stretch);
+  headerView->setSectionResizeMode(TypeColumn, QHeaderView::ResizeToContents);
+  headerView->setSectionResizeMode(OptionsColumn, QHeaderView::ResizeToContents);
 
   this->FileWidget->sortItems(-1, Qt::AscendingOrder);
 
@@ -85,12 +91,31 @@ qSlicerDataDialogPrivate::qSlicerDataDialogPrivate(QWidget* _parent)
 
   // Authorize Drops action from outside
   this->setAcceptDrops(true);
+
+  // Set up button focus default action:
+  // * Space bar: clicks the button where the focus is on (e.g., if a user added data from
+  //   file and wants to add another data from file then he should press space bar)
+  // * Enter key: loads the selected data (unless cancel button has the focus, that case
+  //   enter key cancels loading). It is important that after add data button was clicked
+  //   and add data button has the focus enter key still loads selected data instead of
+  //   opening the add data window. This allows the user to load data then just hit Enter
+  //   key to load data.
+
+  // All buttons have strong focus, so after clicking/tabbing on them hitting space bar
+  // clicks them. However, we need to prevent all push-buttons (other than OK and Cancel)
+  // to become default buttons.
+  // Default button is the one that is clicked when user hits Enter key.
+  resetButton->setAutoDefault(false);
+  resetButton->setDefault(false);
+  this->AddDirectoryButton->setDefault(false);
+  this->AddDirectoryButton->setAutoDefault(false);
+  this->AddFilesButton->setDefault(false);
+  this->AddFilesButton->setAutoDefault(false);
 }
 
 //-----------------------------------------------------------------------------
 qSlicerDataDialogPrivate::~qSlicerDataDialogPrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerDataDialogPrivate::addDirectory()
@@ -126,7 +151,43 @@ void qSlicerDataDialogPrivate::addDirectory(const QDir& directory)
   bool recursive = true;
   QDir::Filters filters =
     QDir::AllDirs | QDir::Files | QDir::Readable | QDir::NoDotAndDotDot;
-  foreach(QFileInfo entry, directory.entryInfoList(filters))
+  QFileInfoList fileInfoList = directory.entryInfoList(filters);
+
+  //
+  // check to see if any readers recognize the directory contents
+  // and provide an archetype.
+  //
+  qSlicerCoreIOManager* coreIOManager =
+    qSlicerCoreApplication::application()->coreIOManager();
+  QString readerDescription;
+  qSlicerIO::IOProperties ioProperties;
+  QFileInfo archetypeEntry;
+  if (coreIOManager->examineFileInfoList(fileInfoList, archetypeEntry, readerDescription, ioProperties))
+    {
+    this->addFile(archetypeEntry);
+    QString filePath = archetypeEntry.absoluteFilePath();
+    QList<QTableWidgetItem *> items = this->FileWidget->findItems(filePath, Qt::MatchExactly);
+    if (items.isEmpty())
+      {
+      qWarning() << "Couldn't add archetype widget for file: " << filePath;
+      }
+    else
+      {
+      QTableWidgetItem *item = items[0];
+      QWidget *cellWidget = this->FileWidget->cellWidget(item->row(), TypeColumn);
+      QComboBox *descriptionComboBox = dynamic_cast<QComboBox *>(cellWidget);
+      descriptionComboBox->setCurrentIndex(descriptionComboBox->findText(readerDescription));
+      cellWidget = this->FileWidget->cellWidget(item->row(), OptionsColumn);
+      qSlicerIOOptionsWidget *ioOptionsWidget = dynamic_cast<qSlicerIOOptionsWidget *> (cellWidget);
+      ioOptionsWidget->updateGUI(ioProperties);
+      }
+    }
+
+  //
+  // now add any files and directories that weren't filtered
+  // out by the ioManager
+  //
+  foreach(QFileInfo entry, fileInfoList)
     {
     if (entry.isFile())
       {
@@ -152,6 +213,19 @@ void qSlicerDataDialogPrivate::addFile(const QFileInfo& file)
     {
     return; // file already exists
     }
+
+
+  //
+  // check for archive, and optionally open it
+  //
+  if (this->checkAndHandleArchive(file))
+    {
+    return; // file was an archive
+    }
+
+  //
+  // use the IOManager to check for ways to load the data
+  //
   qSlicerCoreIOManager* coreIOManager =
     qSlicerCoreApplication::application()->coreIOManager();
   QStringList fileDescriptions =
@@ -161,6 +235,9 @@ void qSlicerDataDialogPrivate::addFile(const QFileInfo& file)
     return;
     }
 
+  //
+  // add the file to the dialog
+  //
   bool sortingEnabled = this->FileWidget->isSortingEnabled();
   this->FileWidget->setSortingEnabled(false);
   int row = this->FileWidget->rowCount();
@@ -183,50 +260,11 @@ void qSlicerDataDialogPrivate::addFile(const QFileInfo& file)
   descriptionComboBox->setCurrentIndex(-1);
   QObject::connect(descriptionComboBox, SIGNAL(currentIndexChanged(QString)),
                    this, SLOT(onFileTypeChanged(QString)));
+  QObject::connect(descriptionComboBox, SIGNAL(activated(QString)),
+                   this, SLOT(onFileTypeActivated(QString)));
   this->FileWidget->setCellWidget(row, TypeColumn, descriptionComboBox);
   descriptionComboBox->setCurrentIndex(0);
   this->FileWidget->setSortingEnabled(sortingEnabled);
-}
-
-//---------------------------------------------------------------------------
-void qSlicerDataDialogPrivate::dragEnterEvent(QDragEnterEvent *event)
-{
-  if (event->mimeData()->hasFormat("text/uri-list"))
-    {
-    event->acceptProposedAction();
-    }
-}
-
-//---------------------------------------------------------------------------
-void qSlicerDataDialogPrivate::dropEvent(QDropEvent *event)
-{
-  QList<QUrl> urls = event->mimeData()->urls();
-  if (urls.isEmpty())
-    {
-    return;
-    }
-
-  QString localPath;
-  QFileInfo pathInfo;
-  foreach(QUrl url, urls)
-    {
-    if (!url.isValid() || url.isEmpty())
-      {
-      continue;
-      }
-
-    localPath = url.toLocalFile(); // convert QUrl to local path
-    pathInfo.setFile(localPath); // information about the path
-
-    if (pathInfo.isDir()) // if it is a directory we add the files to the dialog
-      {
-      this->addDirectory(QDir(localPath));
-      }
-    else if (pathInfo.isFile()) // if it is a file we simply add the file
-      {
-      this->addFile(pathInfo);
-      }
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -251,7 +289,7 @@ QList<qSlicerIO::IOProperties> qSlicerDataDialogPrivate::selectedFiles()const
     {
     qSlicerIO::IOProperties properties;
     QTableWidgetItem* fileItem = this->FileWidget->item(row, FileColumn);
-    QComboBox* descriptionComboBox = 
+    QComboBox* descriptionComboBox =
       qobject_cast<QComboBox*>(this->FileWidget->cellWidget(row, TypeColumn));
     Q_ASSERT(fileItem);
     Q_ASSERT(descriptionComboBox);
@@ -281,29 +319,34 @@ QList<qSlicerIO::IOProperties> qSlicerDataDialogPrivate::selectedFiles()const
 //-----------------------------------------------------------------------------
 void qSlicerDataDialogPrivate::onFileTypeChanged(const QString& description)
 {
-  QComboBox* comboBox = qobject_cast<QComboBox*>(this->sender());
-  if (!comboBox)
-    {
-    qCritical() << "qSlicerDataDialogPrivate::onFileTypeChanged must be called"
-                << "by a QComboBox signal";
-    return;
-    }
-  int row = -1;
-  for (int i = 0; i < this->FileWidget->rowCount(); ++i)
-    {
-    if (this->FileWidget->cellWidget(i, TypeColumn) == comboBox)
-      {
-      row = i;
-      break;
-      }
-    }
-  if (row < 0)
-    {
-    qCritical() << "Can't find the item to update";
-    return;
-    }
+  int row = this->senderRow();
   QString fileName = this->FileWidget->item(row, FileColumn)->text();
   this->setFileOptions(row, fileName, description);
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerDataDialogPrivate::onFileTypeActivated(const QString& description)
+{
+  int activatedRow = this->senderRow();
+  if (this->propagateChange(activatedRow))
+    {
+    for(int row = 0; row < this->FileWidget->rowCount(); ++row)
+      {
+      if (!this->haveSameTypeOption(activatedRow, row))
+        {
+        continue;
+        }
+      QComboBox* selectedComboBox = qobject_cast<QComboBox*>(
+        this->FileWidget->cellWidget(row, TypeColumn));
+      int descriptionIndex =
+        selectedComboBox ? selectedComboBox->findText(description) : -1;
+      qDebug() << "id" << descriptionIndex;
+      if (descriptionIndex != -1)
+        {
+        selectedComboBox->setCurrentIndex(descriptionIndex);
+        }
+      }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -332,6 +375,88 @@ void qSlicerDataDialogPrivate::setFileOptions(
   this->FileWidget->setCellWidget(row, OptionsColumn, optionsWidget);
   this->FileWidget->resizeColumnToContents(OptionsColumn);
 }
+
+//-----------------------------------------------------------------------------
+int qSlicerDataDialogPrivate::senderRow()const
+{
+  QComboBox* comboBox = qobject_cast<QComboBox*>(this->sender());
+  if (!comboBox)
+    {
+    qCritical() << "qSlicerDataDialogPrivate::onFileTypeChanged must be called"
+                << "by a QComboBox signal";
+    return -1;
+    }
+  int row = -1;
+  for (int i = 0; i < this->FileWidget->rowCount(); ++i)
+    {
+    if (this->FileWidget->cellWidget(i, TypeColumn) == comboBox)
+      {
+      row = i;
+      break;
+      }
+    }
+  if (row < 0)
+    {
+    qCritical() << "Can't find the item to update";
+    }
+  return row;
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerDataDialogPrivate::haveSameTypeOption(int row1, int row2)const
+{
+  QComboBox* comboBox1 = qobject_cast<QComboBox*>(
+    this->FileWidget->cellWidget(row1, TypeColumn));
+  QComboBox* comboBox2 = qobject_cast<QComboBox*>(
+    this->FileWidget->cellWidget(row2, TypeColumn));
+  if (!comboBox1 || !comboBox2)
+    {
+    return false;
+    }
+  if (comboBox1->count() != comboBox2->count())
+    {
+    return false;
+    }
+  for (int i=0; i < comboBox1->count(); ++i)
+    {
+    if (comboBox1->itemText(i) != comboBox2->itemText(i))
+      {
+      return false;
+      }
+    }
+  return true;
+}
+//-----------------------------------------------------------------------------
+bool qSlicerDataDialogPrivate::propagateChange(int changedRow)const
+{
+  QTableWidgetItem* item = this->FileWidget->item(changedRow, FileColumn);
+  bool fileSelected = item ? item->checkState() != Qt::Unchecked : false;
+  return fileSelected
+    && (QApplication::keyboardModifiers() & Qt::ShiftModifier);
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerDataDialogPrivate::checkAndHandleArchive(const QFileInfo& file)
+{
+  if (file.suffix().toLower() == "zip")
+    {
+    if (QMessageBox::question(this, tr("Open archive?"), tr("The selected file is a .zip archive, open it and load contents?")))
+      {
+      this->temporaryArchiveDirectory.reset(new QTemporaryDir());
+      if (this->temporaryArchiveDirectory->isValid())
+        {
+        // C function in vtkArchive
+        if (unzip(file.absoluteFilePath().toStdString().c_str(), this->temporaryArchiveDirectory->path().toStdString().c_str()))
+          {
+          this->addDirectory(QDir(this->temporaryArchiveDirectory->path()));
+          return true;
+          }
+        }
+      }
+    }
+  return false;
+}
+
 /*
 //-----------------------------------------------------------------------------
 void qSlicerDataDialogPrivate::updateCheckBoxes(Qt::Orientation orientation, int first, int last)
@@ -375,15 +500,14 @@ void qSlicerDataDialogPrivate::updateCheckBoxHeader(int itemRow, int itemColumn)
 //-----------------------------------------------------------------------------
 qSlicerDataDialog::qSlicerDataDialog(QObject* _parent)
   : qSlicerFileDialog(_parent)
-  , d_ptr(new qSlicerDataDialogPrivate(0))
+  , d_ptr(new qSlicerDataDialogPrivate(nullptr))
 {
   // FIXME give qSlicerDataDialog as a parent of qSlicerDataDialogPrivate;
 }
 
 //-----------------------------------------------------------------------------
 qSlicerDataDialog::~qSlicerDataDialog()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 qSlicerIO::IOFileType qSlicerDataDialog::fileType()const
@@ -393,17 +517,54 @@ qSlicerIO::IOFileType qSlicerDataDialog::fileType()const
 }
 
 //-----------------------------------------------------------------------------
+QString qSlicerDataDialog::description()const
+{
+  return tr("Any Data");
+}
+
+//-----------------------------------------------------------------------------
 qSlicerFileDialog::IOAction qSlicerDataDialog::action()const
 {
   return qSlicerFileDialog::Read;
+}
+
+//---------------------------------------------------------------------------
+bool qSlicerDataDialog::isMimeDataAccepted(const QMimeData* mimeData)const
+{
+  return mimeData->hasFormat("text/uri-list");
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerDataDialog::dropEvent(QDropEvent *event)
 {
   Q_D(qSlicerDataDialog);
+  bool pathAdded = false;
+  foreach(QUrl url, event->mimeData()->urls())
+    {
+    if (!url.isValid() || url.isEmpty())
+      {
+      continue;
+      }
 
-  d->dropEvent(event);
+    QString localPath = url.toLocalFile(); // convert QUrl to local path
+    QFileInfo pathInfo;
+    pathInfo.setFile(localPath); // information about the path
+
+    if (pathInfo.isDir()) // if it is a directory we add the files to the dialog
+      {
+      d->addDirectory(QDir(localPath));
+      pathAdded = true;
+      }
+    else if (pathInfo.isFile()) // if it is a file we simply add the file
+      {
+      d->addFile(pathInfo);
+      pathAdded = true;
+      }
+    }
+  if (pathAdded)
+    {
+    event->acceptProposedAction();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -437,3 +598,16 @@ bool qSlicerDataDialog::exec(const qSlicerIO::IOProperties& readerProperties)
   return res;
 }
 
+//-----------------------------------------------------------------------------
+void qSlicerDataDialog::addFile(const QString filePath)
+{
+  Q_D(qSlicerDataDialog);
+  d->addFile(QFileInfo(filePath));
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerDataDialog::addDirectory(const QString directoryPath)
+{
+  Q_D(qSlicerDataDialog);
+  d->addDirectory(QDir(directoryPath));
+}

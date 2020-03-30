@@ -25,12 +25,12 @@ vtkMRMLNodeNewMacro(vtkMRMLHierarchyStorageNode);
 //----------------------------------------------------------------------------
 vtkMRMLHierarchyStorageNode::vtkMRMLHierarchyStorageNode()
 {
+  this->DefaultWriteFileExtension = "txt";
 }
 
 //----------------------------------------------------------------------------
 vtkMRMLHierarchyStorageNode::~vtkMRMLHierarchyStorageNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLHierarchyStorageNode::PrintSelf(ostream& os, vtkIndent indent)
@@ -47,22 +47,22 @@ bool vtkMRMLHierarchyStorageNode::CanReadInReferenceNode(vtkMRMLNode *refNode)
 //----------------------------------------------------------------------------
 int vtkMRMLHierarchyStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 {
-  std::string fullName = this->GetFullNameFromFileName(); 
-  
-  if (fullName == std::string("")) 
+  std::string fullName = this->GetFullNameFromFileName();
+
+  if (fullName.empty())
     {
     vtkErrorMacro("vtkMRMLHierarchyStorageNode: File name not specified");
     return 0;
     }
-  
+
   // cast the input node
-  vtkMRMLHierarchyNode *hierarchyNode = NULL;
+  vtkMRMLHierarchyNode *hierarchyNode = nullptr;
   if ( refNode->IsA("vtkMRMLHierarchyNode") )
     {
     hierarchyNode = dynamic_cast <vtkMRMLHierarchyNode *> (refNode);
     }
-  
-  if (hierarchyNode == NULL)
+
+  if (hierarchyNode == nullptr)
     {
     vtkErrorMacro("ReadData: unable to cast input node " << refNode->GetID() << " to a hierarchy node");
     return 0;
@@ -70,17 +70,17 @@ int vtkMRMLHierarchyStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 
   // open the file for reading input
   fstream fstr;
-  
+
   fstr.open(fullName.c_str(), fstream::in);
-  
+
   if (fstr.is_open())
     {
     //turn off modified events
-    int modFlag = hierarchyNode->GetDisableModifiedEvent(); 
+    int modFlag = hierarchyNode->GetDisableModifiedEvent();
     hierarchyNode->DisableModifiedEventOn();
 
     // do the reading here if necessary, but it's not right now
-    
+
     hierarchyNode->SetDisableModifiedEvent(modFlag);
     hierarchyNode->InvokeEvent(vtkMRMLScene::NodeAddedEvent, hierarchyNode);
     fstr.close();
@@ -101,20 +101,20 @@ int vtkMRMLHierarchyStorageNode::ReadDataInternal(vtkMRMLNode *refNode)
 int vtkMRMLHierarchyStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
 {
   std::string fullName = this->GetFullNameFromFileName();
-  if (fullName == std::string("")) 
+  if (fullName.empty())
     {
     vtkErrorMacro("vtkMRMLHierarchyStorageNode: File name not specified");
     return 0;
     }
-  
+
   // cast the input node
-  vtkMRMLHierarchyNode *hierarchyNode = NULL;
+  vtkMRMLHierarchyNode *hierarchyNode = nullptr;
   if ( refNode->IsA("vtkMRMLHierarchyNode") )
     {
     hierarchyNode = dynamic_cast <vtkMRMLHierarchyNode *> (refNode);
     }
-  
-  if (hierarchyNode == NULL)
+
+  if (hierarchyNode == nullptr)
     {
     vtkErrorMacro("WriteData: unable to cast input node " << refNode->GetID() << " to a known hierarchy node");
     return 0;
@@ -124,7 +124,7 @@ int vtkMRMLHierarchyStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
   fstream of;
 
   of.open(fullName.c_str(), fstream::out);
-  
+
   if (!of.is_open())
   {
   vtkErrorMacro("WriteData: unable to open file " << fullName.c_str() << " for writing");
@@ -132,12 +132,12 @@ int vtkMRMLHierarchyStorageNode::WriteDataInternal(vtkMRMLNode *refNode)
   }
 
   // put down a header
-  of << "# hierarchy file " << (this->GetFileName() != NULL ? this->GetFileName() : "null") << endl;
+  of << "# hierarchy file " << (this->GetFileName() != nullptr ? this->GetFileName() : "null") << endl;
 
   of.close();
-  
+
   this->StageWriteData(refNode);
-  
+
   return 1;
 
 }
@@ -152,10 +152,4 @@ void vtkMRMLHierarchyStorageNode::InitializeSupportedReadFileTypes()
 void vtkMRMLHierarchyStorageNode::InitializeSupportedWriteFileTypes()
 {
   this->SupportedWriteFileTypes->InsertNextValue("Text (.txt)");
-}
-
-//----------------------------------------------------------------------------
-const char* vtkMRMLHierarchyStorageNode::GetDefaultWriteFileExtension()
-{
-  return "txt";
 }

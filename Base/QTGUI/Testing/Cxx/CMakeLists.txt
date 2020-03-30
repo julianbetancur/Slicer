@@ -1,7 +1,35 @@
 if(BUILD_TESTING)
-  # Code specfic to Slicer testing is added here.
+  # Code specific to Slicer testing is added here.
   set(KIT ${PROJECT_NAME})
-  set(CMAKE_TESTDRIVER_BEFORE_TESTMAIN "DEBUG_LEAKS_ENABLE_EXIT_ERROR();" )
+
+
+
+
+  #-----------------------------------------------------------------------------
+  set(${KIT}Testing_ITK_COMPONENTS
+    ITKCommon
+    )
+  find_package(ITK 4.6 COMPONENTS ${${KIT}Testing_ITK_COMPONENTS} REQUIRED)
+  set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+  list(APPEND ITK_LIBRARIES ITKFactoryRegistration)
+  list(APPEND ITK_INCLUDE_DIRS
+    ${ITKFactoryRegistration_INCLUDE_DIRS}
+    )
+  include(${ITK_USE_FILE})
+
+  #-----------------------------------------------------------------------------
+  set(CMAKE_TESTDRIVER_BEFORE_TESTMAIN  "
+    DEBUG_LEAKS_ENABLE_EXIT_ERROR();
+    TESTING_OUTPUT_INIT();
+    itk::itkFactoryRegistration();
+    ")
+
+  set(CMAKE_TESTDRIVER_AFTER_TESTMAIN  "
+    TESTING_OUTPUT_ASSERT_WARNINGS_ERRORS(0);
+    ")
+
+  set(EXTRA_INCLUDE "vtkMRMLDebugLeaksMacro.h\"\n\#include <itkConfigure.h>\n\#include <itkFactoryRegistration.h>\n\#include \"vtkTestingOutputWindow.h")
+
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
   set(KIT_TEST_SRCS
     qSlicerAbstractModuleTest1.cxx
@@ -30,51 +58,54 @@ if(BUILD_TESTING)
   endif()
   create_test_sourcelist(Tests ${KIT}CxxTests.cxx
     ${KIT_TEST_SRCS}
-    EXTRA_INCLUDE vtkMRMLDebugLeaksMacro.h
+    EXTRA_INCLUDE ${EXTRA_INCLUDE}
     )
 
-  set(KIT_TEST_MOC_SRCS
+  set(KIT_TEST_GENERATE_MOC_SRCS
     )
   if(Slicer_USE_PYTHONQT)
-    list(APPEND KIT_TEST_MOC_SRCS
+    list(APPEND KIT_TEST_GENERATE_MOC_SRCS
       qSlicerLoadableModuleWithPythonTest.cxx
       qSlicerPythonManagerWithoutApplicationTest.cxx
       qSlicerScriptedLoadableModuleTest.cxx
       qSlicerScriptedLoadableModuleWidgetTest.cxx
       )
-    QT4_GENERATE_MOCS(${KIT_TEST_MOC_SRCS})
   endif()
 
-  QT4_ADD_RESOURCES(Tests Resources/${KIT}Testing.qrc)
+    if(KIT_TEST_GENERATE_MOC_SRCS)
+      QT5_GENERATE_MOCS(${KIT_TEST_GENERATE_MOC_SRCS})
+    endif()
+    QT5_ADD_RESOURCES(Tests Resources/${KIT}Testing.qrc)
 
-  add_executable(${KIT}CxxTests ${Tests})
+  ctk_add_executable_utf8(${KIT}CxxTests ${Tests})
   target_link_libraries(${KIT}CxxTests ${KIT})
   set_target_properties(${KIT}CxxTests PROPERTIES LABELS ${KIT})
+  set_target_properties(${KIT}CxxTests PROPERTIES FOLDER "Core-Base")
 
   #
   # Add Tests
   #
 
-  SIMPLE_TEST( qSlicerApplicationTest1 )
-  SIMPLE_TEST( qSlicerAbstractModuleTest1 )
-  SIMPLE_TEST( qSlicerAbstractModuleWidgetTest1 )
-  SIMPLE_TEST( qSlicerDataDialogTest1 )
-  SIMPLE_TEST( qSlicerDirectoryListViewTest1 )
-  SIMPLE_TEST( qSlicerLayoutManagerTest1 )
-  SIMPLE_TEST( qSlicerModulePanelTest1 )
-  SIMPLE_TEST( qSlicerMouseModeToolBarTest1 )
-  SIMPLE_TEST( qSlicerSaveDataDialogCustomFileWriterTest )
-  SIMPLE_TEST( qSlicerWidgetTest1 )
-  SIMPLE_TEST( qSlicerWidgetTest2 )
+  simple_test( qSlicerApplicationTest1 )
+  simple_test( qSlicerAbstractModuleTest1 )
+  simple_test( qSlicerAbstractModuleWidgetTest1 )
+  simple_test( qSlicerDataDialogTest1 )
+  simple_test( qSlicerDirectoryListViewTest1 )
+  simple_test( qSlicerLayoutManagerTest1 )
+  simple_test( qSlicerModulePanelTest1 )
+  simple_test( qSlicerMouseModeToolBarTest1 )
+  simple_test( qSlicerSaveDataDialogCustomFileWriterTest )
+  simple_test( qSlicerWidgetTest1 )
+  simple_test( qSlicerWidgetTest2 DATA{${CMAKE_SOURCE_DIR}/Libs/MRML/Core/Testing/TestData/fixed.nrrd} )
 
   if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   endif()
 
   if(Slicer_USE_PYTHONQT)
-    SIMPLE_TEST( qSlicerLoadableModuleWithPythonTest )
-    SIMPLE_TEST( qSlicerPythonManagerWithoutApplicationTest )
-    SIMPLE_TEST( qSlicerScriptedLoadableModuleTest )
-    SIMPLE_TEST( qSlicerScriptedLoadableModuleWidgetTest )
+    simple_test( qSlicerLoadableModuleWithPythonTest )
+    simple_test( qSlicerPythonManagerWithoutApplicationTest )
+    simple_test( qSlicerScriptedLoadableModuleTest )
+    simple_test( qSlicerScriptedLoadableModuleWidgetTest )
   endif()
 
 endif()
@@ -86,10 +117,3 @@ endif()
 set(Slicer_CXX_MODULE_TEST_TEMPLATES_DIR ${CMAKE_CURRENT_SOURCE_DIR}
   CACHE INTERNAL "Path to cxx test templates directory.")
 
-# Install the file so that project building against the 'installed tree' can reference it.
-if(NOT Slicer_INSTALL_NO_DEVELOPMENT)
-  install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/qSlicerUtilsTest1.cxx.in
-    DESTINATION ${Slicer_INSTALL_SHARE_DIR} COMPONENT Development
-    )
-endif()

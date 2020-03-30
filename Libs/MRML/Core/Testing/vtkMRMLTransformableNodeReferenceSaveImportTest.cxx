@@ -86,7 +86,7 @@ bool import()
 
   // Check transform node IDs
   vtkMRMLNode* trnsformNode =
-    scene2->GetNthNodeByClass(0, "vtkMRMLLinearTransformNode");
+    scene2->GetFirstNodeByClass("vtkMRMLLinearTransformNode");
   if (!trnsformNode || strcmp(trnsformNode->GetID(), "vtkMRMLLinearTransformNode1") != 0
       )
     {
@@ -99,14 +99,14 @@ bool import()
 
   // Check references
   vtkMRMLTransformableNode* trnsformableNode =
-    vtkMRMLTransformableNode::SafeDownCast(scene2->GetNthNodeByClass(0, "vtkMRMLTransformableNode"));
+    vtkMRMLTransformableNode::SafeDownCast(scene2->GetFirstNodeByClass("vtkMRMLTransformableNode"));
 
   if (strcmp(trnsformableNode->GetTransformNodeID(),
              trnsformNode->GetID()) != 0)
     {
     std::cerr << __LINE__ << ": import failed." << std::endl
               << "    Transformable node references are not updated. "
-              << "Transform node ID reference is " 
+              << "Transform node ID reference is "
               << trnsformableNode->GetTransformNodeID()
               << " instead of " << trnsformNode->GetID() << std::endl;
     return false;

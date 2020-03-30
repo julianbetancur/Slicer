@@ -16,7 +16,7 @@
 #define __vtkITKImageToImageFilterFF_h
 
 #include "vtkITKImageToImageFilter.h"
-#include "vtkImageToImageFilter.h"
+#include "vtkImageAlgorithm.h"
 #include "itkImageToImageFilter.h"
 #include "itkVTKImageExport.h"
 #include "itkVTKImageImport.h"
@@ -26,15 +26,15 @@ class VTK_ITK_EXPORT vtkITKImageToImageFilterFF : public vtkITKImageToImageFilte
 {
 public:
   vtkTypeMacro(vtkITKImageToImageFilterFF,vtkITKImageToImageFilter);
-  static vtkITKImageToImageFilterFF* New() { return 0; };
-  void PrintSelf(ostream& os, vtkIndent indent)
+  static vtkITKImageToImageFilterFF* New() { return nullptr; };
+  void PrintSelf(ostream& os, vtkIndent indent) override
   {
     Superclass::PrintSelf ( os, indent );
     os << m_Filter;
   };
 
 protected:
-  
+
   /// To/from ITK
   typedef float InputImagePixelType;
   typedef float OutputImagePixelType;
@@ -58,20 +58,19 @@ protected:
     ConnectPipelines(this->vtkExporter, this->itkImporter);
     ConnectPipelines(this->itkExporter, this->vtkImporter);
     this->LinkITKProgressToVTKProgress ( m_Filter );
-    
+
     /// Set up the filter pipeline
     m_Filter->SetInput ( this->itkImporter->GetOutput() );
     this->itkExporter->SetInput ( m_Filter->GetOutput() );
     this->vtkCast->SetOutputScalarTypeToFloat();
   };
 
-  ~vtkITKImageToImageFilterFF()
-  {
-  };
-  
+  ~vtkITKImageToImageFilterFF() override
+   = default;
+
 private:
-  vtkITKImageToImageFilterFF(const vtkITKImageToImageFilterFF&);  /// Not implemented.
-  void operator=(const vtkITKImageToImageFilterFF&);  /// Not implemented.
+  vtkITKImageToImageFilterFF(const vtkITKImageToImageFilterFF&) = delete;
+  void operator=(const vtkITKImageToImageFilterFF&) = delete;
 };
 
 #endif

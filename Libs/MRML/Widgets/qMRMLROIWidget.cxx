@@ -43,7 +43,7 @@ public:
 qMRMLROIWidgetPrivate::qMRMLROIWidgetPrivate(qMRMLROIWidget& object)
   : q_ptr(&object)
 {
-  this->ROINode = 0;
+  this->ROINode = nullptr;
 }
 
 // --------------------------------------------------------------------------
@@ -61,7 +61,7 @@ void qMRMLROIWidgetPrivate::init()
                    q, SLOT(updateROI()));
   QObject::connect(this->ISRangeWidget, SIGNAL(valuesChanged(double,double)),
                    q, SLOT(updateROI()));
-  q->setEnabled(this->ROINode != 0);
+  q->setEnabled(this->ROINode != nullptr);
 }
 
 // --------------------------------------------------------------------------
@@ -78,8 +78,7 @@ qMRMLROIWidget::qMRMLROIWidget(QWidget* _parent)
 
 // --------------------------------------------------------------------------
 qMRMLROIWidget::~qMRMLROIWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 vtkMRMLROINode* qMRMLROIWidget::mrmlROINode()const
@@ -97,7 +96,7 @@ void qMRMLROIWidget::setMRMLROINode(vtkMRMLROINode* roiNode)
 
   d->ROINode = roiNode;
   this->onMRMLNodeModified();
-  this->setEnabled(roiNode != 0);
+  this->setEnabled(roiNode != nullptr);
 }
 
 // --------------------------------------------------------------------------
@@ -170,13 +169,13 @@ void qMRMLROIWidget::updateROI()
   d->PARangeWidget->values(bounds[2],bounds[3]);
   d->ISRangeWidget->values(bounds[4],bounds[5]);
 
-  d->ROINode->DisableModifiedEventOn();
+  int disabledModify = d->ROINode->StartModify();
+  
   d->ROINode->SetXYZ(0.5*(bounds[1]+bounds[0]),
                      0.5*(bounds[3]+bounds[2]),
                      0.5*(bounds[5]+bounds[4]));
   d->ROINode->SetRadiusXYZ(0.5*(bounds[1]-bounds[0]),
                            0.5*(bounds[3]-bounds[2]),
                            0.5*(bounds[5]-bounds[4]));
-  d->ROINode->DisableModifiedEventOff();
-  d->ROINode->InvokePendingModifiedEvent();
+  d->ROINode->EndModify(disabledModify);
 }

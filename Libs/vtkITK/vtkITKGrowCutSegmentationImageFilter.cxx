@@ -9,7 +9,11 @@
 // VTK includes
 #include <vtkImageCast.h>
 #include <vtkImageData.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkVersion.h>
 
 // ITK includes
 #include <itkGrowCutSegmentationImageFilter.h>
@@ -17,7 +21,6 @@
 #include <itkRegionOfInterestImageFilter.h>
 
 //-----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkITKGrowCutSegmentationImageFilter, "$Revision: 1.3 $");
 vtkStandardNewMacro(vtkITKGrowCutSegmentationImageFilter);
 
 //-----------------------------------------------------------------------------
@@ -43,7 +46,7 @@ void vtkITKImageGrowCutHandleProgressEvent(itk::Object *caller,
 {
 
   itk::ProcessObject *itkFilter = static_cast<itk::ProcessObject*>(caller);
-  vtkProcessObject *vtkFilter = static_cast<vtkProcessObject*>(clientdata);
+  vtkAlgorithm *vtkFilter = static_cast<vtkAlgorithm*>(clientdata);
   if (itkFilter && vtkFilter )
     {
     vtkFilter->UpdateProgress( itkFilter->GetProgress() );
@@ -325,6 +328,8 @@ vtkITKGrowCutSegmentationImageFilter::vtkITKGrowCutSegmentationImageFilter()
   this->ObjectSize = 20;
   this->ContrastNoiseRatio = 1.0;
   this->PriorSegmentConfidence = 0.003;
+  this->SetNumberOfInputPorts(3);
+  this->SetNumberOfOutputPorts(1);
 }
 
 //-----------------------------------------------------------------------------
@@ -334,6 +339,7 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
           vtkImageData *input2,
           vtkImageData *input3,
           vtkImageData *outData,
+          vtkInformation* outInfo,
           IT1 *)
 {
   int outExt[6];
@@ -349,12 +355,12 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
   void *inPtr2 =  input2->GetScalarPointerForExtent(outExt);
   void *inPtr3 = input3->GetScalarPointerForExtent(outExt);
 
-  input1->GetWholeExtent(outExt);
+  outInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), outExt);
   outData->SetExtent(outExt);
   outData->SetOrigin(origin);
   outData->SetSpacing(spacing);
   outData->SetDimensions(dims);
-  outData->AllocateScalars();
+  outData->AllocateScalars(outInfo);
 
   input1->GetExtent(outExt);
 
@@ -377,7 +383,7 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
       {
 
       vtkImageCast *imageCaster = vtkImageCast::New();
-      imageCaster->SetInput( input3 );
+      imageCaster->SetInputData( input3 );
 
       if((input2->GetScalarType() != VTK_UNSIGNED_SHORT) ||
       (input2->GetScalarType() != VTK_UNSIGNED_CHAR) ||
@@ -389,12 +395,13 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
 
         std::cout<<" Setting to type "<<VTK_SHORT<<std::endl;
 
-        outData->SetScalarType(VTK_SHORT);
+        vtkDataObject::SetPointDataActiveScalarInfo(
+          outInfo, VTK_SHORT, vtkImageData::GetNumberOfScalarComponents(outInfo));
 
         imageCaster->SetOutputScalarTypeToShort();
 
         vtkImageCast *imageCaster1 = vtkImageCast::New();
-        imageCaster1->SetInput(input2);
+        imageCaster1->SetInputData(input2);
         imageCaster1->SetOutputScalarTypeToShort();
 
         vtkITKImageGrowCutExecute3D(input1,
@@ -408,7 +415,9 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
       else
         {
         std::cout<<" setting to type "<<input2->GetScalarType()<<std::endl;
-        outData->SetScalarType(input2->GetScalarType());
+        vtkDataObject::SetPointDataActiveScalarInfo(
+          outInfo, input2->GetScalarType(),
+          vtkImageData::GetNumberOfScalarComponents(outInfo));
         imageCaster->SetOutputScalarType(input2->GetScalarType() );
 
         if(input2->GetScalarType() == VTK_UNSIGNED_SHORT)
@@ -479,14 +488,15 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
         (input2->GetScalarType() != VTK_LONG) )
       {
 
-      outData->SetScalarType(VTK_SHORT);
+        vtkDataObject::SetPointDataActiveScalarInfo(
+          outInfo, VTK_SHORT, vtkImageData::GetNumberOfScalarComponents(outInfo));
 
       vtkImageCast *imageCaster = vtkImageCast::New();
-      imageCaster->SetInput( input2 );
+      imageCaster->SetInputData( input2 );
       imageCaster->SetOutputScalarTypeToShort();
 
       vtkImageCast *imageCaster1 = vtkImageCast::New();
-      imageCaster1->SetInput(input3);
+      imageCaster1->SetInputData(input3);
       imageCaster1->SetOutputScalarTypeToShort();
 
       vtkITKImageGrowCutExecute3D(input1,
@@ -501,7 +511,9 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
       }
     else
       {
-      outData->SetScalarType(input2->GetScalarType());
+      vtkDataObject::SetPointDataActiveScalarInfo(
+        outInfo, input2->GetScalarType(),
+        vtkImageData::GetNumberOfScalarComponents(outInfo));
 
       if(input2->GetScalarType() == VTK_UNSIGNED_SHORT)
         {
@@ -562,39 +574,37 @@ void ExecuteGrowCut( vtkITKGrowCutSegmentationImageFilter *self,
 }
 
 //-----------------------------------------------------------------------------
-void vtkITKGrowCutSegmentationImageFilter::ExecuteData(
-        vtkDataObject *outData)
+void vtkITKGrowCutSegmentationImageFilter::ExecuteDataWithInformation(
+        vtkDataObject *outData, vtkInformation* outInfo)
 {
-  vtkImageData *input1 = GetInput(0);
-  vtkImageData *input2 = GetInput(1);
-  vtkImageData *input3 = GetInput(2);
+  vtkImageData *input1 = vtkImageData::SafeDownCast(GetInput(0));
+  vtkImageData *input2 = vtkImageData::SafeDownCast(GetInput(1));
+  vtkImageData *input3 = vtkImageData::SafeDownCast(GetInput(2));
 
   vtkImageData * out = vtkImageData::SafeDownCast(outData);
 
   switch(input1->GetScalarType() ) {
     vtkTemplateMacro( ExecuteGrowCut(this, input1, input2,
-             input3, out,
-             static_cast< VTK_TT*>(0)));
+             input3, out, outInfo,
+             static_cast< VTK_TT*>(nullptr)));
     break;
   }
 }
 
 //-----------------------------------------------------------------------------
-void vtkITKGrowCutSegmentationImageFilter::ExecuteInformation()
+int vtkITKGrowCutSegmentationImageFilter::RequestInformation(
+  vtkInformation * request,
+  vtkInformationVector **inputVector,
+  vtkInformationVector *outputVector)
 {
-  this->Superclass::ExecuteInformation();
-}
+  // get the info objects
+  vtkInformation *inInfo = inputVector[0]->GetInformationObject(1);
 
-//-----------------------------------------------------------------------------
-void vtkITKGrowCutSegmentationImageFilter::ExecuteInformation(
-  vtkImageData **inputs, vtkImageData *output)
-{
-  if (inputs[1] == NULL)
+  if (inInfo != nullptr)
     {
-    return;
+    this->Superclass::RequestInformation(request, inputVector, outputVector);
     }
-
-  output->CopyTypeSpecificInformation(inputs[1]);
+  return 1;
 }
 
 //-----------------------------------------------------------------------------

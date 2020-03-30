@@ -26,14 +26,14 @@
 
 class vtkMRMLCameraNode;
 
-class vtkMRMLTestSliceViewDisplayableManager : 
+class vtkMRMLTestSliceViewDisplayableManager :
   public vtkMRMLAbstractSliceViewDisplayableManager
 {
 
 public:
   static vtkMRMLTestSliceViewDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLTestSliceViewDisplayableManager,vtkMRMLAbstractSliceViewDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLTestSliceViewDisplayableManager,vtkMRMLAbstractSliceViewDisplayableManager);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   // For testing
   static int NodeAddedCount;
@@ -41,25 +41,25 @@ public:
 protected:
 
   vtkMRMLTestSliceViewDisplayableManager();
-  virtual ~vtkMRMLTestSliceViewDisplayableManager();
+  ~vtkMRMLTestSliceViewDisplayableManager() override;
 
   virtual void AdditionnalInitializeStep();
 
-  virtual void Create();
+  void Create() override;
 
   //  virtual void OnMRMLSceneAboutToBeClosedEvent(){}
   //  virtual void OnMRMLSceneClosedEvent(){}
   //  virtual void OnMRMLSceneAboutToBeImportedEvent(){}
   //  virtual void OnMRMLSceneImportedEvent(){}
   //  virtual void OnMRMLSceneRestoredEvent(){}
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
   //  virtual void OnMRMLSceneNodeRemovedEvent(vtkMRMLNode* /*node*/){}
-  
+
 private:
 
-  vtkMRMLTestSliceViewDisplayableManager(const vtkMRMLTestSliceViewDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLTestSliceViewDisplayableManager&);                     // Not Implemented
-  
+  vtkMRMLTestSliceViewDisplayableManager(const vtkMRMLTestSliceViewDisplayableManager&) = delete;
+  void operator=(const vtkMRMLTestSliceViewDisplayableManager&) = delete;
+
   class vtkInternal;
   vtkInternal * Internal;
 

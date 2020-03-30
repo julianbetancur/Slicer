@@ -20,7 +20,7 @@
 
 // MRMLDisplayableManager includes
 #include <vtkMRMLDisplayableManagerGroup.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
@@ -29,6 +29,7 @@
 #include <vtkMRMLModelDisplayNode.h>
 #include <vtkMRMLModelDisplayableManager.h>
 #include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLViewNode.h>
 
 // VTK includes
@@ -64,7 +65,7 @@ int vtkMRMLModelDisplayableManagerTest(int argc, char* argv[])
   renderWindow->SetInteractor(renderWindowInteractor.GetPointer());
 
   // Set Interactor Style
-  //vtkNew<vtkThreeDViewInteractorStyle> iStyle;
+  //vtkNew<vtkMRMLThreeDViewInteractorStyle> iStyle;
   //renderWindowInteractor->SetInteractorStyle(iStyle.GetPointer());
 
   // move back far enough to see the reformat widgets
@@ -94,7 +95,8 @@ int vtkMRMLModelDisplayableManagerTest(int argc, char* argv[])
   vtkNew<vtkSphereSource> sphereSource;
   sphereSource->SetRadius(10.);
   sphereSource->Update();
-  modelNode->SetAndObservePolyData(sphereSource->GetOutput());
+  modelNode->SetPolyDataConnection(sphereSource->GetOutputPort());
+
   scene->AddNode(modelNode.GetPointer());
 
   vtkNew<vtkMRMLModelDisplayNode> modelDisplayNode;
@@ -148,7 +150,11 @@ int vtkMRMLModelDisplayableManagerTest(int argc, char* argv[])
     {
     vtkNew<vtkWindowToImageFilter> windowToImageFilter;
     windowToImageFilter->SetInput(renderWindow.GetPointer());
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 1)
+    windowToImageFilter->SetScale(1, 1); //set the resolution of the output image
+#else
     windowToImageFilter->SetMagnification(1); //set the resolution of the output image
+#endif
     windowToImageFilter->Update();
 
     vtkNew<vtkTesting> testHelper;
@@ -158,12 +164,12 @@ int vtkMRMLModelDisplayableManagerTest(int argc, char* argv[])
     screenshootFilename += "/Baseline/vtkMRMLCameraDisplayableManagerTest1.png";
     vtkNew<vtkPNGWriter> writer;
     writer->SetFileName(screenshootFilename.c_str());
-    writer->SetInput(windowToImageFilter->GetOutput());
+    writer->SetInputConnection(windowToImageFilter->GetOutputPort());
     writer->Write();
     std::cout << "Saved screenshot: " << screenshootFilename << std::endl;
     }
 
-  vrDisplayableManager->SetMRMLApplicationLogic(0);
+  vrDisplayableManager->SetMRMLApplicationLogic(nullptr);
   applicationLogic->Delete();
   scene->Delete();
 

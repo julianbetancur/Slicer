@@ -22,6 +22,7 @@
 #include "vtkSlicerReformatLogic.h"
 
 // MRML includes
+#include "vtkMRMLScene.h"
 #include "vtkMRMLSliceCompositeNode.h"
 #include "vtkMRMLSliceLogic.h"
 #include "vtkMRMLSliceNode.h"
@@ -31,9 +32,11 @@
 #include <vtkMath.h>
 #include <vtkMatrix4x4.h>
 #include <vtkNew.h>
+#include <vtkObjectFactory.h>
 #include <vtkTransform.h>
 
 // STD includes
+#include <algorithm>
 #include <cassert>
 
 //------------------------------------------------------------------------------
@@ -41,13 +44,11 @@ vtkStandardNewMacro(vtkSlicerReformatLogic);
 
 //------------------------------------------------------------------------------
 vtkSlicerReformatLogic::vtkSlicerReformatLogic()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 vtkSlicerReformatLogic::~vtkSlicerReformatLogic()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 void vtkSlicerReformatLogic::PrintSelf(ostream& os, vtkIndent indent)
@@ -66,7 +67,7 @@ SetSliceOrigin(vtkMRMLSliceNode* node, double x, double y, double z)
 
   // Clamp the position given the volume
   double bounds[6];
-  this->GetVolumeBounds(node, bounds);
+  Self::GetVolumeBounds(node, bounds);
 
   x = std::max(bounds[0], std::min(x, bounds[1]));
   y = std::max(bounds[2], std::min(y, bounds[3]));
@@ -87,7 +88,7 @@ SetSliceOrigin(vtkMRMLSliceNode* node, double position[3])
   double y = position[1];
   double z = position[2];
 
-  this->SetSliceOrigin(node, x, y, z);
+  Self::SetSliceOrigin(node, x, y, z);
 }
 
 //------------------------------------------------------------------------------
@@ -106,8 +107,6 @@ SetSliceNormal(vtkMRMLSliceNode* node, double x, double y, double z)
   vtkMath::Normalize(normal);
 
   // Set the new normal
-  double cross[3], dot, rotation;
-  vtkNew<vtkTransform> transform;
   vtkMatrix4x4* sliceToRAS = node->GetSliceToRAS();
   double nodeNormal[3] = {sliceToRAS->GetElement(0,2),
                            sliceToRAS->GetElement(1,2),
@@ -125,13 +124,15 @@ SetSliceNormal(vtkMRMLSliceNode* node, double x, double y, double z)
   sliceToRAS->SetElement(2,3,0);
 
   // Rotate the sliceNode to match the planeWidget normal
+  double cross[3];
   vtkMath::Cross(nodeNormal, normal, cross);
-  dot = vtkMath::Dot(nodeNormal, normal);
+  double dot = vtkMath::Dot(nodeNormal, normal);
   // Clamp the dot product
   dot = (dot < -1.0) ? -1.0 : (dot > 1.0 ? 1.0 : dot);
-  rotation = vtkMath::DegreesFromRadians(acos(dot));
+  double rotation = vtkMath::DegreesFromRadians(acos(dot));
 
   // Apply the rotation
+  vtkNew<vtkTransform> transform;
   transform->PostMultiply();
   transform->SetMatrix(sliceToRAS);
   transform->RotateWXYZ(rotation,cross);
@@ -152,7 +153,7 @@ SetSliceNormal(vtkMRMLSliceNode* node, double normal[3])
   double y = normal[1];
   double z = normal[2];
 
-  this->SetSliceNormal(node, x, y, z);
+  Self::SetSliceNormal(node, x, y, z);
 }
 
 //------------------------------------------------------------------------------
@@ -167,23 +168,27 @@ void vtkSlicerReformatLogic::GetVolumeBounds(vtkMRMLSliceNode* node,
     return;
     }
 
-  const char* volumeNodeID = 0;
+  const char* volumeNodeID = nullptr;
   if (!volumeNodeID)
     {
-    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetBackgroundVolumeID() : 0;
+    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetBackgroundVolumeID() : nullptr;
     }
   if (!volumeNodeID)
     {
-    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetForegroundVolumeID() : 0;
+    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetForegroundVolumeID() : nullptr;
     }
   if (!volumeNodeID)
     {
-    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetLabelVolumeID() : 0;
+    volumeNodeID = sliceCompositeNode ? sliceCompositeNode->GetLabelVolumeID() : nullptr;
     }
 
-  vtkMRMLVolumeNode* volumeNode = vtkMRMLVolumeNode::SafeDownCast(
-   this->GetMRMLScene()->GetNodeByID(volumeNodeID));
+  if (!node->GetScene())
+    {
+    vtkWarningWithObjectMacro(node, "vtkSlicerReformatLogic::GetVolumeBounds: slice node must be associated with a scene");
+    return;
+    }
 
+  vtkMRMLVolumeNode* volumeNode = vtkMRMLVolumeNode::SafeDownCast(node->GetScene()->GetNodeByID(volumeNodeID));
   if (volumeNode)
     {
     double dimensions[3], center[3];

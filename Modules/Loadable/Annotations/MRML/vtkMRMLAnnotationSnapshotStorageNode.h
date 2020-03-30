@@ -12,7 +12,7 @@
 
 =========================================================================auto=*/
 ///  vtkMRMLAnnotationSnapshotStorageNode - MRML node for model storage on disk
-/// 
+///
 /// Storage nodes has methods to read/write vtkPolyData to/from disk
 
 #ifndef __vtkMRMLAnnotationSnapshotStorageNode_h
@@ -29,35 +29,32 @@ class VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationSnapshotStorage
 public:
   static vtkMRMLAnnotationSnapshotStorageNode *New();
   vtkTypeMacro(vtkMRMLAnnotationSnapshotStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "AnnotationSnapshotStorage";};
-
-  /// Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
+  const char* GetNodeTagName() override {return "AnnotationSnapshotStorage";}
 
   /// Return true if the node can be read in
-  bool CanReadInReferenceNode(vtkMRMLNode* refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode* refNode) override;
 protected:
   vtkMRMLAnnotationSnapshotStorageNode();
-  ~vtkMRMLAnnotationSnapshotStorageNode();
+  ~vtkMRMLAnnotationSnapshotStorageNode() override;
   vtkMRMLAnnotationSnapshotStorageNode(const vtkMRMLAnnotationSnapshotStorageNode&);
   void operator=(const vtkMRMLAnnotationSnapshotStorageNode&);
 
   /// Initialize all the supported read file types
-  virtual void InitializeSupportedReadFileTypes();
+  void InitializeSupportedReadFileTypes() override;
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 };
 
 #endif

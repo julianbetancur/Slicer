@@ -1,8 +1,8 @@
 // .NAME vtkMRMLAnnotationDisplayNode - MRML node to represent display properties for tractography.
 // .SECTION Description
-// vtkMRMLAnnotationDisplayNode nodes store display properties of trajectories 
-// from tractography in diffusion MRI data, including color type (by bundle, by fiber, 
-// or by scalar invariants), display on/off for tensor glyphs and display of 
+// vtkMRMLAnnotationDisplayNode nodes store display properties of trajectories
+// from tractography in diffusion MRI data, including color type (by bundle, by fiber,
+// or by scalar invariants), display on/off for tensor glyphs and display of
 // trajectory as a line or tube.
 //
 
@@ -82,40 +82,40 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationDisplayNode : 
  public:
   static vtkMRMLAnnotationDisplayNode *New (  );
   vtkTypeMacro ( vtkMRMLAnnotationDisplayNode,vtkMRMLModelDisplayNode );
-  void PrintSelf ( ostream& os, vtkIndent indent );
-  
+  void PrintSelf ( ostream& os, vtkIndent indent ) override;
+
   //--------------------------------------------------------------------------
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance (  );
+  vtkMRMLNode* CreateNodeInstance () override;
 
   // Description:
   // Read node attributes from XML (MRML) file
-  virtual void ReadXMLAttributes ( const char** atts );
+  void ReadXMLAttributes ( const char** atts ) override;
 
   // Description:
   // Write this node's information to a MRML file in XML format.
-  virtual void WriteXML ( ostream& of, int indent );
+  void WriteXML ( ostream& of, int indent ) override;
 
 
   // Description:
   // Copy the node's attributes to this object
-  virtual void Copy ( vtkMRMLNode *node );
-  
+  void Copy ( vtkMRMLNode *node ) override;
+
   // Description:
   // Get node XML tag name (like Volume, Annotation)
-  virtual const char* GetNodeTagName() {return "AnnotationDisplay";};
+  const char* GetNodeTagName() override {return "AnnotationDisplay";}
 
   // Description:
   // Finds the storage node and read the data
-  virtual void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
   // Description:
   // alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
   // Functionality for backups of this node
   /// Creates a backup of the current MRML state of this node and keeps a reference
@@ -156,9 +156,40 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationDisplayNode : 
   vtkSetAndPropagateMacro(SelectedSpecular, double);
   vtkGetMacro(SuperSelectedSpecular, double);
 
+  /// Set SliceProjection flag
+  /// Off by default
+  /// Not all subclasses have projection behavior
+  /// Please refer to subclasses for more information
+  /// \sa SliceIntersectionVisibilty, ProjectedColor
+  vtkSetMacro(SliceProjection, int);
+  vtkGetMacro(SliceProjection, int);
+
+  /// \enum ProjectionFlag
+  enum ProjectionFlag
+  {
+  ProjectionOff = 0x00,
+  ProjectionOn = 0x01
+  };
+
+  /// Set SliceProjection to On
+  inline void SliceProjectionOn();
+
+  /// Set SliceProjection to Off
+  inline void SliceProjectionOff();
+
+  /// Set color of the projection on the 2D viewers
+  /// White (1.0, 1.0, 1.0) by default.
+  vtkSetVector3Macro(ProjectedColor, double);
+  vtkGetVector3Macro(ProjectedColor, double);
+
+  /// Set opacity of projection on the 2D viewers
+  /// 1.0 by default
+  vtkSetMacro(ProjectedOpacity, double);
+  vtkGetMacro(ProjectedOpacity, double);
+
  protected:
   vtkMRMLAnnotationDisplayNode();
-  ~vtkMRMLAnnotationDisplayNode();
+  ~vtkMRMLAnnotationDisplayNode() override;
   vtkMRMLAnnotationDisplayNode( const vtkMRMLAnnotationDisplayNode& );
   void operator= ( const vtkMRMLAnnotationDisplayNode& );
 
@@ -176,6 +207,25 @@ class  VTK_SLICER_ANNOTATIONS_MODULE_MRML_EXPORT vtkMRMLAnnotationDisplayNode : 
   double SuperSelectedSpecular;
 
 
+  int SliceProjection;
+  double ProjectedColor[3];
+  double ProjectedOpacity;
 };
+
+//----------------------------------------------------------------------------
+void vtkMRMLAnnotationDisplayNode
+::SliceProjectionOn()
+{
+  this->SetSliceProjection( this->GetSliceProjection() |
+                            vtkMRMLAnnotationDisplayNode::ProjectionOn);
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLAnnotationDisplayNode
+::SliceProjectionOff()
+{
+  this->SetSliceProjection( this->GetSliceProjection() &
+                            ~vtkMRMLAnnotationDisplayNode::ProjectionOn);
+}
 
 #endif

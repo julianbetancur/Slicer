@@ -28,12 +28,11 @@
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkMath.h>
+#include <vtkNew.h>
 #include <vtkObjectFactory.h>
 #include <vtkPolyData.h>
-#include <vtkSmartPointer.h>
 #include <vtkUnsignedCharArray.h>
 
-vtkCxxRevisionMacro(vtkAnnotationGlyphSource2D, "$Revision: 12554 $");
 vtkStandardNewMacro(vtkAnnotationGlyphSource2D);
 
 //----------------------------------------------------------------------------
@@ -65,10 +64,10 @@ int vtkAnnotationGlyphSource2D::RequestData(
   // get the info object
   vtkInformation *outInfo = outputVector->GetInformationObject(0);
 
-  // get the ouptut
+  // get the output
   vtkPolyData *output = vtkPolyData::SafeDownCast(
     outInfo->Get(vtkDataObject::DATA_OBJECT()));
-  
+
   //Allocate storage
   vtkPoints *pts = vtkPoints::New();
   pts->Allocate(6,6);
@@ -81,9 +80,9 @@ int vtkAnnotationGlyphSource2D::RequestData(
   vtkUnsignedCharArray *colors = vtkUnsignedCharArray::New();
   colors->SetNumberOfComponents(3);
   colors->Allocate(2,2);
-  
+
   this->ConvertColor();
-  
+
   //Special options
   if ( this->Dash )
     {
@@ -99,7 +98,7 @@ int vtkAnnotationGlyphSource2D::RequestData(
     this->CreateCross(pts,lines,polys,colors,this->Scale2);
     this->Filled = filled;
     }
-  
+
   //Call the right function
   switch (this->GlyphType)
     {
@@ -142,30 +141,30 @@ int vtkAnnotationGlyphSource2D::RequestData(
       this->CreateStarBurst(pts,lines,polys,colors,this->Scale);
       break;
     }
-  
+
   this->TransformGlyph(pts);
 
   //Clean up
   output->SetPoints(pts);
   pts->Delete();
-  pts = NULL;
+  pts = nullptr;
 
   output->SetVerts(verts);
   verts->Delete();
-  verts = NULL;
-  
+  verts = nullptr;
+
   output->SetLines(lines);
   lines->Delete();
-  lines = NULL;
-  
+  lines = nullptr;
+
   output->SetPolys(polys);
   polys->Delete();
-  polys = NULL;
+  polys = nullptr;
 
   output->GetCellData()->SetScalars(colors);
   colors->Delete();
-  colors = NULL;
-  
+  colors = nullptr;
+
   return 1;
 }
 
@@ -181,7 +180,7 @@ void vtkAnnotationGlyphSource2D::TransformGlyph(vtkPoints *pts)
   double x[3];
   int i;
   int numPts=pts->GetNumberOfPoints();
-  
+
   if ( this->RotationAngle == 0.0 )
     {
     for (i=0; i<numPts; i++)
@@ -194,11 +193,7 @@ void vtkAnnotationGlyphSource2D::TransformGlyph(vtkPoints *pts)
     }
   else
     {
-#if ( (VTK_MAJOR_VERSION >= 6) || ( VTK_MAJOR_VERSION == 5 && VTK_MINOR_VERSION >= 4 ) )
     double angle = vtkMath::RadiansFromDegrees(this->RotationAngle);
-#else
-    double angle = this->RotationAngle * vtkMath::DegreesToRadians();
-#endif
     double xt;
     for (i=0; i<numPts; i++)
       {
@@ -225,7 +220,7 @@ void vtkAnnotationGlyphSource2D::CreateVertex(vtkPoints *pts, vtkCellArray *vert
 }
 
 void vtkAnnotationGlyphSource2D::CreateCross(vtkPoints *pts, vtkCellArray *lines,
-                                   vtkCellArray *polys, vtkUnsignedCharArray *colors, 
+                                   vtkCellArray *polys, vtkUnsignedCharArray *colors,
                                    double scale)
 {
   vtkIdType ptIds[4];
@@ -359,7 +354,7 @@ void vtkAnnotationGlyphSource2D::CreateCircle(vtkPoints *pts, vtkCellArray *line
     x[1] = 0.5 * sin((double)i*theta);
     ptIds[i] = pts->InsertNextPoint(x);
     }
-  
+
   if ( this->Filled )
     {
     polys->InsertNextCell(8,ptIds);
@@ -529,7 +524,7 @@ void vtkAnnotationGlyphSource2D::CreateStarBurst(vtkPoints *pts, vtkCellArray *l
     colors->InsertNextValue(this->RGB[0]);
     colors->InsertNextValue(this->RGB[1]);
     colors->InsertNextValue(this->RGB[2]);
-    
+
     angle += PIoverFOUR;
     }
 }
@@ -568,14 +563,14 @@ void vtkAnnotationGlyphSource2D::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
 
-  os << indent << "Center: (" << this->Center[0] << ", " 
+  os << indent << "Center: (" << this->Center[0] << ", "
      << this->Center[1] << ", " << this->Center[2] << ")\n";
 
   os << indent << "Scale: " << this->Scale << "\n";
   os << indent << "Scale2: " << this->Scale2 << "\n";
   os << indent << "Rotation Angle: " << this->RotationAngle << "\n";
 
-  os << indent << "Color: (" << this->Color[0] << ", " 
+  os << indent << "Color: (" << this->Color[0] << ", "
      << this->Color[1] << ", " << this->Color[2] << ")\n";
 
   os << indent << "Filled: " << (this->Filled ? "On\n" : "Off\n");
@@ -629,15 +624,14 @@ void vtkAnnotationGlyphSource2D::PrintSelf(ostream& os, vtkIndent indent)
 
 void vtkAnnotationGlyphSource2D::SetGlyphTypeAsString(const char *type)
 {
-  if (type == NULL)
+  if (type == nullptr)
     {
     vtkErrorMacro("Cannot set glyph type from a null string.");
     return;
     }
-  
-  //vtkMRMLFiducialListNode *listNode = vtkMRMLFiducialListNode::New();
-  vtkSmartPointer<vtkMRMLFiducialListNode> listNode = vtkSmartPointer<vtkMRMLFiducialListNode>::New();
-  
+
+  vtkNew<vtkMRMLFiducialListNode> listNode;
+
   if ( !strcmp( type, listNode->GetGlyphTypeAsString(vtkMRMLFiducialListNode::StarBurst2D) ) )
     {
     this->SetGlyphTypeToStarBurst();
@@ -686,6 +680,4 @@ void vtkAnnotationGlyphSource2D::SetGlyphTypeAsString(const char *type)
     {
     this->SetGlyphTypeToHookedArrow();
     }
-//  listNode->Delete();
-//  listNode = NULL;
 }

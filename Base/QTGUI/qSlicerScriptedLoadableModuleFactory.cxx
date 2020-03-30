@@ -43,6 +43,24 @@
 //----------------------------------------------------------------------------
 bool ctkFactoryScriptedItem::load()
 {
+#ifdef Slicer_USE_PYTHONQT
+  if (!qSlicerCoreApplication::testAttribute(qSlicerCoreApplication::AA_DisablePython))
+    {
+    // By convention, if the module is not embedded, "<MODULEPATH>" will be appended to PYTHONPATH
+    if (!qSlicerCoreApplication::application()->isEmbeddedModule(this->path()))
+      {
+      QDir modulePathWithoutIntDir = QFileInfo(this->path()).dir();
+      QString intDir = qSlicerCoreApplication::application()->intDir();
+      if (intDir ==  modulePathWithoutIntDir.dirName())
+        {
+        modulePathWithoutIntDir.cdUp();
+        }
+      qSlicerCorePythonManager * pythonManager = qSlicerCoreApplication::application()->corePythonManager();
+      pythonManager->appendPythonPaths(QStringList() << modulePathWithoutIntDir.absolutePath());
+      }
+    }
+#endif
+
   return true;
 }
 
@@ -57,29 +75,12 @@ qSlicerAbstractCoreModule* ctkFactoryScriptedItem::instanciator()
 
   qSlicerCoreApplication * app = qSlicerCoreApplication::application();
   module->setInstalled(qSlicerUtils::isPluginInstalled(this->path(), app->slicerHome()));
-
-#ifdef Slicer_USE_PYTHONQT
-  if (!qSlicerCoreApplication::testAttribute(qSlicerCoreApplication::AA_DisablePython))
-    {
-    // By convention, if the module is not embedded, "<MODULEPATH>" will be appended to PYTHONPATH
-    if (!qSlicerCoreApplication::application()->isEmbeddedModule(module->path()))
-      {
-      QDir modulePathWithoutIntDir = QFileInfo(module->path()).dir();
-      QString intDir = qSlicerCoreApplication::application()->intDir();
-      if (intDir ==  modulePathWithoutIntDir.dirName())
-        {
-        modulePathWithoutIntDir.cdUp();
-        }
-      qSlicerCorePythonManager * pythonManager = qSlicerCoreApplication::application()->corePythonManager();
-      pythonManager->appendPythonPaths(QStringList() << modulePathWithoutIntDir.absolutePath());
-      }
-    }
-#endif
+  module->setBuiltIn(qSlicerUtils::isPluginBuiltIn(this->path(), app->slicerHome()));
 
   bool ret = module->setPythonSource(this->path());
   if (!ret)
     {
-    return 0;
+    return nullptr;
     }
 
   return module.take();
@@ -149,15 +150,38 @@ qSlicerScriptedLoadableModuleFactory::qSlicerScriptedLoadableModuleFactory()
 
 //-----------------------------------------------------------------------------
 qSlicerScriptedLoadableModuleFactory::~qSlicerScriptedLoadableModuleFactory()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 bool qSlicerScriptedLoadableModuleFactory::isValidFile(const QFileInfo& file)const
 {
   // Skip if current file isn't a python file
-  return ctkAbstractFileBasedFactory<qSlicerAbstractCoreModule>::isValidFile(file) &&
-    file.suffix().compare("py", Qt::CaseInsensitive) == 0;
+  if(!ctkAbstractFileBasedFactory<qSlicerAbstractCoreModule>::isValidFile(file))
+    {
+    return false;
+    }
+
+  if (qSlicerUtils::isCLIScriptedExecutable(file.filePath()))
+    {
+    return false;
+    }
+
+  // Otherwise, accept if current file is a python script
+  if (file.suffix().compare("py", Qt::CaseInsensitive) == 0)
+    {
+    return true;
+    }
+  // Accept if current file is a pyc file and there is no associated py file
+  if (file.suffix().compare("pyc", Qt::CaseInsensitive) == 0)
+    {
+    int length = file.filePath().size();
+    QString pyFilePath = file.filePath().remove(length - 1, 1);
+    if (!QFile::exists(pyFilePath))
+      {
+      return true;
+      }
+    }
+  return false;
 }
 
 //----------------------------------------------------------------------------

@@ -17,7 +17,11 @@ vtkMRMLAnnotationTextDisplayNode::New()
       return (vtkMRMLAnnotationTextDisplayNode*) ret;
     }
   // If the factory was unable to create the object, then create it here.
-  return new vtkMRMLAnnotationTextDisplayNode;
+  vtkMRMLAnnotationTextDisplayNode* result = new vtkMRMLAnnotationTextDisplayNode;
+#ifdef VTK_HAS_INITIALIZE_OBJECT_BASE
+  result->InitializeObjectBase();
+#endif
+  return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -31,7 +35,11 @@ vtkMRMLAnnotationTextDisplayNode::CreateNodeInstance()
       return (vtkMRMLAnnotationTextDisplayNode*) ret;
     }
   // If the factory was unable to create the object, then create it here.
-  return new vtkMRMLAnnotationTextDisplayNode;
+  vtkMRMLAnnotationTextDisplayNode* result = new vtkMRMLAnnotationTextDisplayNode;
+#ifdef VTK_HAS_INITIALIZE_OBJECT_BASE
+  result->InitializeObjectBase();
+#endif
+  return result;
 }
 
 //----------------------------------------------------------------------------
@@ -42,7 +50,7 @@ vtkMRMLAnnotationTextDisplayNode::vtkMRMLAnnotationTextDisplayNode()
   this->UseLineWrap = 0;
   this->MaxCharactersPerLine = 20;
 
-  this->ShowArrowHead = 1;  
+  this->ShowArrowHead = 1;
   this->ShowBorder = 1;
   this->ShowLeader = 1;
   this->UseThreeDimensionalLeader = 1;
@@ -59,8 +67,6 @@ vtkMRMLAnnotationTextDisplayNode::WriteXML(ostream& of, int nIndent)
   // Write all attributes not equal to their defaults
 
   Superclass::WriteXML(of, nIndent);
-
-  vtkIndent indent(nIndent);
 
   of << " textScale=\"" << this->TextScale << "\"";
   of << " useLineWrap=\"" << (this->UseLineWrap ? "true" : "false") << "\"";
@@ -85,7 +91,7 @@ vtkMRMLAnnotationTextDisplayNode::ReadXMLAttributes(const char** atts)
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL)
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
@@ -308,8 +314,8 @@ std::string vtkMRMLAnnotationTextDisplayNode::GetLineWrappedText(std::string inp
 {
   std::string wrappedText;
   size_t maxCharPerLine = (size_t)(this->GetMaxCharactersPerLine());
-  
-  
+
+
   if (inputText.find_first_of(' ') == std::string::npos)
     {
     vtkDebugMacro("There are no spaces in the line '" << inputText.c_str() << "'" );
@@ -333,7 +339,7 @@ std::string vtkMRMLAnnotationTextDisplayNode::GetLineWrappedText(std::string inp
   vtkDebugMacro("spaceLeft = " << spaceLeft );
   char *line = (char *)(inputText.c_str());
   char *ptr = strtok(line, " ");
-  while (ptr != NULL)
+  while (ptr != nullptr)
     {
     size_t wordWidth = strlen(ptr);
     vtkDebugMacro("ptr = '" << ptr << "', len = " << wordWidth << ", spaceLeft = " << spaceLeft << ", wrappedText is currently = \n'" << wrappedText.c_str() << "'" );
@@ -384,7 +390,7 @@ std::string vtkMRMLAnnotationTextDisplayNode::GetLineWrappedText(std::string inp
           wrappedText.push_back(' ');
           spaceLeft--;
           }
-            
+
         }
       }
     else
@@ -408,7 +414,7 @@ std::string vtkMRMLAnnotationTextDisplayNode::GetLineWrappedText(std::string inp
         spaceLeft--;
         }
       }
-    ptr = strtok(NULL, " ");
+    ptr = strtok(nullptr, " ");
     }
   // if the last thing on the line is a space or newline, remove it
   size_t lastLineFeed = wrappedText.find_last_of('\n');

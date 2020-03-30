@@ -259,7 +259,7 @@ CSFLSRobustStatSegmentor3DLabelMap<TPixel>
 
   if( m_featureComputed->GetPixel(idx) )
     {
-    // the feature at this pixel is computed, just retrive
+    // the feature at this pixel is computed, just retrieve
     for( long i = 0; i < m_numberOfFeature; ++i )
       {
       f[i] = (m_featureImageList[i])->GetPixel(idx);
@@ -865,22 +865,17 @@ CSFLSRobustStatSegmentor3DLabelMap<TPixel>
     }
 
   typedef itk::Image<TPixel, 3> itkImage_t;
-
   typedef itk::ImageRegionConstIterator<itkImage_t> itkImageRegionConstIterator_t;
 
+  m_inputImageIntensityMin = std::numeric_limits<TPixel>::max(); // yes, it's twisted so easy to compute.
+  m_inputImageIntensityMax = std::numeric_limits<TPixel>::min();
   itkImageRegionConstIterator_t it( (this->mp_img), (this->mp_img)->GetLargestPossibleRegion() );
-  it.GoToBegin();
-
-  m_inputImageIntensityMin = std::numeric_limits<unsigned>::max(); // yes, it's twisted so easity to compute.
-  m_inputImageIntensityMax = std::numeric_limits<unsigned>::min();
-  for( ; !it.IsAtEnd(); ++it )
+  for( it.GoToBegin(); !it.IsAtEnd(); ++it )
     {
-    TPixel v = it.Get();
-
-    m_inputImageIntensityMin = m_inputImageIntensityMin < v ? m_inputImageIntensityMin : v;
-    m_inputImageIntensityMax = m_inputImageIntensityMax > v ? m_inputImageIntensityMax : v;
+    const TPixel v = it.Get();
+    m_inputImageIntensityMin = ( m_inputImageIntensityMin < v ) ? m_inputImageIntensityMin : v;
+    m_inputImageIntensityMax = ( m_inputImageIntensityMax > v ) ? m_inputImageIntensityMax : v;
     }
-
   return;
 }
 

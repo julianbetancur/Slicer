@@ -30,7 +30,7 @@ vtkMRMLNodeNewMacro(vtkMRMLChartViewNode);
 //----------------------------------------------------------------------------
 vtkMRMLChartViewNode::vtkMRMLChartViewNode()
 {
-  this->ChartNodeID = 0;
+  this->ChartNodeID = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -38,22 +38,20 @@ vtkMRMLChartViewNode::~vtkMRMLChartViewNode()
 {
   if (this->ChartNodeID)
     {
-    this->SetChartNodeID(0);
+    this->SetChartNodeID(nullptr);
     }
 }
 
 //----------------------------------------------------------------------------
-const char* vtkMRMLChartViewNode::GetNodeTagName() 
+const char* vtkMRMLChartViewNode::GetNodeTagName()
 {
-  return "ChartView"; 
+  return "ChartView";
 }
 
 //----------------------------------------------------------------------------
 void vtkMRMLChartViewNode::WriteXML(ostream& of, int nIndent)
 {
   Superclass::WriteXML(of, nIndent);
-
-  vtkIndent indent(nIndent);
 
   if (this->ChartNodeID)
     {
@@ -70,7 +68,7 @@ void vtkMRMLChartViewNode::ReadXMLAttributes(const char** atts)
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
@@ -104,7 +102,7 @@ void vtkMRMLChartViewNode::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
 
-  os << indent << "ChartNodeID: " << 
+  os << indent << "ChartNodeID: " <<
    (this->ChartNodeID ? this->ChartNodeID : "(none)") << "\n";
 }
 
@@ -121,9 +119,9 @@ void vtkMRMLChartViewNode::UpdateReferences()
 {
    Superclass::UpdateReferences();
 
-  if (this->ChartNodeID != NULL && this->Scene->GetNodeByID(this->ChartNodeID) == NULL)
+  if (this->ChartNodeID != nullptr && this->Scene->GetNodeByID(this->ChartNodeID) == nullptr)
     {
-    this->SetChartNodeID(NULL);
+    this->SetChartNodeID(nullptr);
     }
 }
 

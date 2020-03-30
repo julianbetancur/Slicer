@@ -26,38 +26,33 @@ class VTK_MRML_EXPORT vtkMRMLDoubleArrayStorageNode : public vtkMRMLStorageNode
 public:
   static vtkMRMLDoubleArrayStorageNode *New();
   vtkTypeMacro(vtkMRMLDoubleArrayStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  // Description:
-  // Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "DoubleArrayStorage";};
+  /// Get node XML tag name (like Storage, Model)
+  const char* GetNodeTagName() override {return "DoubleArrayStorage";}
 
-  // Description:
-  // Return a default file extension for writting
-  virtual const char* GetDefaultWriteFileExtension();
-
-  // Return true if the node can be read in
-  virtual bool CanReadInReferenceNode(vtkMRMLNode *refNode);
+  /// Return true if the node can be read in
+  bool CanReadInReferenceNode(vtkMRMLNode *refNode) override;
 
 protected:
   vtkMRMLDoubleArrayStorageNode();
-  ~vtkMRMLDoubleArrayStorageNode();
+  ~vtkMRMLDoubleArrayStorageNode() override;
   vtkMRMLDoubleArrayStorageNode(const vtkMRMLDoubleArrayStorageNode&);
   void operator=(const vtkMRMLDoubleArrayStorageNode&);
 
-  // Initialize all the supported write file types
-  virtual void InitializeSupportedReadFileTypes();
+  /// Initialize all the supported write file types
+  void InitializeSupportedReadFileTypes() override;
 
-  // Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  /// Initialize all the supported write file types
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 
 };
 

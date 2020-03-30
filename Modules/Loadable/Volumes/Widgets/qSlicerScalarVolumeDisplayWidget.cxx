@@ -17,6 +17,8 @@
 #include "vtkMRMLScene.h"
 
 // VTK includes
+#include <vtkAlgorithm.h>
+#include <vtkAlgorithmOutput.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkImageData.h>
 #include <vtkPointData.h>
@@ -85,6 +87,8 @@ void qSlicerScalarVolumeDisplayWidgetPrivate::init()
   QObject::connect(this->ColorTableComboBox, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
                    q, SLOT(setColorNode(vtkMRMLNode*)));
 
+  QObject::connect(this->LockWindowLevelButton, SIGNAL(clicked()),
+                   q, SLOT(onLockWindowLevelButtonClicked()));
   QObject::connect(this->CTBonePresetToolButton, SIGNAL(clicked()),
                    q, SLOT(onPresetButtonClicked()));
   QObject::connect(this->CTAirPresetToolButton, SIGNAL(clicked()),
@@ -97,6 +101,10 @@ void qSlicerScalarVolumeDisplayWidgetPrivate::init()
                    q, SLOT(onPresetButtonClicked()));
   QObject::connect(this->CTLungPresetToolButton, SIGNAL(clicked()),
                    q, SLOT(onPresetButtonClicked()));
+  QObject::connect(this->DTIPresetToolButton, SIGNAL(clicked()),
+                   q, SLOT(onPresetButtonClicked()));
+  QObject::connect(this->HistogramGroupBox, SIGNAL(toggled(bool)),
+                   q, SLOT(onHistogramSectionExpanded(bool)));
 }
 
 // --------------------------------------------------------------------------
@@ -113,8 +121,7 @@ qSlicerScalarVolumeDisplayWidget::qSlicerScalarVolumeDisplayWidget(QWidget* _par
 
 // --------------------------------------------------------------------------
 qSlicerScalarVolumeDisplayWidget::~qSlicerScalarVolumeDisplayWidget()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 vtkMRMLScalarVolumeNode* qSlicerScalarVolumeDisplayWidget::volumeNode()const
@@ -157,7 +164,7 @@ vtkMRMLScalarVolumeDisplayNode* qSlicerScalarVolumeDisplayWidget::volumeDisplayN
 {
   vtkMRMLVolumeNode* volumeNode = this->volumeNode();
   return volumeNode ? vtkMRMLScalarVolumeDisplayNode::SafeDownCast(
-    volumeNode->GetDisplayNode()) : 0;
+    volumeNode->GetDisplayNode()) : nullptr;
 }
 
 // --------------------------------------------------------------------------
@@ -176,16 +183,11 @@ void qSlicerScalarVolumeDisplayWidget::setMRMLVolumeNode(vtkMRMLScalarVolumeNode
   d->MRMLWindowLevelWidget->setMRMLVolumeNode(volumeNode);
   d->MRMLVolumeThresholdWidget->setMRMLVolumeNode(volumeNode);
 
-  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() :0,
+  qvtkReconnect(oldVolumeDisplayNode, volumeNode ? volumeNode->GetDisplayNode() :nullptr,
                 vtkCommand::ModifiedEvent,
                 this, SLOT(updateWidgetFromMRML()));
-  d->Histogram->setDataArray(volumeNode &&
-                             volumeNode->GetImageData() &&
-                             volumeNode->GetImageData()->GetPointData() ?
-                             volumeNode->GetImageData()->GetPointData()->GetScalars() :
-                             0);
-  d->Histogram->build();
-  this->setEnabled(volumeNode != 0);
+
+  this->setEnabled(volumeNode != nullptr);
 
   this->updateWidgetFromMRML();
 }
@@ -200,28 +202,94 @@ void qSlicerScalarVolumeDisplayWidget::updateWidgetFromMRML()
     {
     d->ColorTableComboBox->setCurrentNode(displayNode->GetColorNode());
     d->InterpolateCheckbox->setChecked(displayNode->GetInterpolate());
+    bool lockedWindowLevel = displayNode->GetWindowLevelLocked();
+    d->LockWindowLevelButton->setChecked(lockedWindowLevel);
+    if (lockedWindowLevel)
+      {
+      d->LockWindowLevelButton->setIcon(QIcon(":Icons/Medium/SlicerLock.png"));
+      d->LockWindowLevelButton->setToolTip(QString("Click to enable modification of Window/Level values"));
+      }
+    else
+      {
+      d->LockWindowLevelButton->setIcon(QIcon(":Icons/Medium/SlicerUnlock.png"));
+      d->LockWindowLevelButton->setToolTip(QString("Click to prevent modification of Window/Level values"));
+      }
+    d->CTBonePresetToolButton->setEnabled(!lockedWindowLevel);
+    d->CTAirPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->PETPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->CTAbdomenPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->CTBrainPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->CTLungPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->DTIPresetToolButton->setEnabled(!lockedWindowLevel);
+    d->MRMLWindowLevelWidget->setEnabled(!lockedWindowLevel);
     }
-  if (this->isVisible())
-    {
-    this->updateTransferFunction();
-    }
+  this->updateHistogram();
 }
 
 //----------------------------------------------------------------------------
-void qSlicerScalarVolumeDisplayWidget::updateTransferFunction()
+void qSlicerScalarVolumeDisplayWidget::updateHistogram()
 {
   Q_D(qSlicerScalarVolumeDisplayWidget);
-  // from vtkKWWindowLevelThresholdEditor::UpdateTransferFunction
-  vtkMRMLVolumeNode* volumeNode = d->MRMLWindowLevelWidget->mrmlVolumeNode();
-  Q_ASSERT(volumeNode == d->MRMLVolumeThresholdWidget->mrmlVolumeNode());
-  vtkImageData* imageData = volumeNode ? volumeNode->GetImageData() : 0;
-  if (imageData == 0)
+
+  // Get voxel array
+  vtkMRMLScalarVolumeNode* volumeNode = this->volumeNode();
+  vtkImageData* imageData = volumeNode ? volumeNode->GetImageData() : nullptr;
+  vtkPointData* pointData = imageData ? imageData->GetPointData() : nullptr;
+  vtkDataArray* voxelValues = pointData ? pointData->GetScalars() : nullptr;
+
+  // If there are no voxel values then we completely hide the histogram section
+  d->HistogramGroupBox->setVisible(voxelValues != nullptr);
+
+  d->Histogram->setDataArray(voxelValues);
+  // Calling histogram build() with an empty volume causes heap corruption
+  // (reported by VS2013 in debug mode), therefore we only build
+  // the histogram if there are voxels (otherwise histogram is hidden).
+
+  if (!voxelValues || !this->isVisible() || d->HistogramGroupBox->collapsed())
     {
     d->ColorTransferFunction->RemoveAllPoints();
     return;
     }
+
+  // Update histogram
+
+  // Screen resolution is limited, therefore it does not make sense to compute
+  // many bin counts.
+  const int maxBinCount = 1000;
+  if (voxelValues->GetArrayType() == VTK_FLOAT || voxelValues->GetArrayType() == VTK_DOUBLE)
+    {
+    d->Histogram->setNumberOfBins(maxBinCount);
+    }
+  else
+    {
+    double* range = voxelValues->GetRange();
+    int binCount = static_cast<int>(range[1] - range[0] + 1);
+    if (binCount > maxBinCount)
+      {
+      binCount = maxBinCount;
+      }
+    if (binCount < 1)
+      {
+      binCount = 1;
+      }
+    d->Histogram->setNumberOfBins(binCount);
+    }
+  d->Histogram->build();
+
+  // Update histogram background
+
+  // from vtkKWWindowLevelThresholdEditor::UpdateTransferFunction
   double range[2] = {0,255};
-  imageData->GetScalarRange(range);
+  vtkMRMLScalarVolumeDisplayNode* displayNode =
+    this->volumeDisplayNode();
+  if (displayNode)
+    {
+    displayNode->GetDisplayScalarRange(range);
+    }
+  else
+    {
+    imageData->GetScalarRange(range);
+    }
   // AdjustRange call will take out points that are outside of the new
   // range, but it needs the points to be there in order to work, so call
   // RemoveAllPoints after it's done
@@ -280,8 +348,15 @@ void qSlicerScalarVolumeDisplayWidget::updateTransferFunction()
 // -----------------------------------------------------------------------------
 void qSlicerScalarVolumeDisplayWidget::showEvent( QShowEvent * event )
 {
-  this->updateTransferFunction();
+  this->updateHistogram();
   this->Superclass::showEvent(event);
+}
+
+// --------------------------------------------------------------------------
+void qSlicerScalarVolumeDisplayWidget::onHistogramSectionExpanded(bool expanded)
+{
+  Q_UNUSED(expanded);
+  this->updateHistogram();
 }
 
 // --------------------------------------------------------------------------
@@ -307,6 +382,19 @@ void qSlicerScalarVolumeDisplayWidget::setColorNode(vtkMRMLNode* colorNode)
     }
   Q_ASSERT(vtkMRMLColorNode::SafeDownCast(colorNode));
   displayNode->SetAndObserveColorNodeID(colorNode->GetID());
+}
+
+// --------------------------------------------------------------------------
+void qSlicerScalarVolumeDisplayWidget::onLockWindowLevelButtonClicked()
+{
+  vtkMRMLScalarVolumeDisplayNode* displayNode = this->volumeDisplayNode();
+  if (!displayNode)
+    {
+    return;
+    }
+  // toggle the lock
+  int locked = displayNode->GetWindowLevelLocked();
+  displayNode->SetWindowLevelLocked(!locked);
 }
 
 // --------------------------------------------------------------------------
@@ -359,8 +447,13 @@ void qSlicerScalarVolumeDisplayWidget::setPreset(const QString& presetName)
     window = 1400.;
     level = -500.;
     }
-
-  vtkMRMLNode* colorNode = this->mrmlScene()->GetNodeByID(colorNodeID.toLatin1());
+  else if (presetName == "DTI")
+    {
+    colorNodeID = "vtkMRMLColorTableNodeRainbow";
+    window = 1.0;
+    level = 0.5;
+    }
+  vtkMRMLNode* colorNode = this->mrmlScene()->GetNodeByID(colorNodeID.toUtf8());
   if (colorNode)
     {
     this->setColorNode(colorNode);

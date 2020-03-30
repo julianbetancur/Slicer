@@ -1,16 +1,9 @@
 #include "itkConstantPadImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkImageFileWriter.h"
+#include "itkN4BiasFieldCorrectionImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkShrinkImageFilter.h"
-
-#if ITK_VERSION_MAJOR >= 4
-// This is  now officially part of ITKv4
-#include "itkN4BiasFieldCorrectionImageFilter.h"
-#else
-// Need private version for ITKv3 that does not conflict with ITKv4 fixes
-#include "SlicerITKv3N4MRIBiasFieldCorrectionImageFilter.h"
-#endif
 
 #include "N4ITKBiasFieldCorrectionCLP.h"
 #include "itkPluginUtilities.h"
@@ -32,16 +25,15 @@ public:
   itkNewMacro( Self );
 protected:
   CommandIterationUpdate()
-  {
-  };
+   = default;
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event)
+  void Execute(itk::Object *caller, const itk::EventObject & event) override
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object * object, const itk::EventObject & event)
+  void Execute(const itk::Object * object, const itk::EventObject & event) override
   {
     const TFilter * filter =
       dynamic_cast<const TFilter *>( object );
@@ -55,18 +47,11 @@ public:
 
 };
 
-template <class T>
-int SaveIt(ImageType::Pointer img, const char* fname, T)
+int SaveIt(ImageType::Pointer img, const char* fname)
 {
-  typedef itk::Image<T, 3>                                 OutputImageType;
-  typedef itk::CastImageFilter<ImageType, OutputImageType> CastType;
-
-  typename CastType::Pointer caster = CastType::New();
-  caster->SetInput(img);
-
-  typedef  itk::ImageFileWriter<OutputImageType> WriterType;
-  typename WriterType::Pointer writer = WriterType::New();
-  writer->SetInput( caster->GetOutput() );
+  typedef  itk::ImageFileWriter<ImageType> WriterType;
+  WriterType::Pointer writer = WriterType::New();
+  writer->SetInput( img );
   writer->SetFileName( fname );
   writer->SetUseCompression(1);
   writer->Update();
@@ -81,16 +66,12 @@ int main(int argc, char* * argv)
 
   PARSE_ARGS;
 
-  ImageType::Pointer inputImage = NULL;
+  ImageType::Pointer inputImage = nullptr;
 
   typedef itk::Image<unsigned char, ImageDimension> MaskImageType;
-  MaskImageType::Pointer maskImage = NULL;
+  MaskImageType::Pointer maskImage = nullptr;
 
-#if ITK_VERSION_MAJOR >= 4
   typedef    itk::N4BiasFieldCorrectionImageFilter<ImageType, MaskImageType, ImageType> CorrecterType;
-#else
-  typedef itk::N4MRIBiasFieldCorrectionImageFilter<ImageType, MaskImageType, ImageType> CorrecterType;
-#endif
   CorrecterType::Pointer correcter = CorrecterType::New();
 
   typedef itk::ImageFileReader<ImageType> ReaderType;
@@ -144,7 +125,7 @@ int main(int argc, char* * argv)
     maskImage = otsu->GetOutput();
     }
 
-  ImageType::Pointer weightImage = NULL;
+  ImageType::Pointer weightImage = nullptr;
 
   if( weightImageName != "" )
     {
@@ -156,7 +137,7 @@ int main(int argc, char* * argv)
     }
 
   /**
-   * convergence opions
+   * convergence options
    */
   if( numberOfIterations.size() > 1 && numberOfIterations[0] )
     {
@@ -179,19 +160,14 @@ int main(int argc, char* * argv)
     }
 
   /**
-   * B-spline opions -- we place his here o ake care of he case where
+   * B-spline options -- we place his here o ake care of he case where
    * he user wans o specify hings in erms of he spline disance.
    */
 
-  bool                 useSplineDistance = false;
   ImageType::IndexType inputImageIndex =
     inputImage->GetLargestPossibleRegion().GetIndex();
   ImageType::SizeType inputImageSize =
     inputImage->GetLargestPossibleRegion().GetSize();
-  ImageType::IndexType maskImageIndex =
-    maskImage->GetLargestPossibleRegion().GetIndex();
-  ImageType::SizeType maskImageSize =
-    maskImage->GetLargestPossibleRegion().GetSize();
 
   ImageType::PointType newOrigin = inputImage->GetOrigin();
 
@@ -203,19 +179,19 @@ int main(int argc, char* * argv)
   CorrecterType::ArrayType numberOfControlPoints;
   if( splineDistance )
     {
-    useSplineDistance = true;
 
-    unsigned long lowerBound[ImageDimension];
-    unsigned long upperBound[ImageDimension];
+    itk::SizeValueType lowerBound[ImageDimension];
+    itk::SizeValueType upperBound[ImageDimension];
     for( unsigned  d = 0; d < 3; d++ )
       {
       float domain = static_cast<RealType>( inputImage->
                                             GetLargestPossibleRegion().GetSize()[d] - 1 ) * inputImage->GetSpacing()[d];
-      unsigned int  numberOfSpans = static_cast<unsigned int>( vcl_ceil( domain / splineDistance ) );
-      unsigned long extraPadding = static_cast<unsigned long>( ( numberOfSpans
-                                                                 * splineDistance
-                                                                 - domain ) / inputImage->GetSpacing()[d] + 0.5 );
-      lowerBound[d] = static_cast<unsigned long>( 0.5 * extraPadding );
+      unsigned int  numberOfSpans = static_cast<unsigned int>( std::ceil( domain / splineDistance ) );
+      itk::SizeValueType extraPadding =
+          static_cast<itk::SizeValueType>( ( numberOfSpans
+                                             * splineDistance
+                                             - domain ) / inputImage->GetSpacing()[d] + 0.5 );
+      lowerBound[d] = static_cast<itk::SizeValueType>( 0.5 * extraPadding );
       upperBound[d] = extraPadding - lowerBound[d];
       newOrigin[d] -= ( static_cast<RealType>( lowerBound[d] )
                         * inputImage->GetSpacing()[d] );
@@ -300,17 +276,17 @@ int main(int argc, char* * argv)
   /**
    * histogram sharpening options
    */
-  if( histogramSharpening.size() && histogramSharpening[0] )
+  if( bfFWHM )
     {
-    correcter->SetBiasFieldFullWidthAtHalfMaximum( histogramSharpening[0] );
+    correcter->SetBiasFieldFullWidthAtHalfMaximum( bfFWHM );
     }
-  if( histogramSharpening.size() > 1 && histogramSharpening[1] )
+  if( wienerFilterNoise )
     {
-    correcter->SetWienerFilterNoise( histogramSharpening[1] );
+    correcter->SetWienerFilterNoise( wienerFilterNoise );
     }
-  if( histogramSharpening.size() > 2 && histogramSharpening[2] )
+  if( nHistogramBins )
     {
-    correcter->SetNumberOfHistogramBins( histogramSharpening[2] );
+    correcter->SetNumberOfHistogramBins( nHistogramBins );
     }
 
   try
@@ -335,7 +311,7 @@ int main(int argc, char* * argv)
   std::cout << "Elapsed ime: " << timer.GetMean() << std::endl;
 
   /**
-   * ouput
+   * output
    */
   if( outputImageName != "" )
     {
@@ -392,18 +368,13 @@ int main(int argc, char* * argv)
     CropperType::Pointer cropper = CropperType::New();
     cropper->SetInput( divider->GetOutput() );
     cropper->SetExtractionRegion( inputRegion );
-#if ITK_VERSION_MAJOR >= 4
     cropper->SetDirectionCollapseToSubmatrix();
-#endif
     cropper->Update();
 
     CropperType::Pointer biasFieldCropper = CropperType::New();
     biasFieldCropper->SetInput( expFilter->GetOutput() );
     biasFieldCropper->SetExtractionRegion( inputRegion );
-#if ITK_VERSION_MAJOR >= 4
     biasFieldCropper->SetDirectionCollapseToSubmatrix();
-#endif
-
     biasFieldCropper->Update();
 
     if( outputBiasFieldName != "" )
@@ -428,45 +399,7 @@ int main(int argc, char* * argv)
       // signed types
       const char *fname = outputImageName.c_str();
 
-      switch( componentType )
-        {
-        case itk::ImageIOBase::UCHAR:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<unsigned char>(0) );
-          break;
-        case itk::ImageIOBase::CHAR:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<char>(0) );
-          break;
-        case itk::ImageIOBase::USHORT:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<unsigned short>(0) );
-          break;
-        case itk::ImageIOBase::SHORT:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<short>(0) );
-          break;
-        case itk::ImageIOBase::UINT:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<unsigned int>(0) );
-          break;
-        case itk::ImageIOBase::INT:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<int>(0) );
-          break;
-        case itk::ImageIOBase::ULONG:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<unsigned long>(0) );
-          break;
-        case itk::ImageIOBase::LONG:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<long>(0) );
-          break;
-        case itk::ImageIOBase::FLOAT:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<float>(0) );
-          break;
-        case itk::ImageIOBase::DOUBLE:
-          return SaveIt( cropper->GetOutput(), fname, static_cast<double>(0) );
-          break;
-        case itk::ImageIOBase::UNKNOWNCOMPONENTTYPE:
-          std::cerr << "Cannot saved the result using the requested pixel type" << std::endl;
-          return EXIT_FAILURE;
-        default:
-          std::cout << "unknown component type" << std::endl;
-          break;
-        }
+      return SaveIt(cropper->GetOutput(), fname);
       }
     catch( itk::ExceptionObject & e )
       {

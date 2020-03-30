@@ -22,6 +22,9 @@
 #include <QTimer>
 #include <QWidget>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQt includes
 #include <qMRMLThreeDWidget.h>
 #include <qSlicerAbstractModuleRepresentation.h>
@@ -33,14 +36,19 @@
 
 // MRML includes
 #include <vtkMRMLModelHierarchyNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLViewNode.h>
+
 // VTK includes
 #include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 //-----------------------------------------------------------------------------
 int qSlicerModelsModuleWidgetTestScene( int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   qSlicerApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   if (argc < 2)
     {
@@ -50,7 +58,7 @@ int qSlicerModelsModuleWidgetTestScene( int argc, char * argv[] )
     }
 
   qSlicerModelsModule module;
-  module.initialize(0);
+  module.initialize(nullptr);
 
   vtkNew<vtkMRMLScene> scene;
   scene->SetURL(argv[1]);
@@ -62,9 +70,8 @@ int qSlicerModelsModuleWidgetTestScene( int argc, char * argv[] )
 
   qMRMLThreeDWidget view;
   view.setMRMLScene(scene.GetPointer());
-  scene->InitTraversal();
   view.setMRMLViewNode(vtkMRMLViewNode::SafeDownCast(
-    scene->GetNextNodeByClass("vtkMRMLViewNode")));
+    scene->GetFirstNodeByClass("vtkMRMLViewNode")));
   view.show();
 
   if (argc < 3 || QString(argv[2]) != "-I")

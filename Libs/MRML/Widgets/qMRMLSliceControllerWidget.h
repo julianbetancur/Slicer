@@ -23,9 +23,13 @@
 
 // qMRMLWidget includes
 #include "qMRMLViewControllerBar.h"
+#include <vtkVersion.h>
 
 class QButtonGroup;
+class QToolButton;
 class qMRMLSliceControllerWidgetPrivate;
+class qMRMLSliderWidget;
+class vtkAlgorithmOutput;
 class vtkCollection;
 class vtkImageData;
 class vtkMRMLNode;
@@ -52,14 +56,18 @@ class QMRML_WIDGETS_EXPORT qMRMLSliceControllerWidget
 {
   Q_OBJECT
   Q_PROPERTY(QString sliceViewName READ sliceViewName WRITE setSliceViewName)
+  Q_PROPERTY(QString sliceViewLabel READ sliceViewLabel WRITE setSliceViewLabel)
+  Q_PROPERTY(QColor sliceViewColor READ sliceViewColor WRITE setSliceViewColor)
+  Q_PROPERTY(double sliceOffsetResolution READ sliceOffsetResolution WRITE setSliceOffsetResolution)
   Q_PROPERTY(bool moreButtonVisibility READ isMoreButtonVisible WRITE setMoreButtonVisible)
+  Q_PROPERTY(QString sliceOrientation READ sliceOrientation WRITE setSliceOrientation)
 public:
   /// Superclass typedef
   typedef qMRMLViewControllerBar Superclass;
-  
+
   /// Constructors
-  explicit qMRMLSliceControllerWidget(QWidget* parent = 0);
-  virtual ~qMRMLSliceControllerWidget();
+  explicit qMRMLSliceControllerWidget(QWidget* parent = nullptr);
+  ~qMRMLSliceControllerWidget() override;
 
   /// Are the slices linked to each other
   bool isLinked()const;
@@ -76,15 +84,15 @@ public:
   /// Background, Foreground or LabelMap.
   /// Or if the only volume assigned doesn't have have
   /// a display node or its display node image data is 0.
-  vtkImageData* imageData()const;
+  Q_INVOKABLE vtkAlgorithmOutput* imageDataConnection()const;
 
   /// Get \a sliceNode
   /// \sa setMRMLSliceCompositeNode();
-  vtkMRMLSliceNode* mrmlSliceNode()const;
+  Q_INVOKABLE vtkMRMLSliceNode* mrmlSliceNode()const;
 
   /// Get sliceCompositeNode
   /// \sa vtkMRMLSliceLogic::GetSliceCompositeNode();
-  vtkMRMLSliceCompositeNode* mrmlSliceCompositeNode()const;
+  Q_INVOKABLE vtkMRMLSliceCompositeNode* mrmlSliceCompositeNode()const;
 
   /// Set slice view name
   /// \note SliceViewName should be set before setMRMLSliceNode() is called
@@ -97,51 +105,63 @@ public:
   /// Return the color associated to the slice view
   Q_INVOKABLE static QColor sliceViewColor(const QString& sliceViewName);
 
-  /// Set the label for the slice view (abbreviation for the view
-  /// name)
+  /// Convenience function to set the abbreviated name for the slice view.
+  /// This is equivalent to call vtkMRMLSliceNode::SetLayoutLabel()
+  /// If no SliceNode is set, this is a no-op.
+  /// \sa setMRMLSliceNode(), vtkMRMLSliceNode::SetLayoutLabel()
   void setSliceViewLabel(const QString& newSliceViewLabel);
 
-  /// Get the label for the slice view (abbreviation for the view name)
+  /// Get the abbreviated slice view name.
+  /// \sa setSliceViewLabel(), vtkMRMLSliceNode::GetLayoutLabel()
   QString sliceViewLabel()const;
 
   /// Set the color for the slice view
   void setSliceViewColor(const QColor& newSliceViewColor);
 
-  /// Get the color for the slice view (as a string)
+  /// Get the color for the slice view
   QColor sliceViewColor()const;
 
   /// Set slice offset range
-  void setSliceOffsetRange(double min, double max);
+  Q_INVOKABLE void setSliceOffsetRange(double min, double max);
 
   /// Set slice offset \a resolution (increment)
   void setSliceOffsetResolution(double resolution);
 
+  /// Get slice offset \a resolution (increment)
+  double sliceOffsetResolution();
+
   /// Get SliceLogic
-  vtkMRMLSliceLogic* sliceLogic()const;
+  Q_INVOKABLE vtkMRMLSliceLogic* sliceLogic()const;
 
   /// Set \a newSliceLogic
   /// Use if two instances of the controller need to observe the same logic.
-  void setSliceLogic(vtkMRMLSliceLogic * newSliceLogic);
+  Q_INVOKABLE void setSliceLogic(vtkMRMLSliceLogic * newSliceLogic);
 
   /// Set controller widget group
   /// All controllers of a same group will be set visible or hidden if at least
   /// one of the sliceCollapsibleButton of the group is clicked.
-  void setControllerButtonGroup(QButtonGroup* group);
+  Q_INVOKABLE void setControllerButtonGroup(QButtonGroup* group);
 
   /// TODO:
   /// Ideally the slice logics should be retrieved by the sliceLogic
   /// until then, we manually set them.
-  void setSliceLogics(vtkCollection* logics);
+  Q_INVOKABLE void setSliceLogics(vtkCollection* logics);
+
+  /// Get the slice slider widget (shown in the controller bar).
+  Q_INVOKABLE qMRMLSliderWidget* sliceOffsetSlider();
+
+  /// Get the fit to window button (shown in the controller bar).
+  Q_INVOKABLE QToolButton* fitToWindowToolButton();
 
 public slots:
 
-  virtual void setMRMLScene(vtkMRMLScene* newScene);
+  void setMRMLScene(vtkMRMLScene* newScene) override;
 
   /// Set a new SliceNode.
   void setMRMLSliceNode(vtkMRMLSliceNode* newSliceNode);
 
   /// Set a new imageData.
-  void setImageData(vtkImageData* newImageData);
+  void setImageDataConnection(vtkAlgorithmOutput* newImageDataConnection);
 
   /// \sa fitSliceToBackground();
   void setSliceViewSize(const QSize& newSize);
@@ -171,7 +191,6 @@ public slots:
   /// slices after the interaction completes.
   void setHotLinked(bool hot);
 
-
   // Advanced options
   /// Set the visibility of the MoreButton which allows to show the advanced
   /// controls.
@@ -180,20 +199,30 @@ public slots:
   /// controls.
   bool isMoreButtonVisible() const;
 
+  /// Place background volume combobox in the popup or the bar depending on the
+  /// state of the More button
   void moveBackgroundComboBox(bool move);
+  /// Show/hide segmentation controls based on More button state and whether
+  /// there is a segmentation node in the scene
+  void updateSegmentationControlsVisibility();
 
   /// Rotate to volume plane
   void rotateSliceToBackground();
-  
+
+  void setSegmentationHidden(bool hide);
   void setLabelMapHidden(bool hide);
   void setForegroundHidden(bool hide);
   void setBackgroundHidden(bool hide);
 
+  /// Segmentation opacity
+  void setSegmentationOpacity(double opacity);
   /// Label opacity
   void setLabelMapOpacity(double opacity);
   void setForegroundOpacity(double opacity);
   void setBackgroundOpacity(double opacity);
-  
+
+  /// Segmentation outline/fill
+  void toggleSegmentationOutlineFill();
   /// Label outline
   void showLabelOutline(bool show);
   /// Reformat widget
@@ -215,6 +244,7 @@ public slots:
   void setSliceModelModeVolumes();
   void setSliceModelMode2D();
   void setSliceModelMode2D_Volumes();
+  void setSliceModelModeVolumes_2D();
   void setSliceModelModeCustom();
 
   void setSliceModelFOV(int index, double fov);
@@ -228,6 +258,14 @@ public slots:
   void setSliceModelDimension(int index, int dim);
   void setSliceModelDimensionX(int dim);
   void setSliceModelDimensionY(int dim);
+
+  // Orientation marker
+  void setOrientationMarkerType(int type);
+  void setOrientationMarkerSize(int size);
+
+  // Ruler
+  void setRulerType(int type);
+  void setRulerColor(int color);
 
   // Lightbox
   void setLightbox(int rows, int columns);
@@ -243,12 +281,24 @@ public slots:
   // interpolation
   void setForegroundInterpolation(bool nearestNeighbor);
   void setBackgroundInterpolation(bool nearestNeighbor);
-  
-signals:
 
+signals:
   /// This signal is emitted when the given \a imageData is modified.
-  void imageDataChanged(vtkImageData * imageData);
+  void imageDataConnectionChanged(vtkAlgorithmOutput * imageDataConnection);
+
   void renderRequested();
+
+  /// Signal emitted when editing of a node is requested from within the controller
+  void nodeAboutToBeEdited(vtkMRMLNode* node);
+
+protected:
+  /// Constructor allowing derived class to specify a specialized pimpl.
+  ///
+  /// \note You are responsible to call init() in the constructor of
+  /// derived class. Doing so ensures the derived class is fully
+  /// instantiated in case virtual method are called within init() itself.
+  qMRMLSliceControllerWidget(qMRMLSliceControllerWidgetPrivate* obj,
+                             QWidget* parent);
 
 private:
   Q_DECLARE_PRIVATE(qMRMLSliceControllerWidget);

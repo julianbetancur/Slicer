@@ -10,15 +10,15 @@ class QMRML_WIDGETS_PLUGINS_EXPORT qMRMLSliceWidgetPlugin :
   Q_OBJECT
 
 public:
-  qMRMLSliceWidgetPlugin(QObject *_parent = 0);
-  
-  QWidget *createWidget(QWidget *_parent);
-  QString  domXml() const;
+  qMRMLSliceWidgetPlugin(QObject *_parent = nullptr);
+
+  QWidget *createWidget(QWidget *_parent) override;
+  QString  domXml() const override;
 //   QIcon    icon() const;
-  QString  includeFile() const;
-  bool     isContainer() const;
-  QString  name() const;
-  
+  QString  includeFile() const override;
+  bool     isContainer() const override;
+  QString  name() const override;
+
 };
 
 #endif

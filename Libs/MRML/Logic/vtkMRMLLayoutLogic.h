@@ -23,16 +23,19 @@
 
 // MRMLLogic includes
 #include "vtkMRMLAbstractLogic.h"
-#include "vtkMRMLLogicWin32Header.h"
+#include "vtkMRMLLogicExport.h"
 
 // MRML includes
+class vtkMRMLAbstractViewNode;
 class vtkMRMLLayoutNode;
 
 // VTK includes
+class vtkCollection;
 class vtkXMLDataElement;
 
 // STD includes
 #include <cstdlib>
+#include <vector>
 
 /// \brief MRML logic class for layout manipulation
 ///
@@ -71,8 +74,8 @@ class VTK_MRML_LOGIC_EXPORT vtkMRMLLayoutLogic : public vtkMRMLAbstractLogic
 public:
   /// The Usual vtk class functions
   static vtkMRMLLayoutLogic *New();
-  vtkTypeRevisionMacro(vtkMRMLLayoutLogic,vtkMRMLAbstractLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLLayoutLogic,vtkMRMLAbstractLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   typedef std::map<std::string, std::string> ViewAttributes;
   typedef ViewAttributes ViewProperty;
@@ -105,24 +108,36 @@ public:
   /// first and if it can't find a layout node, it creates one.
   vtkGetObjectMacro(LayoutNode, vtkMRMLLayoutNode);
 
+  /// Convenient function that creates and set a layout made of only 1 view.
+  /// \sa CreateMaximizedViewLayoutDescription(),
+  /// vtkMRMLLayoutNode::SetLayoutDescription(),
+  /// vtkMRMLLayoutNode::SlicerLayoutCustomView, vtkMRMLLayoutNode::SetViewArrangement
+  void MaximizeView(vtkMRMLAbstractViewNode* viewToMaximize);
+
+  /// Create a layout description that maximizes a view.
+  /// Note that the view node must be a singleton.
+  /// \sa MaximizeView()
+  void CreateMaximizedViewLayoutDescription(int layout,
+                                            vtkMRMLAbstractViewNode* viewToMaximize);
+
 protected:
   /// Logic constructor
   vtkMRMLLayoutLogic();
   /// Logic destructor
-  virtual ~vtkMRMLLayoutLogic();
+  ~vtkMRMLLayoutLogic() override;
   // disable copy constructor and operator
   vtkMRMLLayoutLogic(const vtkMRMLLayoutLogic&);
   void operator=(const vtkMRMLLayoutLogic&);
 
   /// Reimplemented to listen to specific scene events
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
+  void SetMRMLSceneInternal(vtkMRMLScene* newScene) override;
 
-  virtual void OnMRMLNodeModified(vtkMRMLNode* node);
-  virtual void OnMRMLSceneStartRestore();
-  virtual void OnMRMLSceneEndRestore();
+  void OnMRMLNodeModified(vtkMRMLNode* node) override;
+  void OnMRMLSceneStartRestore() override;
+  void OnMRMLSceneEndRestore() override;
 
-  virtual void UnobserveMRMLScene();
-  virtual void UpdateFromMRMLScene();
+  void UnobserveMRMLScene() override;
+  void UpdateFromMRMLScene() override;
 
   /// Makes sure there is at least one 3D view node and three slice nodes (red,
   /// yellow and green)
@@ -132,7 +147,7 @@ protected:
   /// Create a vtkMRMLLayoutNode if there is no layout node in the scene
   void UpdateLayoutNode();
 
-  /// Not public as we internally take care of chosing/updating the layout node
+  /// Not public as we internally take care of choosing/updating the layout node
   void SetLayoutNode(vtkMRMLLayoutNode* layoutNode);
 
   /// Update the logic when the layout node is set or modified

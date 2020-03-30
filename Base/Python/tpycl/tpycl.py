@@ -4,13 +4,14 @@
 # tpycl.py is the python support code to allow calling of python-wrapped
 # vtk code from tcl scripts
 #
-# the main class is tpycl, and scripts can 
+# the main class is tpycl, and scripts can
 #
 
+from __future__ import print_function
 import sys
 import os
-import Tkinter
-from __main__ import slicer
+import tkinter
+import slicer
 import qt
 
 class tpycl(object):
@@ -24,7 +25,7 @@ class tpycl(object):
     except AttributeError:
       sys.argv = []
       sys.argv.append("")
-    self.tcl = Tkinter.Tcl()
+    self.tcl = tkinter.Tcl()
     self.tcl.createcommand("py_eval", self.py_eval)
     self.tcl.createcommand("py_package", self.py_package)
     self.tcl.createcommand("py_type", self.py_type)
@@ -41,7 +42,7 @@ class tpycl(object):
     if sys.platform == 'win32':
       # Update environment variables set by application - unlike other platforms,
       # on windows this does not happen automatically so we do it here
-      # Note that subsquent env changes will not be reflected
+      # Note that subsequent env changes will not be reflected
       for key in os.environ.keys():
         self.tcl_putenv(key, os.environ[key])
 
@@ -49,27 +50,27 @@ class tpycl(object):
     self.tcl.eval('source "%s/bin/Python/tpycl/tpycl.tcl"' % slicer.app.slicerHome)
 
   def usage(self):
-    print "tpycl [options] [file.tcl] [arg] [arg]"
-    print "-v --verbose : debugging info while parsing"
-    print "-h --help : extra help info"
-    print ""
-    print "tpycl is a tcl shell implemented in python that"
-    print "allows you to import and execute python code from"
-    print "inside tcl (hence the name - an homage to jcw's typcl which"
-    print "allows you to call tcl from python)."
-    print "Not all python constructs supported, but tpycl should be"
-    print "adequate to call many packages."
+    print("tpycl [options] [file.tcl] [arg] [arg]")
+    print("-v --verbose : debugging info while parsing")
+    print("-h --help : extra help info")
+    print("")
+    print("tpycl is a tcl shell implemented in python that")
+    print("allows you to import and execute python code from")
+    print("inside tcl (hence the name - an homage to jcw's typcl which")
+    print("allows you to call tcl from python).")
+    print("Not all python constructs supported, but tpycl should be")
+    print("adequate to call many packages.")
     exit()
 
   def dprint(self, *args):
     """ debug print """
     if self.verbose:
       for arg in args:
-        print arg,
-      print ""
+        print(arg, end=' ')
+      print("")
 
   def py_package(self, packageName):
-    """ imports a vtk-wrapped python package 
+    """ imports a vtk-wrapped python package
     """
     self.dprint ("importing %s as a package" % packageName)
 
@@ -98,22 +99,23 @@ class tpycl(object):
     """ make a unique name for an instance using the classname and
     pointer in hex
     - assumes the string form of the instance will end with hex
-      encoding of the pointer, for example: '(vtkImageData)0x2a9a750'
+      encoding of the pointer, for example:
+      '(vtkCommonDataModelPython.vtkImageData)00000216A218BA08'
+    - name is valid for use as a tcl variable name
     """
-    # used to work with vtk 5.6
-    #return "%s%s" % (instance.GetClassName(), repr(instance).split()[-1][:-1])
-    # now just strip off the parens
-    return repr(instance).replace('(','').replace(')','')
-
+    return ''.join(
+        '_' if c == '.' else c
+        for c in repr(instance)
+        if c not in '()')
 
   def py_del(self,instanceName):
     """ deletes a named instance
     """
-    
+
     # only delete if the instanceName exists
-    if globals().has_key(instanceName):
+    if instanceName in globals():
       exec( "del(%s)"%instanceName, globals() )
-        
+
     return None
 
   def py_puts(self, noNewLine, message):
@@ -127,13 +129,13 @@ class tpycl(object):
     """ sets the QTimer to call the callback
     """
     self.timer.start()
-    
+
   def after_callback(self):
     """ what gets called when the after timeout happens
     """
     self.tcl.eval('::after_callback')
     self.timer.stop()
-    
+
   def py_eval(self,cmd):
     """ evaluated the python command string and returns the result
     - if the result is a vtk object instance, it is registered in the tcl interp
@@ -173,7 +175,7 @@ class tpycl(object):
     self.dprint("callback command is <%s>" % cmd)
     try:
       result = self.tcl.eval(cmd)
-    except Tkinter.TclError,error:
+    except tkinter.TclError as error:
       print (error)
       errorInfo = self.tcl.eval("set ::errorInfo")
       print (errorInfo)
@@ -194,7 +196,7 @@ class tpycl(object):
       return()
     try:
       result = self.tcl.eval(cmd)
-    except Tkinter.TclError,error:
+    except tkinter.TclError as error:
       print (error)
       errorInfo = self.tcl.eval("set ::errorInfo")
       print (errorInfo)
@@ -231,20 +233,20 @@ class tpycl(object):
     # if given a file, run it
     if self.file != "":
       fp = open(self.file)
-      while 1:
+      while True:
         cmd = fp.readline()
         if cmd == "":
           break
         self.tcl_eval( cmd[:-1] )
 
     # evaluate stdin until eof
-    while 1:
+    while True:
       sys.stdout.write( "% " )
       cmd = sys.stdin.readline()[:-1]
       if cmd != "":
         result = self.tcl_eval( cmd )
-        if result != None:
-          print result
+        if result is not None:
+          print(result)
 
 if __name__ == "__main__":
   tp = tpycl()

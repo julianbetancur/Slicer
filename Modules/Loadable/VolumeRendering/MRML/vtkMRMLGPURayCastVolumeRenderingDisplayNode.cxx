@@ -32,44 +32,25 @@ vtkMRMLNodeNewMacro(vtkMRMLGPURayCastVolumeRenderingDisplayNode);
 
 //----------------------------------------------------------------------------
 vtkMRMLGPURayCastVolumeRenderingDisplayNode::vtkMRMLGPURayCastVolumeRenderingDisplayNode()
-{
-  this->RaycastTechnique = vtkMRMLGPURayCastVolumeRenderingDisplayNode::Composite;
-}
+= default;
 
 //----------------------------------------------------------------------------
 vtkMRMLGPURayCastVolumeRenderingDisplayNode::~vtkMRMLGPURayCastVolumeRenderingDisplayNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLGPURayCastVolumeRenderingDisplayNode::ReadXMLAttributes(const char** atts)
 {
   this->Superclass::ReadXMLAttributes(atts);
 
-  const char* attName;
-  const char* attValue;
-  while (*atts != NULL)
-    {
-    attName = *(atts++);
-    attValue = *(atts++);
-    if (!strcmp(attName,"raycastTechnique"))
-      {
-      std::stringstream ss;
-      ss << attValue;
-      ss >> this->RaycastTechnique;
-      continue;
-      }
-    }
+  vtkMRMLReadXMLBeginMacro(atts);
+  vtkMRMLReadXMLEndMacro();
 }
 
 //----------------------------------------------------------------------------
 void vtkMRMLGPURayCastVolumeRenderingDisplayNode::WriteXML(ostream& of, int nIndent)
 {
   this->Superclass::WriteXML(of, nIndent);
-
-  vtkIndent indent(nIndent);
-
-  of << indent << " raycastTechnique=\"" << this->RaycastTechnique << "\"";
 }
 
 //----------------------------------------------------------------------------
@@ -77,9 +58,9 @@ void vtkMRMLGPURayCastVolumeRenderingDisplayNode::Copy(vtkMRMLNode *anode)
 {
   int wasModifying = this->StartModify();
   this->Superclass::Copy(anode);
-  vtkMRMLGPURayCastVolumeRenderingDisplayNode *node = vtkMRMLGPURayCastVolumeRenderingDisplayNode::SafeDownCast(anode);
 
-  this->SetRaycastTechnique(node->GetRaycastTechnique());
+//  vtkMRMLCopyBeginMacro(anode);
+//  vtkMRMLCopyEndMacro();
 
   this->EndModify(wasModifying);
 }
@@ -88,6 +69,4 @@ void vtkMRMLGPURayCastVolumeRenderingDisplayNode::Copy(vtkMRMLNode *anode)
 void vtkMRMLGPURayCastVolumeRenderingDisplayNode::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
-
-  os << "RaycastTechnique: " << this->RaycastTechnique << "\n";
 }

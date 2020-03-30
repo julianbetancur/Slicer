@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Library:   CTK
- 
+
   Copyright (c) 2010  Kitware Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,20 +15,21 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- 
+
 =========================================================================*/
 
 #ifndef __vtkSingleton_h
 #define __vtkSingleton_h
 
+/// @file
 ///
-/// Singleton definition and declaration helpers
+/// @defgroup vtkSingleton Singleton definition and declaration helpers
 ///
 /// See http://www.parashift.com/c++-faq-lite/ctors.html#faq-10.12
 /// and http://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Nifty_Counter
 ///
 /// Inspired from VTK/Utilities/kwsys/SystemTools class
-///
+/// @{
 
 //-----------------------------------------------------------------------------
 /// Should be included as a class protected member
@@ -39,16 +40,16 @@ static NAME* Instance;                    \
 static void classInitialize();            \
 static void classFinalize();              \
 friend class NAME##Initialize;
-  
+
 //-----------------------------------------------------------------------------
 /// Help macro allowing to declare the utility class to make sure
 /// NAME is initialized before it is used.
 ///
 /// Should be added at the bottom of the header file, after the class declaration
 ///
-/// The instance (NAME##Initializer) will show up in any translation unit
+/// The instance (<code>NAME\#\#Initializer</code>) will show up in any translation unit
 /// that uses NAME.  It will make sure NAME is initialized before it is used.
-/// 
+///
 #define VTK_SINGLETON_DECLARE_INITIALIZER(EXPORT_DIRECTIVE,NAME)   \
 class EXPORT_DIRECTIVE NAME##Initialize                            \
 {                                                                  \
@@ -66,11 +67,11 @@ static NAME##Initialize NAME##Initializer;
 
 //-----------------------------------------------------------------------------
 ///
-/// Implementation of NAME##Initialize class.
+/// Implementation of <code>NAME\#\#Initialize</code> class.
 ///
 /// Macro used by VTK_SINGLETON_DEFINE. See below.
 ///
-/// \note NAME##Initialize::Count and NAME::Instance Must NOT be initialized.
+/// \note <code>NAME\#\#Initialize::Count</code> and <code>NAME::Instance</code> Must NOT be initialized.
 /// Default initialization to zero is necessary.
 ///
 #define VTK_SINGLETON_INITIALIZER_CXX(NAME)      \
@@ -120,7 +121,6 @@ NAME* NAME::Instance;
 //    }
 //  return Self::Instance;
 //}
-//vtkInstantiatorNewMacro(NAME);
 
 //----------------------------------------------------------------------------
 ///
@@ -140,5 +140,6 @@ void NAME::classFinalize()                          \
                                                     \
 VTK_SINGLETON_INITIALIZER_CXX(NAME)
 
+/// @}
 
 #endif //__vtkSingleton_h

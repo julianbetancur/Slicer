@@ -16,7 +16,7 @@
 #define __vtkITKImageToImageFilterSS_h
 
 #include "vtkITKImageToImageFilter.h"
-#include "vtkImageToImageFilter.h"
+#include "vtkImageAlgorithm.h"
 #include "itkImageToImageFilter.h"
 #include "itkVTKImageExport.h"
 #include "itkVTKImageImport.h"
@@ -26,24 +26,24 @@ class VTK_ITK_EXPORT vtkITKImageToImageFilterSS : public vtkITKImageToImageFilte
 {
 public:
   vtkTypeMacro(vtkITKImageToImageFilterSS,vtkITKImageToImageFilter);
-  static vtkITKImageToImageFilterSS* New() { return 0; };
-  void PrintSelf(ostream& os, vtkIndent indent)
+  static vtkITKImageToImageFilterSS* New() { return nullptr; }
+  void PrintSelf(ostream& os, vtkIndent indent) override
   {
     Superclass::PrintSelf ( os, indent );
     os << m_Filter;
-  };
+  }
 
-  /// 
+  ///
   /// Portion of the SetReleaseDataFlag implementation can be
-  /// implemented at this level of the hierachy.
-  virtual void SetReleaseDataFlag(int f)
+  /// implemented at this level of the hierarchy.
+  void SetReleaseDataFlag(int f) override
     {
       Superclass::SetReleaseDataFlag(f);
       m_Filter->SetReleaseDataFlag(f);
     }
 
 protected:
-  
+
   /// To/from ITK
   typedef short InputImagePixelType;
   typedef short OutputImagePixelType;
@@ -67,20 +67,19 @@ protected:
     ConnectPipelines(this->vtkExporter, this->itkImporter);
     ConnectPipelines(this->itkExporter, this->vtkImporter);
     this->LinkITKProgressToVTKProgress ( m_Filter );
-    
+
     /// Set up the filter pipeline
     m_Filter->SetInput ( this->itkImporter->GetOutput() );
     this->itkExporter->SetInput ( m_Filter->GetOutput() );
     this->vtkCast->SetOutputScalarTypeToShort();
   };
 
-  ~vtkITKImageToImageFilterSS()
-  {
-  };
-  
+  ~vtkITKImageToImageFilterSS() override
+   = default;
+
 private:
-  vtkITKImageToImageFilterSS(const vtkITKImageToImageFilterSS&);  /// Not implemented.
-  void operator=(const vtkITKImageToImageFilterSS&);  /// Not implemented.
+  vtkITKImageToImageFilterSS(const vtkITKImageToImageFilterSS&) = delete;
+  void operator=(const vtkITKImageToImageFilterSS&) = delete;
 };
 
 #endif

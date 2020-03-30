@@ -21,21 +21,32 @@
 #ifndef __qMRMLWidgetsAbstractPlugin_h
 #define __qMRMLWidgetsAbstractPlugin_h
 
+#include "qMRMLWidgetsConfigure.h" // For MRML_WIDGETS_HAVE_QT5
+
+// Qt includes
+#ifdef MRML_WIDGETS_HAVE_QT5
+#include <QtUiPlugin/QDesignerCustomWidgetInterface>
+#else
 #include <QDesignerCustomWidgetInterface>
+#endif
+
 #include "qMRMLWidgetsPluginsExport.h"
 
 class QMRML_WIDGETS_PLUGINS_EXPORT qMRMLWidgetsAbstractPlugin : public QDesignerCustomWidgetInterface
 {
+#ifdef MRML_WIDGETS_HAVE_QT5
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetInterface")
+#endif
   Q_INTERFACES(QDesignerCustomWidgetInterface);
 public:
 
   qMRMLWidgetsAbstractPlugin();
   // Don't reimplement this method.
-  QString group() const;
+  QString group() const override;
   // You can reimplement these methods
-  virtual QIcon icon() const;
-  virtual QString toolTip() const;
-  virtual QString whatsThis() const;
+  QIcon icon() const override;
+  QString toolTip() const override;
+  QString whatsThis() const override;
 
 };
 

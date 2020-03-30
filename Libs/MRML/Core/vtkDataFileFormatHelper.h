@@ -16,27 +16,27 @@ typedef struct
   const char *Extension;
 } ITKImageFileFormat;
 
-class VTK_MRML_EXPORT vtkDataFileFormatHelper : public vtkObject 
+class VTK_MRML_EXPORT vtkDataFileFormatHelper : public vtkObject
 {
   public:
-  
+
   /// The Usual vtk class functions
   static vtkDataFileFormatHelper *New();
-  vtkTypeRevisionMacro(vtkDataFileFormatHelper, vtkObject);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkDataFileFormatHelper, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  static const char* GetFileExtensionFromFormatString(
+  static std::string GetFileExtensionFromFormatString(
    const char* fileformat);
   const char* GetClassNameFromFormatString(
    const char* fileformat);
-  
-  /// 
+
+  ///
   /// Get the itkimageio supported file formats.
   //vtkGetObjectMacro ( ITKSupportedWriteFileFormats, vtkStringArray);
   virtual vtkStringArray* GetITKSupportedWriteFileFormats();
   virtual vtkStringArray* GetITKSupportedReadFileFormats()
     {
-    return NULL;
+    return nullptr;
     }
   virtual vtkStringArray* GetITKSupportedWriteFileExtensions();
   virtual const char* GetITKSupportedExtensionGenericNameByIndex(int idx);
@@ -44,7 +44,7 @@ class VTK_MRML_EXPORT vtkDataFileFormatHelper : public vtkObject
 
  protected:
   vtkDataFileFormatHelper();
-  virtual ~vtkDataFileFormatHelper();
+  ~vtkDataFileFormatHelper() override;
 
   vtkStringArray* SupportedWriteFileExtensions;
   vtkStringArray* SupportedWriteFileGenericNames;
@@ -56,10 +56,10 @@ class VTK_MRML_EXPORT vtkDataFileFormatHelper : public vtkObject
   virtual void PopulateITKSupportedWriteFileTypes();
   virtual void AddSupportedWriterFileFormat(
      ITKImageFileFormat& structFileFormat);
-     
+
 private:
-  vtkDataFileFormatHelper(const vtkDataFileFormatHelper&);
-  void operator=(const vtkDataFileFormatHelper&);
+  vtkDataFileFormatHelper(const vtkDataFileFormatHelper&) = delete;
+  void operator=(const vtkDataFileFormatHelper&) = delete;
 };
 
 #endif

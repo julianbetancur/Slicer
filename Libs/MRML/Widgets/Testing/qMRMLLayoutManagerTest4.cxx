@@ -22,44 +22,66 @@
 #include <QApplication>
 #include <QWidget>
 
-// SlicerQt includes
+// Slicer includes
 #include "qMRMLLayoutManager.h"
+#include "vtkSlicerConfigure.h"
 
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLLayoutLogic.h>
 #include <vtkMRMLLayoutNode.h>
+#include <vtkMRMLScene.h>
+#include <vtkMRMLSliceViewDisplayableManagerFactory.h>
 
 // VTK includes
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
-// STD includes
+// Common test driver includes
+#include "qMRMLLayoutManagerTestHelper.cxx"
 
 int qMRMLLayoutManagerTest4(int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QWidget w;
   w.show();
 
   qMRMLLayoutManager layoutManager(&w, &w);
 
-  vtkMRMLScene* scene = vtkMRMLScene::New();
+  vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+  vtkMRMLSliceViewDisplayableManagerFactory::GetInstance()->SetMRMLApplicationLogic(applicationLogic);
 
-  vtkMRMLLayoutNode* layoutNode = vtkMRMLLayoutNode::New();
+  vtkNew<vtkMRMLScene> scene;
+  vtkNew<vtkMRMLLayoutNode> layoutNode;
+
+  scene->AddNode(layoutNode.GetPointer());
+
+  applicationLogic->SetMRMLScene(scene.GetPointer());
+
+  layoutManager.setMRMLScene(scene.GetPointer());
+
   layoutNode->SetViewArrangement(vtkMRMLLayoutNode::SlicerLayoutOneUpRedSliceView);
-  scene->AddNode(layoutNode);
-  layoutNode->Delete();
-
-  layoutManager.setMRMLScene(scene);
 
   for (int i = vtkMRMLLayoutNode::SlicerLayoutInitialView;
-       i < vtkMRMLLayoutNode::SlicerLayoutFourOverFourView; ++i)
+    i < vtkMRMLLayoutNode::SlicerLayoutFinalView-1; ++i)
     {
-    layoutManager.setLayout(vtkMRMLLayoutNode::SlicerLayoutInitialView);
+    layoutManager.setLayout(i);
+    if (!checkViewArrangement(__LINE__, &layoutManager, layoutNode.GetPointer(), i))
+      {
+      return EXIT_FAILURE;
+      }
     scene->Clear(false);
     }
 
-  scene->Delete();
-
-  return EXIT_SUCCESS;
+  if (argc < 2 || QString(argv[1]) != "-I")
+    {
+    return safeApplicationQuit(&app);
+    }
+  else
+    {
+    return app.exec();
+    }
 }
-

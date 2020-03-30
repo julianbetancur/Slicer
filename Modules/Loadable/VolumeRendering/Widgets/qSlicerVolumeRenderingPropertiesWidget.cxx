@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  This file was originally developed by Julien Finet, Isomics Inc.
+  This file was originally developed by Julien Finet, Kitware Inc.
   and was partially funded by NIH grant 3P41RR013218-12S1
 
 ==============================================================================*/
@@ -49,8 +49,8 @@ qSlicerVolumeRenderingPropertiesWidgetPrivate
   qSlicerVolumeRenderingPropertiesWidget& object)
   : q_ptr(&object)
 {
-  this->VolumeRenderingDisplayNode = 0;
-  this->VolumeNode = 0;
+  this->VolumeRenderingDisplayNode = nullptr;
+  this->VolumeNode = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -66,8 +66,7 @@ qSlicerVolumeRenderingPropertiesWidget
 
 //-----------------------------------------------------------------------------
 qSlicerVolumeRenderingPropertiesWidget::~qSlicerVolumeRenderingPropertiesWidget()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 vtkMRMLNode* qSlicerVolumeRenderingPropertiesWidget::mrmlNode()const
@@ -113,12 +112,11 @@ void qSlicerVolumeRenderingPropertiesWidget
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerVolumeRenderingPropertiesWidget
-::updateWidgetFromMRML()
+void qSlicerVolumeRenderingPropertiesWidget::updateWidgetFromMRML()
 {
   Q_D(qSlicerVolumeRenderingPropertiesWidget);
   vtkMRMLVolumeNode* newVolumeNode =
-    d->VolumeRenderingDisplayNode ?d->VolumeRenderingDisplayNode->GetVolumeNode() : 0;
+    d->VolumeRenderingDisplayNode ? d->VolumeRenderingDisplayNode->GetVolumeNode() : nullptr;
   qvtkReconnect(d->VolumeNode, newVolumeNode, vtkCommand::ModifiedEvent,
                 this, SLOT(updateWidgetFromMRMLVolumeNode()));
   d->VolumeNode = newVolumeNode;
@@ -126,7 +124,6 @@ void qSlicerVolumeRenderingPropertiesWidget
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerVolumeRenderingPropertiesWidget
-::updateWidgetFromMRMLVolumeNode()
+void qSlicerVolumeRenderingPropertiesWidget::updateWidgetFromMRMLVolumeNode()
 {
 }

@@ -23,6 +23,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include <ctkModelTester.h>
 
@@ -30,6 +33,8 @@
 #include "qMRMLSceneFactoryWidget.h"
 #include "qMRMLSceneDisplayableModel.h"
 
+// VTK includes
+#include "qMRMLWidget.h"
 
 // STD includes
 
@@ -38,10 +43,12 @@
 
 int qMRMLSceneDisplayableModelTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLSceneDisplayableModel model;
-  qMRMLSceneFactoryWidget sceneFactory(0);
+  qMRMLSceneFactoryWidget sceneFactory(nullptr);
 
   try
     {
@@ -55,25 +62,25 @@ int qMRMLSceneDisplayableModelTest1(int argc, char * argv [])
 
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.deleteNode();
-  
+
     sceneFactory.generateNode();
     sceneFactory.generateNode();
-  
+
     sceneFactory.deleteNode();
     sceneFactory.deleteNode();
 
@@ -143,7 +150,7 @@ int qMRMLSceneDisplayableModelTest1(int argc, char * argv [])
   items[0]->setBackground(QLinearGradient());
   item->insertRow(0,items);
   */
-  QTreeView* view = new QTreeView(0);
+  QTreeView* view = new QTreeView(nullptr);
   //view->setSelectionBehavior(QAbstractItemView::SelectRows);
   view->setDragDropMode(QAbstractItemView::InternalMove);
   view->setModel(&model);

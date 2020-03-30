@@ -73,9 +73,6 @@
             </item>
            </layout>
           </item>
-          <item>
-           <widget class="qSlicerCLIProgressBar" name="CLIProgressBar" native="true"/>
-          </item>
          </layout>
         </widget>
        </item>
@@ -94,6 +91,9 @@
     </widget>
    </item>
    <item>
+    <widget class="qSlicerCLIProgressBar" name="CLIProgressBar" native="true"/>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="ButtonLayout">
      <item>
       <widget class="QPushButton" name="DefaultPushButton">
@@ -104,7 +104,20 @@
         <string>Reset parameters to default.</string>
        </property>
        <property name="text">
-        <string>Default</string>
+        <string>Restore Defaults</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ctkMenuButton" name="AutoRunPushButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>AutoRun</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -170,6 +183,11 @@
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>ctkMenuButton</class>
+   <extends>QPushButton</extends>
+   <header>ctkMenuButton.h</header>
+  </customwidget>
+  <customwidget>
    <class>qSlicerCLIProgressBar</class>
    <extends>QWidget</extends>
    <header>qSlicerCLIProgressBar.h</header>
@@ -177,22 +195,4 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections>
-  <connection>
-   <sender>qSlicerCLIModuleWidget</sender>
-   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>MRMLCommandLineModuleNodeSelector</receiver>
-   <slot>setMRMLScene(vtkMRMLScene*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>337</x>
-     <y>109</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>411</x>
-     <y>91</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
 </ui>

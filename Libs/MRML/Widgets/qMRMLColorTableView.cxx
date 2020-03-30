@@ -19,7 +19,6 @@
 ==============================================================================*/
 
 // QT includes
-#include <QDoubleSpinBox>
 #include <QHeaderView>
 #include <QSortFilterProxyModel>
 
@@ -58,16 +57,15 @@ void qMRMLColorTableViewPrivate::init()
 
   qMRMLColorModel* colorModel = new qMRMLColorModel(q);
   QSortFilterProxyModel* sortFilterModel = new QSortFilterProxyModel(q);
-  sortFilterModel->setFilterKeyColumn(qMRMLColorModel::LabelColumn);
+  sortFilterModel->setFilterKeyColumn(colorModel->labelColumn());
   sortFilterModel->setSourceModel(colorModel);
   q->setModel(sortFilterModel);
 
   q->setSelectionBehavior(QAbstractItemView::SelectRows);
   q->horizontalHeader()->setStretchLastSection(false);
-  q->horizontalHeader()->setResizeMode(qMRMLColorModel::ColorColumn, QHeaderView::ResizeToContents);
-  q->horizontalHeader()->setResizeMode(qMRMLColorModel::LabelColumn, QHeaderView::Stretch);
-  q->horizontalHeader()->setResizeMode(qMRMLColorModel::OpacityColumn, QHeaderView::ResizeToContents);
-
+  q->horizontalHeader()->setSectionResizeMode(colorModel->colorColumn(), QHeaderView::ResizeToContents);
+  q->horizontalHeader()->setSectionResizeMode(colorModel->labelColumn(), QHeaderView::Stretch);
+  q->horizontalHeader()->setSectionResizeMode(colorModel->opacityColumn(), QHeaderView::ResizeToContents);
   q->setItemDelegate(new qMRMLItemDelegate(q));
 }
 
@@ -82,8 +80,7 @@ qMRMLColorTableView::qMRMLColorTableView(QWidget *_parent)
 
 //------------------------------------------------------------------------------
 qMRMLColorTableView::~qMRMLColorTableView()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 qMRMLColorModel* qMRMLColorTableView::colorModel()const
@@ -108,7 +105,7 @@ void qMRMLColorTableView::setMRMLColorNode(vtkMRMLColorNode* node)
 {
   qMRMLColorModel* mrmlModel = this->colorModel();
   Q_ASSERT(mrmlModel);
-  
+
   mrmlModel->setMRMLColorNode(node);
   this->sortFilterProxyModel()->invalidate();
 
@@ -142,4 +139,23 @@ void qMRMLColorTableView::setShowOnlyNamedColors(bool enable)
 bool qMRMLColorTableView::showOnlyNamedColors()const
 {
   return this->sortFilterProxyModel()->filterRegExp().isEmpty();
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorTableView::rowFromColorName(const QString& colorName)const
+{
+  int index = this->colorModel()->colorFromName(colorName);
+  return this->rowFromColorIndex(index);
+}
+
+//------------------------------------------------------------------------------
+int qMRMLColorTableView::rowFromColorIndex(int colorIndex)const
+{
+  QModelIndexList indexes = this->colorModel()->indexes(colorIndex);
+  if (indexes.isEmpty())
+    {
+    return -1;
+    }
+  QModelIndex sortedIndex = this->sortFilterProxyModel()->mapFromSource(indexes[0]);
+  return sortedIndex.row();
 }

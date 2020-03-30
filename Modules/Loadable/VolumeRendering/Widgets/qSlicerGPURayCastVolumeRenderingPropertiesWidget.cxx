@@ -23,6 +23,10 @@
 #include "vtkMRMLGPURayCastVolumeRenderingDisplayNode.h"
 #include "ui_qSlicerGPURayCastVolumeRenderingPropertiesWidget.h"
 
+// MRML includes
+#include "vtkMRMLScene.h"
+#include "vtkMRMLViewNode.h"
+
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_VolumeRendering
 class qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate
@@ -52,8 +56,7 @@ qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate
 // --------------------------------------------------------------------------
 qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate::
 ~qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate()
-{
-}
+= default;
 
 // --------------------------------------------------------------------------
 void qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate
@@ -63,21 +66,20 @@ void qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate
   this->populateRenderingTechniqueComboBox();
   QObject::connect(this->RenderingTechniqueComboBox, SIGNAL(currentIndexChanged(int)),
                    widget, SLOT(setRenderingTechnique(int)));
+  QObject::connect(this->SurfaceSmoothingCheckBox, SIGNAL(toggled(bool)),
+                   widget, SLOT(setSurfaceSmoothing(bool)));
 }
 
 // --------------------------------------------------------------------------
-void qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate
-::populateRenderingTechniqueComboBox()
+void qSlicerGPURayCastVolumeRenderingPropertiesWidgetPrivate::populateRenderingTechniqueComboBox()
 {
   this->RenderingTechniqueComboBox->clear();
   this->RenderingTechniqueComboBox->addItem(
-    "Composite With Shading", vtkMRMLVolumeRenderingDisplayNode::Composite);
+    "Composite With Shading", vtkMRMLViewNode::Composite);
   this->RenderingTechniqueComboBox->addItem(
-    "Maximum Intensity Projection",
-    vtkMRMLVolumeRenderingDisplayNode::MaximumIntensityProjection);
+    "Maximum Intensity Projection", vtkMRMLViewNode::MaximumIntensityProjection);
   this->RenderingTechniqueComboBox->addItem(
-    "Minimum Intensity Projection",
-    vtkMRMLVolumeRenderingDisplayNode::MinimumIntensityProjection);
+    "Minimum Intensity Projection", vtkMRMLViewNode::MinimumIntensityProjection);
 }
 
 //-----------------------------------------------------------------------------
@@ -94,10 +96,8 @@ qSlicerGPURayCastVolumeRenderingPropertiesWidget
 }
 
 //-----------------------------------------------------------------------------
-qSlicerGPURayCastVolumeRenderingPropertiesWidget
-::~qSlicerGPURayCastVolumeRenderingPropertiesWidget()
-{
-}
+qSlicerGPURayCastVolumeRenderingPropertiesWidget::~qSlicerGPURayCastVolumeRenderingPropertiesWidget()
+= default;
 
 //-----------------------------------------------------------------------------
 vtkMRMLGPURayCastVolumeRenderingDisplayNode* qSlicerGPURayCastVolumeRenderingPropertiesWidget
@@ -108,32 +108,77 @@ vtkMRMLGPURayCastVolumeRenderingDisplayNode* qSlicerGPURayCastVolumeRenderingPro
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerGPURayCastVolumeRenderingPropertiesWidget
-::updateWidgetFromMRML()
+void qSlicerGPURayCastVolumeRenderingPropertiesWidget::updateWidgetFromMRML()
 {
   Q_D(qSlicerGPURayCastVolumeRenderingPropertiesWidget);
-  if (!this->mrmlGPURayCastDisplayNode())
+
+  vtkMRMLGPURayCastVolumeRenderingDisplayNode* displayNode = this->mrmlGPURayCastDisplayNode();
+  if (!displayNode)
     {
     return;
     }
-  int technique = this->mrmlGPURayCastDisplayNode()->GetRaycastTechnique();
+  vtkMRMLViewNode* firstViewNode = displayNode->GetFirstViewNode();
+  if (!firstViewNode)
+    {
+    return;
+    }
+
+  int technique = firstViewNode->GetRaycastTechnique();
   int index = d->RenderingTechniqueComboBox->findData(QVariant(technique));
   if (index == -1)
     {
     index = 0;
     }
+  bool wasBlocked = d->RenderingTechniqueComboBox->blockSignals(true);
   d->RenderingTechniqueComboBox->setCurrentIndex(index);
+  d->RenderingTechniqueComboBox->blockSignals(wasBlocked);
+
+  wasBlocked = d->SurfaceSmoothingCheckBox->blockSignals(true);
+  d->SurfaceSmoothingCheckBox->setChecked(firstViewNode->GetVolumeRenderingSurfaceSmoothing());
+  d->SurfaceSmoothingCheckBox->blockSignals(wasBlocked);
 }
 
 //-----------------------------------------------------------------------------
-void qSlicerGPURayCastVolumeRenderingPropertiesWidget
-::setRenderingTechnique(int index)
+void qSlicerGPURayCastVolumeRenderingPropertiesWidget::setRenderingTechnique(int index)
 {
   Q_D(qSlicerGPURayCastVolumeRenderingPropertiesWidget);
-  if (!this->mrmlGPURayCastDisplayNode())
+  vtkMRMLGPURayCastVolumeRenderingDisplayNode* displayNode = this->mrmlGPURayCastDisplayNode();
+  if (!displayNode)
     {
     return;
     }
   int technique = d->RenderingTechniqueComboBox->itemData(index).toInt();
-  this->mrmlGPURayCastDisplayNode()->SetRaycastTechnique(technique);
+
+  std::vector<vtkMRMLNode*> viewNodes;
+  displayNode->GetScene()->GetNodesByClass("vtkMRMLViewNode", viewNodes);
+  for (std::vector<vtkMRMLNode*>::iterator it=viewNodes.begin(); it!=viewNodes.end(); ++it)
+    {
+    vtkMRMLViewNode* viewNode = vtkMRMLViewNode::SafeDownCast(*it);
+    if (displayNode->IsDisplayableInView(viewNode->GetID()))
+      {
+      viewNode->SetRaycastTechnique(technique);
+      }
+    }
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerGPURayCastVolumeRenderingPropertiesWidget::setSurfaceSmoothing(bool on)
+{
+  Q_D(qSlicerGPURayCastVolumeRenderingPropertiesWidget);
+  vtkMRMLGPURayCastVolumeRenderingDisplayNode* displayNode = this->mrmlGPURayCastDisplayNode();
+  if (!displayNode)
+    {
+    return;
+    }
+
+  std::vector<vtkMRMLNode*> viewNodes;
+  displayNode->GetScene()->GetNodesByClass("vtkMRMLViewNode", viewNodes);
+  for (std::vector<vtkMRMLNode*>::iterator it=viewNodes.begin(); it!=viewNodes.end(); ++it)
+    {
+    vtkMRMLViewNode* viewNode = vtkMRMLViewNode::SafeDownCast(*it);
+    if (displayNode->IsDisplayableInView(viewNode->GetID()))
+      {
+      viewNode->SetVolumeRenderingSurfaceSmoothing(on);
+      }
+    }
 }

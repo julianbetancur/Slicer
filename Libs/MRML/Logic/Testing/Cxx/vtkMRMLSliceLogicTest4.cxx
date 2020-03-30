@@ -32,15 +32,19 @@
 #include <vtkImageReslice.h>
 #include <vtkImageMapToColors.h>
 #include <vtkImageAppendComponents.h>
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include <vtkVersion.h>
 
-// STD includes
+// ITK includes
+#include <itkConfigure.h>
+#include <itkFactoryRegistration.h>
 
+//-----------------------------------------------------------------------------
 vtkMRMLScalarVolumeNode* loadVolume2(const char* volume, vtkMRMLScene* scene)
 {
-  vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode> displayNode = vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New();
-  vtkSmartPointer<vtkMRMLScalarVolumeNode> scalarNode = vtkSmartPointer<vtkMRMLScalarVolumeNode>::New();
-  vtkSmartPointer<vtkMRMLVolumeArchetypeStorageNode> storageNode = vtkSmartPointer<vtkMRMLVolumeArchetypeStorageNode>::New();
+  vtkNew<vtkMRMLScalarVolumeDisplayNode> displayNode;
+  vtkNew<vtkMRMLScalarVolumeNode> scalarNode;
+  vtkNew<vtkMRMLVolumeArchetypeStorageNode> storageNode;
 
   displayNode->SetAutoWindowLevel(false);
   displayNode->SetInterpolate(false);
@@ -48,7 +52,7 @@ vtkMRMLScalarVolumeNode* loadVolume2(const char* volume, vtkMRMLScene* scene)
   storageNode->SetFileName(volume);
   if (storageNode->SupportedFileType(volume) == 0)
     {
-    return 0;
+    return nullptr;
     }
   scalarNode->SetName("foo");
   scalarNode->SetScene(scene);
@@ -56,24 +60,27 @@ vtkMRMLScalarVolumeNode* loadVolume2(const char* volume, vtkMRMLScene* scene)
   //vtkSlicerColorLogic *colorLogic = vtkSlicerColorLogic::New();
   //displayNode->SetAndObserveColorNodeID(colorLogic->GetDefaultVolumeColorNodeID());
   //colorLogic->Delete();
-  scene->AddNode(storageNode);
-  scene->AddNode(displayNode);
+  scene->AddNode(storageNode.GetPointer());
+  scene->AddNode(displayNode.GetPointer());
   scalarNode->SetAndObserveStorageNodeID(storageNode->GetID());
   scalarNode->SetAndObserveDisplayNodeID(displayNode->GetID());
-  scene->AddNode(scalarNode);
-  storageNode->ReadData(scalarNode);
+  scene->AddNode(scalarNode.GetPointer());
+  storageNode->ReadData(scalarNode.GetPointer());
 
-  vtkMRMLColorTableNode* colorNode = vtkMRMLColorTableNode::New();
+  vtkNew<vtkMRMLColorTableNode> colorNode;
   colorNode->SetTypeToGrey();
-  scene->AddNode(colorNode);
-  colorNode->Delete();
+  scene->AddNode(colorNode.GetPointer());
+
   displayNode->SetAndObserveColorNodeID(colorNode->GetID());
 
   return scalarNode.GetPointer();
 }
 
+//-----------------------------------------------------------------------------
 int vtkMRMLSliceLogicTest4(int argc, char * argv [] )
 {
+  itk::itkFactoryRegistration();
+
   if( argc < 2 )
     {
     std::cerr << "Error: missing arguments" << std::endl;
@@ -82,29 +89,29 @@ int vtkMRMLSliceLogicTest4(int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
 
-  vtkMRMLScalarVolumeNode* scalarNode = loadVolume2(argv[1], scene);
-  if (scalarNode == 0)
+  vtkMRMLScalarVolumeNode* scalarNode = loadVolume2(argv[1], scene.GetPointer());
+  if (scalarNode == nullptr)
     {
     std::cerr << "Not a valid volume: " << argv[1] << std::endl;
     return EXIT_FAILURE;
     }
 
   vtkImageData* img = scalarNode->GetImageData();
-  
-  vtkSmartPointer<vtkImageReslice> resliceMask = vtkSmartPointer<vtkImageReslice>::New();
+
+  vtkNew<vtkImageReslice> resliceMask;
   resliceMask->SetOutputExtent(0, 400, 0, 500, 0, 0);
-  resliceMask->SetInput(img);
+  resliceMask->SetInputData(img);
 
-  vtkSmartPointer<vtkImageMapToColors> colors = vtkSmartPointer<vtkImageMapToColors>::New();
-  colors->SetInput(resliceMask->GetOutput());
-  vtkSmartPointer<vtkColorTransferFunction> ctf = vtkSmartPointer<vtkColorTransferFunction>::New();
+  vtkNew<vtkImageMapToColors> colors;
+  colors->SetInputConnection(resliceMask->GetOutputPort());
+  vtkNew<vtkColorTransferFunction> ctf;
   ctf->AddRGBPoint(0, 1., 0., 0.);
-  colors->SetLookupTable(ctf);
+  colors->SetLookupTable(ctf.GetPointer());
 
-  vtkSmartPointer<vtkImageAppendComponents> append = vtkSmartPointer<vtkImageAppendComponents>::New();
-  append->SetInputConnection(0 ,colors->GetOutput()->GetProducerPort());
+  vtkNew<vtkImageAppendComponents> append;
+  append->SetInputConnection(0, colors->GetOutputPort());
 
   //vtkImageBlend* blend = vtkImageBlend::New();
   //blend->AddInput(append->GetOutput());
@@ -119,6 +126,6 @@ int vtkMRMLSliceLogicTest4(int argc, char * argv [] )
   //append->Update();
   resliceMask->SetOutputExtent(0, 400, 0, 300, 0, 0);
   colors->Update();
-  
+
   return EXIT_SUCCESS;
 }

@@ -18,6 +18,17 @@
 #ifndef __qMRMLChartViewControllerWidget_p_h
 #define __qMRMLChartViewControllerWidget_p_h
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Slicer API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 // qMRML includes
 #include "qMRMLChartViewControllerWidget.h"
 #include "qMRMLViewControllerBar_p.h"
@@ -44,9 +55,9 @@ class qMRMLChartViewControllerWidgetPrivate
 public:
   typedef qMRMLViewControllerBarPrivate Superclass;
   qMRMLChartViewControllerWidgetPrivate(qMRMLChartViewControllerWidget& object);
-  virtual ~qMRMLChartViewControllerWidgetPrivate();
+  ~qMRMLChartViewControllerWidgetPrivate() override;
 
-  virtual void init();
+  void init() override;
 
   vtkWeakPointer<vtkMRMLChartViewNode>  ChartViewNode;
   qMRMLChartView*                       ChartView;
@@ -54,7 +65,7 @@ public:
   QString                          ChartViewLabel;
 
   vtkMRMLChartNode* chartNode();
-  
+
 public slots:
   /// Called after a chart node is selected
   /// using the associated qMRMLNodeComboBox
@@ -62,12 +73,12 @@ public slots:
 
   /// Called after an array node is selected using the qMRMLCheckableNodeComboBox
   void onArrayNodesSelected();
-  
+
   /// Called after a chart type is selected using the qComboBox
   void onChartTypeSelected(const QString&);
 
 protected:
-  virtual void setupPopupUi();
+  void setupPopupUi() override;
 
 public:
 

@@ -1,23 +1,30 @@
+from __future__ import print_function
 import os
-from __main__ import vtk
-from __main__ import ctk
-from __main__ import qt
-from __main__ import slicer
-from EditOptions import EditOptions
-from EditorLib import EditorLib
-import Effect
-import MorphologyEffect
+import vtk
+import ctk
+import qt
+import slicer
 
+from . import EditUtil
+from . import HelpButton
+from . import MorphologyEffectOptions, MorphologyEffectTool, MorphologyEffectLogic, MorphologyEffect
+
+__all__ = [
+  'DilateEffectOptions',
+  'DilateEffectTool',
+  'DilateEffectLogic',
+  'DilateEffect'
+  ]
 
 #########################################################
 #
-# 
+#
 comment = """
 
   DilateEffect is a subclass of MorphologyEffect
   to dilate a layer of pixels from a labelmap
 
-# TODO : 
+# TODO :
 """
 #
 #########################################################
@@ -26,7 +33,7 @@ comment = """
 # DilateEffectOptions - see Effect for superclasses
 #
 
-class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
+class DilateEffectOptions(MorphologyEffectOptions):
   """ DilateEffect-specfic gui
   """
 
@@ -39,11 +46,12 @@ class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
   def create(self):
     super(DilateEffectOptions,self).create()
     self.apply = qt.QPushButton("Apply", self.frame)
+    self.apply.objectName = self.__class__.__name__ + 'Apply'
     self.apply.setToolTip("Dilate current label")
     self.frame.layout().addWidget(self.apply)
     self.widgets.append(self.apply)
 
-    EditorLib.HelpButton(self.frame, "Use this tool to remove pixels from the boundary of the current label.")
+    HelpButton(self.frame, "Use this tool to remove pixels from the boundary of the current label.")
 
     self.connections.append( (self.apply, 'clicked()', self.onApply) )
 
@@ -54,7 +62,7 @@ class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
     super(DilateEffectOptions,self).destroy()
 
   def onApply(self):
-    logic = DilateEffectLogic(self.editUtil.getSliceLogic())
+    logic = DilateEffectLogic(EditUtil.getSliceLogic())
     logic.undoRedo = self.undoRedo
     fill = int(self.parameterNode.GetParameter('MorphologyEffect,fill'))
     neighborMode = self.parameterNode.GetParameter('MorphologyEffect,neighborMode')
@@ -63,9 +71,9 @@ class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
 
   # note: this method needs to be implemented exactly as-is
   # in each leaf subclass so that "self" in the observer
-  # is of the correct type 
+  # is of the correct type
   def updateParameterNode(self, caller, event):
-    node = self.editUtil.getParameterNode()
+    node = EditUtil.getParameterNode()
     if node != self.parameterNode:
       if self.parameterNode:
         node.RemoveObserver(self.parameterNodeTag)
@@ -89,8 +97,8 @@ class DilateEffectOptions(MorphologyEffect.MorphologyEffectOptions):
 #
 # DilateEffectTool
 #
- 
-class DilateEffectTool(MorphologyEffect.MorphologyEffectTool):
+
+class DilateEffectTool(MorphologyEffectTool):
   """
   One instance of this will be created per-view when the effect
   is selected.  It is responsible for implementing feedback and
@@ -112,13 +120,13 @@ class DilateEffectTool(MorphologyEffect.MorphologyEffectTool):
 #
 # DilateEffectLogic
 #
- 
-class DilateEffectLogic(MorphologyEffect.MorphologyEffectLogic):
+
+class DilateEffectLogic(MorphologyEffectLogic):
   """
   This class contains helper methods for a given effect
   type.  It can be instanced as needed by an DilateEffectTool
   or DilateEffectOptions instance in order to compute intermediate
-  results (say, for user feedback) or to implement the final 
+  results (say, for user feedback) or to implement the final
   segmentation editing operation.  This class is split
   from the DilateEffectTool so that the operations can be used
   by other code without the need for a view context.
@@ -130,11 +138,11 @@ class DilateEffectLogic(MorphologyEffect.MorphologyEffectLogic):
   def erode(self,fill,neighborMode,iterations):
 
     eroder = slicer.vtkImageErode()
-    eroder.SetInput( self.getScopedLabelInput() )
+    eroder.SetInputData( self.getScopedLabelInput() )
     eroder.SetOutput( self.getScopedLabelOutput() )
 
     eroder.SetForeground( fill )
-    eroder.SetBackground( self.editUtil.getLabel() )
+    eroder.SetBackground( EditUtil.getLabel() )
 
     if neighborMode == '8':
       eroder.SetNeighborTo8()
@@ -145,7 +153,7 @@ class DilateEffectLogic(MorphologyEffect.MorphologyEffectLogic):
       # bad neighbor mode - silently use default
       print('Bad neighborMode: %s' % neighborMode)
 
-    for i in xrange(iterations):
+    for i in range(iterations):
       # TODO: $this setProgressFilter eroder "Dilate ($i)"
       eroder.Update()
 
@@ -155,10 +163,10 @@ class DilateEffectLogic(MorphologyEffect.MorphologyEffectLogic):
 
 
 #
-# The DilateEffect class definition 
+# The DilateEffect class definition
 #
 
-class DilateEffect(MorphologyEffect.MorphologyEffect):
+class DilateEffect(MorphologyEffect):
   """Organizes the Options, Tool, and Logic classes into a single instance
   that can be managed by the EditBox
   """

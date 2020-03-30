@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,22 +10,25 @@
 
 =========================================================================auto=*/
 
+// MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLVolumeDisplayNode.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
 
-#include "vtkMRMLCoreTestingMacros.h"
-
+//---------------------------------------------------------------------------
 class vtkMRMLVolumeDisplayNodeTestHelper1 : public vtkMRMLVolumeDisplayNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLVolumeDisplayNodeTestHelper1 *New(){return new vtkMRMLVolumeDisplayNodeTestHelper1;};
+  static vtkMRMLVolumeDisplayNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLVolumeDisplayNodeTestHelper1,vtkMRMLVolumeDisplayNode);
+  vtkTypeMacro(vtkMRMLVolumeDisplayNodeTestHelper1,vtkMRMLVolumeDisplayNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLVolumeDisplayNodeTestHelper1;
+    return vtkMRMLVolumeDisplayNodeTestHelper1::New();
     }
 
   const char * GetTypeAsString()
@@ -39,20 +42,17 @@ public:
     return EXIT_SUCCESS;
     }
 
-  virtual const char* GetNodeTagName() 
+  const char* GetNodeTagName() override
     {
     return "Testing is good";
     }
 };
- 
+vtkStandardNewMacro(vtkMRMLVolumeDisplayNodeTestHelper1);
+
+//---------------------------------------------------------------------------
 int vtkMRMLVolumeDisplayNodeTest1(int , char * [] )
 {
-
-  vtkSmartPointer< vtkMRMLVolumeDisplayNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLVolumeDisplayNodeTestHelper1 >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_DISPLAY_MRML_METHODS( vtkMRMLVolumeDisplayNodeTestHelper1, node1);
-  
+  vtkNew<vtkMRMLVolumeDisplayNodeTestHelper1> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

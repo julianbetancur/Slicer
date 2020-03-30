@@ -16,22 +16,25 @@ class vtkMRMLAnnotationTextDisplayNode;
 #include <string>
 
 /// \ingroup Slicer_QtModules_Annotation
-class VTK_SLICER_ANNOTATIONS_MODULE_LOGIC_EXPORT vtkSlicerAnnotationModuleLogic :
-  public vtkSlicerModuleLogic
+class VTK_SLICER_ANNOTATIONS_MODULE_LOGIC_EXPORT vtkSlicerAnnotationModuleLogic
+  :public vtkSlicerModuleLogic
 {
 public:
   enum Events{
-    RefreshRequestEvent = vtkCommand::UserEvent
+    RefreshRequestEvent = vtkCommand::UserEvent,
+    HierarchyNodeAddedEvent
   };
   static vtkSlicerAnnotationModuleLogic *New();
-  vtkTypeRevisionMacro(vtkSlicerAnnotationModuleLogic,vtkSlicerModuleLogic);
-  virtual void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkSlicerAnnotationModuleLogic,vtkSlicerModuleLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  // Start the place mode for annotations
-  void StartPlaceMode(bool persistent=false);
+  /// Start the place mode for annotations.
+  /// By default, the singleton interaction node is updated.
+  void StartPlaceMode(bool persistent=false, vtkMRMLInteractionNode* interactionNode = nullptr);
 
-  // Exit the place mode for annotations
-  void StopPlaceMode(bool persistent=false);
+  /// Exit the place mode for annotations.
+  /// By default, the singleton interaction node is updated.
+  void StopPlaceMode(bool persistent=false, vtkMRMLInteractionNode* interactionNode = nullptr);
 
   // Start adding a new annotation Node
   void AddAnnotationNode(const char * nodeDescriptor, bool persistent=false);
@@ -39,8 +42,9 @@ public:
   // After a node was added, propagate to widget
   void AddNodeCompleted(vtkMRMLAnnotationNode* annotationNode);
 
-  // Cancel the current annotation placement or remove last annotation node
-  void CancelCurrentOrRemoveLastAddedAnnotationNode();
+  /// Cancel the current annotation placement or remove last annotation node.
+  /// By default, the singleton interaction node is updated.
+  void CancelCurrentOrRemoveLastAddedAnnotationNode(vtkMRMLInteractionNode* interactionNode = nullptr);
 
   /// Remove an AnnotationNode and also its 1-1 IS-A hierarchyNode, if found.
   void RemoveAnnotationNode(vtkMRMLAnnotationNode* annotationNode);
@@ -49,7 +53,7 @@ public:
   // Annotation Properties (interface to MRML)
   //
   /// Register MRML Node classes to Scene. Gets called automatically when the MRMLScene is attached to this logic class.
-  virtual void RegisterNodes();
+  void RegisterNodes() override;
 
   /// Check if node id corresponds to an annotaton node
   bool IsAnnotationNode(const char* id);
@@ -68,7 +72,7 @@ public:
   /// null if not a valid node, not an annotation node, or doesn't have a line
   /// display node
   vtkMRMLAnnotationLineDisplayNode *GetLineDisplayNode(const char *id);
-  
+
   /// Get the name of an Annotation MRML node
   const char * GetAnnotationName(const char * id);
 
@@ -115,13 +119,13 @@ public:
   /// Get the point glyph type of the annotation mrml node as a string,
   /// returns null if can't find it
   const char * GetAnnotationPointGlyphTypeAsString(const char *id);
-  /// Get the point glyph type of the annotation mrml node, 
+  /// Get the point glyph type of the annotation mrml node,
   int GetAnnotationPointGlyphType(const char *id);
   /// Set the point glyph type of the annotation mrml node from a string
   void SetAnnotationPointGlyphTypeFromString(const char *id, const char *glyphType);
   /// Set the point glyph type of the annotation mrml node
   void SetAnnotationPointGlyphType(const char *id, int glyphType);
-  
+
   /// Get the line color of an annotation mrml node, returns null if can't find it
   double * GetAnnotationLineColor(const char *id);
   /// Set the line color of an annotation mrml node
@@ -132,12 +136,13 @@ public:
   /// Set the unselected line color of an annotation mrml node
   void SetAnnotationLineUnselectedColor(const char *id, double *color);
 
-  
+
   /// Get the measurement value of an Annotation MRML node
   const char * GetAnnotationMeasurement(const char * id, bool showUnits);
 
   /// Get the icon name of an Annotation MRML node
   const char * GetAnnotationIcon(const char * id);
+  const char * GetAnnotationIcon(vtkMRMLNode* mrmlNode);
 
   /// Get the lock flag of an Annotation MRML node
   int GetAnnotationLockedUnlocked(const char * id);
@@ -153,7 +158,7 @@ public:
   void SetAnnotationSelected(const char * id, bool selected);
   /// Set the selected flag of all annotation mrml nodes
   void SetAllAnnotationsSelected(bool selected);
-  
+
   /// Backup an Annotation MRML node
   void BackupAnnotationNode(const char * id);
   /// Restore a backup of an Annotation MRML node
@@ -170,8 +175,7 @@ public:
   //
   // SnapShot functionality
   //
-  /// Create a snapShot. This includes a screenshot of a specific view (see \ref GrabScreenShot(int screenshotWindow)),
-  /// a multiline text description and the creation of a Scene SnapShot.
+  /// Create a snapShot.
   void CreateSnapShot(const char* name, const char* description, int screenshotType, double scaleFactor, vtkImageData* screenshot);
 
   /// Modify an existing snapShot.
@@ -209,7 +213,7 @@ public:
   /// Return the toplevel Annotation hierarchy node ID or create one and add it to the scene if there is none:
   /// If an optional annotationNode is given, insert the new toplevel hierarchy before it. If not,
   /// just add the new toplevel hierarchy node.
-  char * GetTopLevelHierarchyNodeID(vtkMRMLNode* node=0);
+  char * GetTopLevelHierarchyNodeID(vtkMRMLNode* node=nullptr);
 
   /// Return the top level annotation hierarchy node for this node's class, adding one under the top level annotation hierarchy if there is none. If the passed in node is null, return null
   char * GetTopLevelHierarchyNodeIDForNodeClass(vtkMRMLAnnotationNode *annotationNode);
@@ -240,14 +244,14 @@ public:
 
 
   /// Add a model display node to the scene for a passed in hierarchy node, if
-  /// it doesn't already have one, return the ID, NULL on failure
+  /// it doesn't already have one, return the ID, nullptr on failure
   const char* AddDisplayNodeForHierarchyNode(vtkMRMLAnnotationHierarchyNode *hnode);
 
   /// Legacy support: load a Slicer3 fiducial list from file. Uses FiducialsLogic to load into a legacy node first, then translates into annotation nodes
   /// returns a comma separated list of the annot nodes loaded
   char *LoadFiducialList(const char *filename);
-  
-  /// Load an annotation from file, return NULL on error, node ID string
+
+  /// Load an annotation from file, return nullptr on error, node ID string
   /// otherwise. Adds the appropriate storage and display nodes to the scene
   /// as well. fileType is from this class's enum
   char *LoadAnnotation(const char *filename, const char *name, int fileType);
@@ -260,26 +264,29 @@ public:
     ROI,
   };
 
-  
+  /// Add a new fiducial to the currently active hierarchy. Places the
+  /// fiducial at the given RAS coordinates (default 0,0,0) with the
+  /// given label (if nullptr, uses default naming convention).
+  /// Returns the ID of the newly added node.
+  char *AddFiducial(double r=0.0, double a=0.0, double s=0.0, const char *label=nullptr);
+
 protected:
 
   vtkSlicerAnnotationModuleLogic();
 
-  virtual ~vtkSlicerAnnotationModuleLogic();
+  ~vtkSlicerAnnotationModuleLogic() override;
 
   // Initialize listening to MRML events
-  virtual void SetMRMLSceneInternal(vtkMRMLScene * newScene);
-  virtual void ObserveMRMLScene();
+  void SetMRMLSceneInternal(vtkMRMLScene * newScene) override;
+  void ObserveMRMLScene() override;
 
   // MRML events
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  virtual void OnMRMLSceneEndClose();
-  virtual void ProcessMRMLNodesEvents(vtkObject *caller,
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  void OnMRMLSceneEndClose() override;
+  void ProcessMRMLNodesEvents(vtkObject *caller,
                                       unsigned long event,
-                                      void *callData );
+                                      void *callData ) override;
   virtual void OnMRMLAnnotationNodeModifiedEvent(vtkMRMLNode* node);
-  virtual void OnInteractionModeChangedEvent(vtkMRMLInteractionNode *interactionNode);
-  virtual void OnInteractionModePersistenceChangedEvent(vtkMRMLInteractionNode *interactionNode);
 
 private:
 
@@ -302,7 +309,7 @@ private:
   /// active hierarchy node, use the top-level annotation hierarchy node as the parent.
   /// If there is no top-level annotation hierarchy node, create additionally a top-level hierarchy node which serves as
   /// a parent to the new hierarchy node. Return true on success, false on failure.
-  bool AddHierarchyNodeForAnnotation(vtkMRMLAnnotationNode* annotationNode=0);
+  bool AddHierarchyNodeForAnnotation(vtkMRMLAnnotationNode* annotationNode=nullptr);
 
 
 };

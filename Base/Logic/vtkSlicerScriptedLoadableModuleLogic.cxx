@@ -18,6 +18,9 @@
 
 ==============================================================================*/
 
+// Python includes
+#include <vtkPython.h>
+
 // Slicer includes
 #include "vtkSlicerScriptedLoadableModuleLogic.h"
 
@@ -26,11 +29,12 @@
 
 // VTK includes
 #include <vtkPythonUtil.h>
+#include <vtkStdString.h>
 
-// Python includes
+// STD includes
+#include <cstdlib>
 
 //----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkSlicerScriptedLoadableModuleLogic, "$Revision$");
 vtkStandardNewMacro(vtkSlicerScriptedLoadableModuleLogic);
 
 //---------------------------------------------------------------------------
@@ -69,7 +73,7 @@ public:
 //---------------------------------------------------------------------------
 vtkSlicerScriptedLoadableModuleLogic::vtkInternal::vtkInternal()
 {
-  this->PythonSelf = 0;
+  this->PythonSelf = nullptr;
 //  for (int i = 0; i < vtkInternal::APIMethodCount; ++i)
 //    {
 //    this->PythonAPIMethods[i] = 0;
@@ -175,13 +179,9 @@ void vtkSlicerScriptedLoadableModuleLogic::PrintSelf(ostream& os, vtkIndent inde
 //---------------------------------------------------------------------------
 bool vtkSlicerScriptedLoadableModuleLogic::SetPythonSource(const std::string& pythonSource)
 {
-  assert(pythonSource.find(".py") != std::string::npos);
-
-  // Open the file
-  FILE* pyfile = fopen(pythonSource.c_str(), "r");
-  if (!pyfile)
+  if(pythonSource.find(".py") == std::string::npos &&
+     pythonSource.find(".pyc") == std::string::npos)
     {
-    vtkErrorMacro(<< "SetPythonSource - File " << pythonSource << " doesn't exist !");
     return false;
     }
 
@@ -198,7 +198,28 @@ bool vtkSlicerScriptedLoadableModuleLogic::SetPythonSource(const std::string& py
   PyObject * classToInstantiate = PyDict_GetItemString(global_dict, className.c_str());
   if (!classToInstantiate)
     {
-    PyRun_File(pyfile, pythonSource.c_str(), Py_file_input, global_dict, global_dict);
+    PyObject * pyRes = nullptr;
+    if (pythonSource.find(".pyc") != std::string::npos)
+      {
+      std::string pyRunStr = std::string("with open('") + pythonSource +
+          std::string("', 'rb') as f:import imp;imp.load_module('__main__', f, '") + pythonSource +
+          std::string("', ('.pyc', 'rb', 2))");
+      pyRes = PyRun_String(
+            pyRunStr.c_str(),
+            Py_file_input, global_dict, global_dict);
+      }
+    else if (pythonSource.find(".py") != std::string::npos)
+      {
+      std::string pyRunStr = std::string("execfile('") + pythonSource + std::string("')");
+      pyRes = PyRun_String(pyRunStr.c_str(),
+        Py_file_input, global_dict, global_dict);
+      }
+    if (!pyRes)
+      {
+      vtkErrorMacro(<< "setPythonSource - Failed to execute file" << pythonSource << "!");
+      return false;
+      }
+    Py_DECREF(pyRes);
     classToInstantiate = PyDict_GetItemString(global_dict, className.c_str());
     }
   if (!classToInstantiate)
@@ -214,7 +235,7 @@ bool vtkSlicerScriptedLoadableModuleLogic::SetPythonSource(const std::string& py
   PyTuple_SET_ITEM(arguments, 0, vtkPythonUtil::GetObjectFromPointer(this));
 
   // Attempt to instantiate the associated python class
-  PyObject * self = PyInstance_New(classToInstantiate, arguments, 0);
+  PyObject * self = PyObject_CallObject(classToInstantiate, arguments);
   Py_DECREF(arguments);
   if (!self)
     {

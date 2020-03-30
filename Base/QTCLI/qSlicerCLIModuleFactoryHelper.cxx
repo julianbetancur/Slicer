@@ -25,7 +25,7 @@
 #include "qSlicerCLIModuleFactoryHelper.h"
 
 // SlicerQT includes
-#include "qSlicerCoreApplication.h" // For: Slicer_CLIMODULES_BIN_DIR, Slicer_BUILD_CLI
+#include "qSlicerCoreApplication.h" // For: Slicer_CLIMODULES_LIB_DIR
 #include "qSlicerUtils.h"
 
 //-----------------------------------------------------------------------------
@@ -38,12 +38,7 @@ const QStringList qSlicerCLIModuleFactoryHelper::modulePaths()
   Q_ASSERT(!app->slicerHome().isEmpty());
 
   QStringList defaultCmdLineModulePaths;
-#ifdef Slicer_BUILD_CLI
-  bool appendDefaultCmdLineModulePaths = true;
-#else
-  bool appendDefaultCmdLineModulePaths = app->isInstalled();
-#endif
-  if (appendDefaultCmdLineModulePaths)
+  if (QFile::exists(app->slicerHome() + "/" + Slicer_CLIMODULES_LIB_DIR))
     {
     defaultCmdLineModulePaths << app->slicerHome() + "/" + Slicer_CLIMODULES_LIB_DIR;
     if (!app->intDir().isEmpty())
@@ -69,5 +64,12 @@ const QStringList qSlicerCLIModuleFactoryHelper::modulePaths()
 bool qSlicerCLIModuleFactoryHelper::isInstalled(const QString& path)
 {
   qSlicerCoreApplication * app = qSlicerCoreApplication::application();
-  return qSlicerUtils::isPluginInstalled(path, app->slicerHome());
+  return app ? qSlicerUtils::isPluginInstalled(path, app->slicerHome()) : false;
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerCLIModuleFactoryHelper::isBuiltIn(const QString& path)
+{
+  qSlicerCoreApplication * app = qSlicerCoreApplication::application();
+  return app ? qSlicerUtils::isPluginBuiltIn(path, app->slicerHome()) : true;
 }

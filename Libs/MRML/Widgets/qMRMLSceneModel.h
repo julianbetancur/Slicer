@@ -33,7 +33,6 @@
 
 class vtkMRMLNode;
 class vtkMRMLScene;
-class QAction;
 
 class qMRMLSceneModelPrivate;
 
@@ -51,7 +50,7 @@ class qMRMLSceneModelPrivate;
 ///    |- my_volume.nrrd  vtkMRMLScalarVolumeNode1
 ///    |- Add new node
 /// \endverbatim
-/// More columns can be added by setting the column index of the differen
+/// More columns can be added by setting the column index of the different
 /// columns: name, id, checkable, visibility, toolTip, extraItem and the ones
 /// defined in subclasses.
 /// Subclasses must reimplement maxColumnId if they add new column properties
@@ -60,14 +59,16 @@ class QMRML_WIDGETS_EXPORT qMRMLSceneModel : public QStandardItemModel
   Q_OBJECT
   QVTK_OBJECT
 
+  Q_ENUMS(NodeTypes)
+
   /// This property controls whether to observe or not the modified event of
   /// the node and update the node item data accordingly.
   /// It can be useful when the modified property is displayed
   /// (name, id, visibility...)
-  /// True by default
-  Q_PROPERTY (bool listenNodeModifiedEvent READ listenNodeModifiedEvent WRITE setListenNodeModifiedEvent)
+  /// OnlyVisibleNodes by default
+  Q_PROPERTY (NodeTypes listenNodeModifiedEvent READ listenNodeModifiedEvent WRITE setListenNodeModifiedEvent)
 
-  /// Control wether the model actively listens to the scene.
+  /// Control whether the model actively listens to the scene.
   /// If LazyUpdate is true, the model ignores added node events when the
   /// scene is importing/restoring, but synchronize with the scene once its
   /// imported/restored.
@@ -94,10 +95,17 @@ class QMRML_WIDGETS_EXPORT qMRMLSceneModel : public QStandardItemModel
   Q_PROPERTY( int extraItemColumn READ extraItemColumn WRITE setExtraItemColumn)
 public:
   typedef QStandardItemModel Superclass;
-  qMRMLSceneModel(QObject *parent=0);
-  virtual ~qMRMLSceneModel();
+  qMRMLSceneModel(QObject *parent=nullptr);
+  ~qMRMLSceneModel() override;
 
-  enum ItemDataRole{
+  enum NodeTypes
+    {
+    NoNodes = 0,
+    AllNodes,
+    OnlyVisibleNodes
+    };
+  enum ItemDataRole
+    {
     /// Unique ID of the item. For nodes, it is the node ID.
     UIDRole = Qt::UserRole + 1,
     /// Pointer (as long long) of the item if it is a scene or a node.
@@ -112,8 +120,8 @@ public:
     };
 
   /// 0 by default
-  virtual void setMRMLScene(vtkMRMLScene* scene);
-  vtkMRMLScene* mrmlScene()const;
+  Q_INVOKABLE virtual void setMRMLScene(vtkMRMLScene* scene);
+  Q_INVOKABLE vtkMRMLScene* mrmlScene()const;
 
   /// 0 until a valid scene is set
   QStandardItem* mrmlSceneItem()const;
@@ -134,8 +142,11 @@ public:
   /// Option that activates the expensive listening of the vtkMRMLNode Modified
   /// events. When listening, the signal itemDataChanged() is fired when a
   /// vtkMRMLNode is modified.
-  void setListenNodeModifiedEvent(bool listen);
-  bool listenNodeModifiedEvent()const;
+  /// \sa listenNodeModifiedEvent, listenNodeModifiedEvent()
+  void setListenNodeModifiedEvent(NodeTypes nodesToListen);
+  /// Get the types of nodes that are observed.
+  /// \sa listenNodeModifiedEvent, setListenNodeModifiedEvent()
+  NodeTypes listenNodeModifiedEvent()const;
 
   bool lazyUpdate()const;
   void setLazyUpdate(bool lazy);
@@ -170,14 +181,19 @@ public:
 
   /// Doesn't support drop actions, scene model subclasses can support drop
   /// actions though.
-  virtual Qt::DropActions supportedDropActions()const;
-  virtual QMimeData* mimeData(const QModelIndexList& indexes)const;
-  virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action,
-                            int row, int column, const QModelIndex &parent);
+  Qt::DropActions supportedDropActions()const override;
+  QMimeData* mimeData(const QModelIndexList& indexes)const override;
+  bool dropMimeData(const QMimeData *data, Qt::DropAction action,
+                            int row, int column, const QModelIndex &parent) override;
 
-  /// Must be reimplemented in derived classes
-  /// Returns 0 (scene is not a node) in qMRMLSceneModel
+  /// Returns the parent node of the node, 0 otherwise (the parent is the scene).
+  /// Must be reimplemented in derived classes. If reimplemented, you might
+  /// have to reimplement nodeIndex() as well.
+  /// Returns 0 by default.
+  /// \sa nodeIndex(), canBeAChild(), canBeAParent()
   virtual vtkMRMLNode* parentNode(vtkMRMLNode* node)const;
+  /// Returns the row model index relative to its parent node independently of
+  /// any filtering or proxy model.
   /// Must be reimplemented in derived classes
   virtual int          nodeIndex(vtkMRMLNode* node)const;
   /// fast function that only check the type of the node to know if it can be a child.
@@ -188,6 +204,18 @@ public:
   /// Must be reimplemented in derived classes.
   /// Doesn't reparent and returns false by qMRMLSceneModel
   virtual bool         reparent(vtkMRMLNode* node, vtkMRMLNode* newParent);
+  /// Utility method that returns true if \a child has \a parent as parent,
+  /// grandparent, great grandparent etc...
+  /// \sa isAffiliatedNode()
+  bool isParentNode(vtkMRMLNode* child, vtkMRMLNode* parent)const;
+  /// Utility method that returns true if 2 nodes are child/parent for each
+  /// other. It can be grandchild, great grand child...
+  /// \sa isParentNode()
+  bool isAffiliatedNode(vtkMRMLNode* nodeA, vtkMRMLNode* nodeB)const;
+
+  /// Observe node and update item when the node is modified.
+  /// \sa listenNodeModifiedEvent
+  virtual void observeNode(vtkMRMLNode* node);
 
 protected slots:
 
@@ -200,6 +228,7 @@ protected slots:
   virtual void onMRMLSceneImported(vtkMRMLScene* scene);
   virtual void onMRMLSceneAboutToBeClosed(vtkMRMLScene* scene);
   virtual void onMRMLSceneClosed(vtkMRMLScene* scene);
+  virtual void onMRMLSceneStartBatchProcess(vtkMRMLScene* scene);
   virtual void onMRMLSceneEndBatchProcess(vtkMRMLScene* scene);
 
   void onMRMLSceneDeleted(vtkObject* scene);
@@ -208,32 +237,36 @@ protected slots:
   /// The node has its ID changed. The scene model needs to update the UIDRole
   /// associated with the node in order to keep being in sync.
   void onMRMLNodeIDChanged(vtkObject* node, void* callData);
-  void onItemChanged(QStandardItem * item);
-  void delayedItemChanged();
+  virtual void onItemChanged(QStandardItem * item);
+  virtual void delayedItemChanged();
 
   /// Recompute the number of columns in the model.
   /// To be called when a XXXColumn is set.
   /// Needs maxColumnId() to be reimplemented in subclasses
   void updateColumnCount();
 
-signals :
+signals:
   /// This signal is sent when a user is about to reparent a Node by
   /// a drag and drop
   void aboutToReparentByDragAndDrop(vtkMRMLNode* node, vtkMRMLNode* newParent);
 
-  ///  This signal is sent after a user draged and droped a Node in the
+  ///  This signal is sent after a user dragged and dropped a Node in the
   /// qMRMLTreeView
   void reparentedByDragAndDrop(vtkMRMLNode* node, vtkMRMLNode* newParent);
 
-protected:
+  /// This signal is sent when the scene is about to be updated
+  void sceneAboutToBeUpdated();
 
-  qMRMLSceneModel(qMRMLSceneModelPrivate* pimpl, QObject *parent=0);
+  /// This signal is sent after the scene is updated
+  void sceneUpdated();
+
+protected:
+  qMRMLSceneModel(qMRMLSceneModelPrivate* pimpl, QObject *parent=nullptr);
 
   virtual void updateScene();
   virtual void populateScene();
   virtual QStandardItem* insertNode(vtkMRMLNode* node);
   virtual QStandardItem* insertNode(vtkMRMLNode* node, QStandardItem* parent, int row = -1);
-  virtual void observeNode(vtkMRMLNode* node);
 
   virtual bool isANode(const QStandardItem* item)const;
   virtual QFlags<Qt::ItemFlag> nodeFlags(vtkMRMLNode* node, int column)const;
@@ -300,6 +333,7 @@ private:
   Q_DECLARE_PRIVATE(qMRMLSceneModel);
   Q_DISABLE_COPY(qMRMLSceneModel);
 };
+Q_DECLARE_METATYPE(qMRMLSceneModel::NodeTypes)
 
 void printStandardItem(QStandardItem* item, const QString& offset);
 

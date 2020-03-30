@@ -23,24 +23,35 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLSliceWidget.h"
 #include "qMRMLVolumeThresholdWidget.h"
 
 // MRML includes
+#include <vtkMRMLApplicationLogic.h>
 #include <vtkMRMLScene.h>
 #include <vtkMRMLSliceNode.h>
+#include <vtkMRMLSliceViewDisplayableManagerFactory.h>
 #include <vtkMRMLVolumeNode.h>
 
+// MRMLLogic includes
+#include <vtkMRMLColorLogic.h>
+
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLVolumeThresholdWidgetTest2(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  
+  qMRMLWidget::postInitializeApplication();
+
   if( argc < 2 )
     {
     std::cerr << "Error: missing arguments" << std::endl;
@@ -49,7 +60,15 @@ int qMRMLVolumeThresholdWidgetTest2(int argc, char * argv [] )
     return EXIT_FAILURE;
     }
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
+  vtkNew<vtkMRMLApplicationLogic> applicationLogic;
+  applicationLogic->SetMRMLScene(scene.GetPointer());
+  vtkMRMLSliceViewDisplayableManagerFactory::GetInstance()->SetMRMLApplicationLogic(applicationLogic);
+
+  // Add default color nodes
+  vtkNew<vtkMRMLColorLogic> colorLogic;
+  colorLogic->SetMRMLScene(scene.GetPointer());
+
   scene->SetURL(argv[1]);
   scene->Connect();
   if (scene->GetNumberOfNodes() == 0)
@@ -57,15 +76,14 @@ int qMRMLVolumeThresholdWidgetTest2(int argc, char * argv [] )
     std::cerr << "Can't load scene:" << argv[1] << " error: " <<scene->GetErrorMessage() << std::endl;
     return EXIT_FAILURE;
     }
-  scene->InitTraversal();
-  vtkMRMLNode* node = scene->GetNextNodeByClass("vtkMRMLScalarVolumeNode");
+  vtkMRMLNode* node = scene->GetFirstNodeByClass("vtkMRMLScalarVolumeNode");
   vtkMRMLVolumeNode* volumeNode = vtkMRMLVolumeNode::SafeDownCast(node);
   if (!volumeNode)
     {
     std::cerr << "Scene must contain a valid vtkMRMLVolumeNode:" << node << std::endl;
     return EXIT_FAILURE;
     }
-  vtkMRMLSliceNode* redSliceNode = 0;
+  vtkMRMLSliceNode* redSliceNode = nullptr;
   std::vector<vtkMRMLNode*> sliceNodes;
   scene->GetNodesByClass("vtkMRMLSliceNode", sliceNodes);
   for (unsigned int i = 0; i < sliceNodes.size(); ++i)
@@ -82,7 +100,7 @@ int qMRMLVolumeThresholdWidgetTest2(int argc, char * argv [] )
     std::cerr << "Scene must contain a valid vtkMRMLSliceNode:" << redSliceNode << std::endl;
     return EXIT_FAILURE;
     }
-  
+
   QWidget topLevel;
   qMRMLVolumeThresholdWidget volumeThreshold;
   qMRMLSliceWidget sliceWidget;
@@ -92,14 +110,15 @@ int qMRMLVolumeThresholdWidgetTest2(int argc, char * argv [] )
   topLevel.setLayout(layout);
 
   volumeThreshold.setMRMLVolumeNode(volumeNode);
-  sliceWidget.setMRMLScene(scene);
+  sliceWidget.setMRMLScene(scene.GetPointer());
   sliceWidget.setMRMLSliceNode(redSliceNode);
   topLevel.show();
-  
+
   if (argc < 3 || QString(argv[2]) != "-I" )
     {
     QTimer::singleShot(200, &app, SLOT(quit()));
     }
+
   return app.exec();
 }
 

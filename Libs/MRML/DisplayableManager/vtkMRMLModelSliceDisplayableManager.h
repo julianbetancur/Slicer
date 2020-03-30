@@ -23,11 +23,9 @@
 
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractSliceViewDisplayableManager.h"
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 class vtkMRMLDisplayableNode;
-class vtkCutter;
-class vtkProp;
 
 /// \brief Displayable manager for slice (2D) views.
 ///
@@ -40,9 +38,9 @@ class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLModelSliceDisplayableManager
 
 public:
   static vtkMRMLModelSliceDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLModelSliceDisplayableManager,
+  vtkTypeMacro(vtkMRMLModelSliceDisplayableManager,
                        vtkMRMLAbstractSliceViewDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   // DisplayableNode handling customizations
   void AddDisplayableNode(vtkMRMLDisplayableNode* displayableNode);
@@ -51,26 +49,27 @@ public:
 protected:
 
   vtkMRMLModelSliceDisplayableManager();
-  virtual ~vtkMRMLModelSliceDisplayableManager();
+  ~vtkMRMLModelSliceDisplayableManager() override;
 
-  virtual void UnobserveMRMLScene();
-  virtual void OnMRMLSceneNodeAdded(vtkMRMLNode* node);
-  virtual void OnMRMLSceneNodeRemoved(vtkMRMLNode* node);
-  virtual void ProcessMRMLNodesEvents(vtkObject* caller, unsigned long event, void* callData);
-  
-  virtual void UpdateFromMRML();
-  virtual void OnMRMLSceneStartClose();
-  virtual void OnMRMLSceneEndClose();
-  virtual void OnMRMLSceneEndBatchProcess();
+  void UnobserveMRMLScene() override;
+  void OnMRMLSceneNodeAdded(vtkMRMLNode* node) override;
+  void OnMRMLSceneNodeRemoved(vtkMRMLNode* node) override;
+  void ProcessMRMLNodesEvents(vtkObject* caller, unsigned long event, void* callData) override;
+
+  void UpdateFromMRML() override;
+  void OnMRMLSceneStartClose() override;
+  void OnMRMLSceneEndClose() override;
+  void OnMRMLSceneEndBatchProcess() override;
 
   /// Initialize the displayable manager based on its associated
   /// vtkMRMLSliceNode
-  virtual void Create();
+  void Create() override;
+  int AddingDisplayableNode;
 
 private:
 
-  vtkMRMLModelSliceDisplayableManager(const vtkMRMLModelSliceDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLModelSliceDisplayableManager&);                     // Not Implemented
+  vtkMRMLModelSliceDisplayableManager(const vtkMRMLModelSliceDisplayableManager&) = delete;
+  void operator=(const vtkMRMLModelSliceDisplayableManager&) = delete;
 
   class vtkInternal;
   vtkInternal * Internal;

@@ -11,8 +11,8 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DPPDAffineTransform_txx
-#define __itkDiffusionTensor3DPPDAffineTransform_txx
+#ifndef itkDiffusionTensor3DPPDAffineTransform_txx
+#define itkDiffusionTensor3DPPDAffineTransform_txx
 
 #include "itkDiffusionTensor3DPPDAffineTransform.h"
 
@@ -33,7 +33,7 @@ DiffusionTensor3DPPDAffineTransform<TData>
     itkExceptionMacro(<< "Transform matrix is not invertible" );
     }
   this->ComputeOffset();
-  this->latestTime = Object::GetMTime();
+  this->m_LatestTime = Object::GetMTime();
 }
 
 template <class TData>
@@ -43,19 +43,18 @@ DiffusionTensor3DPPDAffineTransform<TData>
 {
   InternalTensorDataType internalTensor = tensor;
 
-  if( this->latestTime < Object::GetMTime() )
+  if( this->m_LatestTime < Object::GetMTime() )
     {
-    this->m_Lock->Lock();
-    if( this->latestTime < Object::GetMTime() )
+    this->m_Lock.lock();
+    if( this->m_LatestTime < Object::GetMTime() )
       {
       PreCompute();
       }
-    this->m_Lock->Unlock();
+    this->m_Lock.unlock();
     }
   EValuesType                       eigenValues;
   EVectorsType                      eigenVectors;
-  DiffusionTensor3DExtended<double> tensorDouble;
-  tensorDouble = ( DiffusionTensor3DExtended<TData> )tensor;
+  DiffusionTensor3DExtended<double> tensorDouble ( tensor );
   InternalMatrixTransformType tensorMatrixDouble = tensorDouble.GetTensor2Matrix();
   // InternalMatrixDataType tensorMatrix = tensorDouble.GetTensor2Matrix() ;
   InternalMatrixTransformType MFT = this->m_MeasurementFrame.GetTranspose();

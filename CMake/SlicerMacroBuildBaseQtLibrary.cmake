@@ -32,10 +32,10 @@
 #   SRCS .................: List of source files
 #
 #   MOC_SRCS .............: Optional list of headers to run through the meta object compiler (moc)
-#                           using QT4_WRAP_CPP CMake macro
+#                           using QT(4|5)_WRAP_CPP CMake macro
 #
 #   UI_SRCS ..............: Optional list of UI file to run through UI compiler (uic) using
-#                           QT4_WRAP_UI CMake macro
+#                           QT(4|5)_WRAP_UI CMake macro
 #
 #   INCLUDE_DIRECTORIES ..: Optional list of extra folder that should be included. See implementation
 #                           for the list of folder included by default.
@@ -44,7 +44,7 @@
 #                           CMake macro. See implementation for the list of libraries added by default.
 #
 #   RESOURCES ............: Optional list of files that should be converted into resource header
-#                           using QT4_ADD_RESOURCES
+#                           using QT(4|5)_ADD_RESOURCES
 #
 # Options:
 #
@@ -53,15 +53,36 @@
 #
 
 macro(SlicerMacroBuildBaseQtLibrary)
-  SLICER_PARSE_ARGUMENTS(SLICERQTBASELIB
-    "NAME;EXPORT_DIRECTIVE;SRCS;MOC_SRCS;UI_SRCS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES"
-    "WRAP_PYTHONQT"
+  set(options
+    WRAP_PYTHONQT
+    )
+  set(oneValueArgs
+    NAME
+    EXPORT_DIRECTIVE
+    )
+  set(multiValueArgs
+    SRCS
+    MOC_SRCS
+    UI_SRCS
+    INCLUDE_DIRECTORIES
+    TARGET_LIBRARIES
+    RESOURCES
+    )
+  cmake_parse_arguments(SLICERQTBASELIB
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
     )
-  message(STATUS "Configuring Slicer Qt base library: ${SLICERQTBASELIB_NAME}")
+
+  message(STATUS "Configuring ${Slicer_MAIN_PROJECT_APPLICATION_NAME} Qt base library: ${SLICERQTBASELIB_NAME}")
   # --------------------------------------------------------------------------
   # Sanity checks
   # --------------------------------------------------------------------------
+  if(SLICERQTBASELIB_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown keywords given to SlicerMacroBuildBaseQtLibrary(): \"${SLICERQTBASELIB_UNPARSED_ARGUMENTS}\"")
+  endif()
+
   set(expected_defined_vars NAME EXPORT_DIRECTIVE)
   foreach(var ${expected_defined_vars})
     if(NOT DEFINED SLICERQTBASELIB_${var})
@@ -117,13 +138,14 @@ macro(SlicerMacroBuildBaseQtLibrary)
   #-----------------------------------------------------------------------------
   # Sources
   # --------------------------------------------------------------------------
-  QT4_WRAP_CPP(SLICERQTBASELIB_MOC_OUTPUT ${SLICERQTBASELIB_MOC_SRCS})
-  QT4_WRAP_UI(SLICERQTBASELIB_UI_CXX ${SLICERQTBASELIB_UI_SRCS})
-  if(DEFINED SLICERQTBASELIB_RESOURCES)
-    QT4_ADD_RESOURCES(SLICERQTBASELIB_QRC_SRCS ${SLICERQTBASELIB_RESOURCES})
-  endif(DEFINED SLICERQTBASELIB_RESOURCES)
+    set(_moc_options OPTIONS -DSlicer_HAVE_QT5)
+    QT5_WRAP_CPP(SLICERQTBASELIB_MOC_OUTPUT ${SLICERQTBASELIB_MOC_SRCS} ${_moc_options})
+    QT5_WRAP_UI(SLICERQTBASELIB_UI_CXX ${SLICERQTBASELIB_UI_SRCS})
+    if(DEFINED SLICERQTBASELIB_RESOURCES)
+      QT5_ADD_RESOURCES(SLICERQTBASELIB_QRC_SRCS ${SLICERQTBASELIB_RESOURCES})
+    endif()
 
-  QT4_ADD_RESOURCES(SLICERQTBASELIB_QRC_SRCS ${Slicer_SOURCE_DIR}/Resources/qSlicer.qrc)
+    QT5_ADD_RESOURCES(SLICERQTBASELIB_QRC_SRCS ${Slicer_SOURCE_DIR}/Resources/qSlicer.qrc)
 
   set_source_files_properties(
     ${SLICERQTBASELIB_UI_CXX}
@@ -151,24 +173,27 @@ macro(SlicerMacroBuildBaseQtLibrary)
   # --------------------------------------------------------------------------
   # Translation
   # --------------------------------------------------------------------------
-
-  set(TS_DIR
-    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Translations/"
-  )
-  get_property(Slicer_LANGUAGES GLOBAL PROPERTY Slicer_LANGUAGES)
-
-  include(SlicerMacroTranslation)
-  SlicerMacroTranslation(
-    SRCS ${SLICERQTBASELIB_SRCS}
-    UI_SRCS ${SLICERQTBASELIB_UI_SRCS}
-    TS_DIR ${TS_DIR}
-    TS_BASEFILENAME ${SLICERQTBASELIB_NAME}
-    TS_LANGUAGES ${Slicer_LANGUAGES}
-    QM_OUTPUT_DIR_VAR QM_OUTPUT_DIR
-    QM_OUTPUT_FILES_VAR QM_OUTPUT_FILES
+  if(Slicer_BUILD_I18N_SUPPORT)
+    set(TS_DIR
+      "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Translations/"
     )
+    get_property(Slicer_LANGUAGES GLOBAL PROPERTY Slicer_LANGUAGES)
 
-  set_property(GLOBAL APPEND PROPERTY Slicer_QM_OUTPUT_DIRS ${QM_OUTPUT_DIR})
+    include(SlicerMacroTranslation)
+    SlicerMacroTranslation(
+      SRCS ${SLICERQTBASELIB_SRCS}
+      UI_SRCS ${SLICERQTBASELIB_UI_SRCS}
+      TS_DIR ${TS_DIR}
+      TS_BASEFILENAME ${SLICERQTBASELIB_NAME}
+      TS_LANGUAGES ${Slicer_LANGUAGES}
+      QM_OUTPUT_DIR_VAR QM_OUTPUT_DIR
+      QM_OUTPUT_FILES_VAR QM_OUTPUT_FILES
+      )
+
+    set_property(GLOBAL APPEND PROPERTY Slicer_QM_OUTPUT_DIRS ${QM_OUTPUT_DIR})
+  else()
+    set(QM_OUTPUT_FILES )
+  endif()
 
   # --------------------------------------------------------------------------
   # Build the library
@@ -188,10 +213,11 @@ macro(SlicerMacroBuildBaseQtLibrary)
   endif()
 
   target_link_libraries(${lib_name}
-    ${QT_LIBRARIES}
-    ${CTK_EXTERNAL_LIBRARIES}
     ${SLICERQTBASELIB_TARGET_LIBRARIES}
     )
+
+  # Folder
+  set_target_properties(${lib_name} PROPERTIES FOLDER "Core-Base")
 
   #-----------------------------------------------------------------------------
   # Install library
@@ -220,12 +246,13 @@ macro(SlicerMacroBuildBaseQtLibrary)
   # --------------------------------------------------------------------------
   if(Slicer_USE_PYTHONQT AND SLICERQTBASELIB_WRAP_PYTHONQT)
     ctkMacroBuildLibWrapper(
-      NAMESPACE "org.slicer.base"
+      NAMESPACE "osb" # Use "osb" instead of "org.slicer.base" to avoid build error on windows
       TARGET ${lib_name}
       SRCS "${SLICERQTBASELIB_SRCS}"
       INSTALL_BIN_DIR ${Slicer_INSTALL_BIN_DIR}
       INSTALL_LIB_DIR ${Slicer_INSTALL_LIB_DIR}
       )
+    set_target_properties(${lib_name}PythonQt PROPERTIES FOLDER "Core-Base")
   endif()
 
   # --------------------------------------------------------------------------

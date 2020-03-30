@@ -22,6 +22,8 @@
 #include "vtkSlicerColorLogic.h"
 
 // MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLScene.h"
 
 // VTK includes
 #include <vtkTimerLog.h>
@@ -30,18 +32,35 @@
 
 #include "vtkMRMLCoreTestingMacros.h"
 
-int vtkSlicerColorLogicTest1(int , char * [] )
+using namespace vtkAddonTestingUtilities;
+using namespace vtkMRMLCoreTestingUtilities;
+
+//----------------------------------------------------------------------------
+namespace
+{
+  int TestDefaults();
+}
+
+int vtkSlicerColorLogicTest1(int vtkNotUsed(argc), char * vtkNotUsed(argv)[])
+{
+  CHECK_EXIT_SUCCESS(TestDefaults());
+  return EXIT_SUCCESS;
+}
+namespace
+{
+
+//----------------------------------------------------------------------------
+int TestDefaults()
 {
   // To load the freesurfer file, SLICER_HOME is requested
   //vtksys::SystemTools::PutEnv("SLICER_HOME=..." );
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
   vtkSlicerColorLogic* colorLogic = vtkSlicerColorLogic::New();
-  colorLogic->SetDebug(1);
 
-  vtkSmartPointer<vtkTimerLog> overallTimer = vtkSmartPointer<vtkTimerLog>::New();
+  vtkNew<vtkTimerLog> overallTimer;
   overallTimer->StartTimer();
 
-  colorLogic->SetMRMLScene(scene);
+  colorLogic->SetMRMLScene(scene.GetPointer());
 
   overallTimer->StopTimer();
   std::cout << "AddDefaultColorNodes: " << overallTimer->GetElapsedTime() << "s"
@@ -56,3 +75,4 @@ int vtkSlicerColorLogicTest1(int , char * [] )
   return EXIT_SUCCESS;
 }
 
+}

@@ -27,13 +27,12 @@ vtkStandardNewMacro(vtkFSSurfaceScalarReader);
 //-------------------------------------------------------------------------
 vtkFSSurfaceScalarReader::vtkFSSurfaceScalarReader()
 {
-    this->Scalars = NULL;
+    this->Scalars = nullptr;
 }
 
 //-------------------------------------------------------------------------
 vtkFSSurfaceScalarReader::~vtkFSSurfaceScalarReader()
-{
-}
+= default;
 
 //-------------------------------------------------------------------------
 vtkFloatArray * vtkFSSurfaceScalarReader::GetOutput()
@@ -61,14 +60,14 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
   float *FSscalars;
   vtkFloatArray *output = this->Scalars;
 
-  if (output == NULL)
+  if (output == nullptr)
   {
       cerr << "ERROR vtkFSSurfaceScalarReader ReadFSScalars() : output is null" << endl;
       return 0;
   }
   vtkDebugMacro( << "vtkFSSurfaceScalarReader Execute() " << endl);
 
-  if (!this->FileName) {
+  if (!this->GetFileName()) {
     vtkErrorMacro(<<"vtkFSSurfaceScalarReader Execute: FileName not specified.");
     return 0;
   }
@@ -76,9 +75,9 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
   vtkDebugMacro(<<"Reading surface scalar data...");
 
   // Try to open the file.
-  scalarFile = fopen(this->FileName, "rb") ;
+  scalarFile = fopen(this->GetFileName(), "rb") ;
   if (!scalarFile) {
-    vtkErrorMacro (<< "Could not open file " << this->FileName);
+    vtkErrorMacro (<< "Could not open file " << this->GetFileName());
     return 0;
   }
 
@@ -100,7 +99,7 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
       }
     else
       {
-      vtkErrorMacro("Error reading number of values from file " << this->FileName);
+      vtkErrorMacro("Error reading number of values from file " << this->GetFileName());
       }
     retval = fread (&numFaces, sizeof(int), 1, scalarFile);
     if (retval == 1)
@@ -109,7 +108,7 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
       }
     else
       {
-      vtkErrorMacro("Error reading number of faces from file " << this->FileName);
+      vtkErrorMacro("Error reading number of faces from file " << this->GetFileName());
       }
     retval = fread (&numValuesPerPoint, sizeof(int), 1, scalarFile);
     if (retval == 1)
@@ -118,7 +117,7 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
       }
     else
       {
-      vtkErrorMacro("Error reading number of values per point, should be 1, in filename " << this->FileName);
+      vtkErrorMacro("Error reading number of values per point, should be 1, in filename " << this->GetFileName());
       }
 
     if (numValuesPerPoint != 1) {
@@ -156,7 +155,7 @@ int vtkFSSurfaceScalarReader::ReadFSScalars()
         }
       else
         {
-        vtkErrorMacro("Error reading fvalue from file " << this->FileName);
+        vtkErrorMacro("Error reading fvalue from file " << this->GetFileName());
         }
 
     } else {

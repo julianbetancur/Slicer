@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __BSplineImageToImageRegistrationMethod_h
-#define __BSplineImageToImageRegistrationMethod_h
+#ifndef itkBSplineImageToImageRegistrationMethod_h
+#define itkBSplineImageToImageRegistrationMethod_h
 
 #include "itkImage.h"
 #include "itkBSplineDeformableTransform.h"
@@ -66,7 +66,7 @@ public:
   // Methods from Superclass
   //
 
-  virtual void GenerateData( void );
+  void GenerateData() override;
 
   //
   // Custom Methods
@@ -78,9 +78,9 @@ public:
    *   functions that exist only in specific transforms (e.g., SetIdentity)
    *   can be called without the caller having to do the casting.
    **/
-  virtual TransformType * GetTypedTransform( void );
+  virtual TransformType* GetTypedTransform();
 
-  virtual const TransformType * GetTypedTransform( void ) const;
+  virtual const TransformType* GetTypedTransform() const;
 
   itkSetMacro( ExpectedDeformationMagnitude, double );
   itkGetConstMacro( ExpectedDeformationMagnitude, double );
@@ -91,7 +91,7 @@ public:
   itkSetClampMacro( NumberOfLevels, unsigned int, 1, 5 );
   itkGetConstMacro( NumberOfLevels, unsigned int );
 
-  BSplineTransformPointer GetBSplineTransform( void ) const;
+  BSplineTransformPointer GetBSplineTransform() const;
 
   void ComputeGridRegion( int numberOfControlPoints,
                           typename TransformType::RegionType::SizeType & regionSize,
@@ -104,20 +104,19 @@ public:
   itkSetMacro( GradientOptimizeOnly, bool );
   itkGetMacro( GradientOptimizeOnly, bool );
 protected:
-
-  BSplineImageToImageRegistrationMethod( void );
-  virtual ~BSplineImageToImageRegistrationMethod( void );
+  BSplineImageToImageRegistrationMethod();
+  ~BSplineImageToImageRegistrationMethod() override;
 
   typedef InterpolateImageFunction<TImage, double> InterpolatorType;
   typedef ImageToImageMetric<TImage, TImage>       MetricType;
 
-  virtual void Optimize( MetricType * metric, InterpolatorType * interpolator );
+  void Optimize( MetricType * metric, InterpolatorType * interpolator ) override;
 
   virtual void GradientOptimize( MetricType * metric, InterpolatorType * interpolator );
 
   virtual void MultiResolutionOptimize( MetricType * metric, InterpolatorType * interpolator );
 
-  virtual void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
 private:
 

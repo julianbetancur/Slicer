@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,18 +10,15 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLPETProceduralColorNode.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLPETProceduralColorNode.h"
+#include "vtkMRMLScene.h"
 
 int vtkMRMLPETProceduralColorNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLPETProceduralColorNode > node1 = vtkSmartPointer< vtkMRMLPETProceduralColorNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_TRANSFORMABLE_MRML_METHODS(vtkMRMLPETProceduralColorNode, node1);
-  
+  vtkNew<vtkMRMLPETProceduralColorNode> node1;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

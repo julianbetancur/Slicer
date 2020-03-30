@@ -7,7 +7,7 @@
 #define __vtkMRMLAnnotationSnapshotNode_h
 
 #include "vtkSlicerAnnotationsModuleMRMLExport.h"
-#include "vtkMRMLAnnotationControlPointsNode.h" 
+#include "vtkMRMLAnnotationControlPointsNode.h"
 #include "vtkMRMLAnnotationNode.h"
 
 #include <vtkStdString.h>
@@ -26,18 +26,18 @@ public:
   // MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
   // Description:
   // Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "AnnotationSnapshot";};
+  const char* GetNodeTagName() override {return "AnnotationSnapshot";}
 
-  virtual const char* GetIcon() {return ":/Icons/ViewCamera.png";};
+  const char* GetIcon() override {return ":/Icons/ViewCamera.png";}
 
   void SetSnapshotDescription(const vtkStdString& newDescription);
   vtkGetMacro(SnapshotDescription, vtkStdString)
 
-  void WriteXML(ostream& of, int nIndent);
-  void ReadXMLAttributes(const char** atts);
+  void WriteXML(ostream& of, int nIndent) override;
+  void ReadXMLAttributes(const char** atts) override;
 
   /// The attached screenshot
   virtual void SetScreenShot(vtkImageData* );
@@ -55,15 +55,10 @@ public:
   /// 4: Full layout
   // TODO use an enum for the types
   void SetScreenShotType(int type);
-  vtkGetMacro(ScreenShotType, int)
+  vtkGetMacro(ScreenShotType, int);
 
-  /// Create default storage node or NULL if does not have one
-  virtual vtkMRMLStorageNode* CreateDefaultStorageNode();
-
-  /// Utility transformable methods
-  virtual bool CanApplyNonLinearTransforms()const;
-  virtual void ApplyTransformMatrix(vtkMatrix4x4* vtkNotUsed(transformMatrix));
-  virtual void ApplyTransform(vtkAbstractTransform* vtkNotUsed(transform));
+  /// Create default storage node or nullptr if does not have one
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override;
 
   enum
   {
@@ -73,7 +68,7 @@ public:
 
 protected:
   vtkMRMLAnnotationSnapshotNode();
-  ~vtkMRMLAnnotationSnapshotNode();
+  ~vtkMRMLAnnotationSnapshotNode() override;
   vtkMRMLAnnotationSnapshotNode(const vtkMRMLAnnotationSnapshotNode&);
   void operator=(const vtkMRMLAnnotationSnapshotNode&);
 

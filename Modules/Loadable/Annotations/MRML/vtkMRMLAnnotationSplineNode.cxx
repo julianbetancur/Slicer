@@ -33,13 +33,13 @@ void vtkMRMLAnnotationSplineNode::Initialize(vtkMRMLScene* mrmlScene)
     this->CreateAnnotationTextDisplayNode();
     this->CreateAnnotationPointDisplayNode();
     this->CreateAnnotationLineDisplayNode();
-    
+
   // default starting position
   {
     double pos[3] = {0.0, 0.0, 0.0};
     this->SetControlPoint(pos, 0);
   }
-  { 
+  {
     double pos[3] = {0.0, 0.0, 0.0};
     this->SetControlPoint(pos, 1);
   }
@@ -47,11 +47,11 @@ void vtkMRMLAnnotationSplineNode::Initialize(vtkMRMLScene* mrmlScene)
     double pos[3] = {0.0, 0.0, 0.0};
     this->SetControlPoint(pos, 2);
   }
-  { 
+  {
     double pos[3] = {0.0, 0.0, 0.0};
     this->SetControlPoint(pos, 3);
   }
-  { 
+  {
     double pos[3] = {0.0, 0.0, 0.0};
     this->SetControlPoint(pos, 4);
   }
@@ -67,11 +67,11 @@ void vtkMRMLAnnotationSplineNode::Initialize(vtkMRMLScene* mrmlScene)
 //----------------------------------------------------------------------------
 vtkMRMLAnnotationSplineNode::~vtkMRMLAnnotationSplineNode()
 {
-  vtkDebugMacro("Destructing...." << (this->GetID() != NULL ? this->GetID() : "null id"));
+  vtkDebugMacro("Destructing...." << (this->GetID() != nullptr ? this->GetID() : "null id"));
   if (this->DistanceAnnotationFormat)
     {
       //delete [] this->DistanceAnnotationFormat;
-      this->DistanceAnnotationFormat = NULL;
+      this->DistanceAnnotationFormat = nullptr;
     }
 }
 
@@ -79,21 +79,17 @@ vtkMRMLAnnotationSplineNode::~vtkMRMLAnnotationSplineNode()
 void vtkMRMLAnnotationSplineNode::WriteXML(ostream& of, int nIndent)
 {
   Superclass::WriteXML(of, nIndent);
-  
-  vtkIndent indent(nIndent);
 
-  of << indent << " rulerDistanceAnnotationFormat=\"";
-  if (this->DistanceAnnotationFormat) 
+  of << " rulerDistanceAnnotationFormat=\"";
+  if (this->DistanceAnnotationFormat)
     {
       of << this->DistanceAnnotationFormat << "\"";
     }
-  else 
+  else
     {
       of << "\"";
     }
-  of << indent << " rulerResolution=\""<< this->Resolution << "\"";
-
-
+  of << " rulerResolution=\""<< this->Resolution << "\"";
 }
 
 
@@ -108,14 +104,14 @@ void vtkMRMLAnnotationSplineNode::ReadXMLAttributes(const char** atts)
 
   Superclass::ReadXMLAttributes(atts);
 
-  
-  while (*atts != NULL) 
+
+  while (*atts != nullptr)
     {
     const char* attName = *(atts++);
     std::string attValue(*(atts++));
 
 
-    if (!strcmp(attName, "rulerResolution"))       
+    if (!strcmp(attName, "rulerResolution"))
       {
 
     std::stringstream ss;
@@ -142,19 +138,19 @@ void vtkMRMLAnnotationSplineNode::UpdateScene(vtkMRMLScene *scene)
 {
   Superclass::UpdateScene(scene);
 
-  // Nothing to do at this point  bc vtkMRMLAnnotationDisplayNode is subclass of vtkMRMLModelDisplayNode 
-  // => will be taken care of by vtkMRMLModelDisplayNode  
+  // Nothing to do at this point  bc vtkMRMLAnnotationDisplayNode is subclass of vtkMRMLModelDisplayNode
+  // => will be taken care of by vtkMRMLModelDisplayNode
 
 }
 
 //---------------------------------------------------------------------------
 void vtkMRMLAnnotationSplineNode::ProcessMRMLEvents ( vtkObject *caller,
-                                           unsigned long event, 
+                                           unsigned long event,
                                            void *callData )
 {
   Superclass::ProcessMRMLEvents(caller, event, callData);
 
-  // Not necessary bc vtkMRMLAnnotationDisplayNode is subclass of vtkMRMLModelDisplayNode 
+  // Not necessary bc vtkMRMLAnnotationDisplayNode is subclass of vtkMRMLModelDisplayNode
   // => will be taken care of  in vtkMRMLModelNode
 }
 
@@ -162,11 +158,11 @@ void vtkMRMLAnnotationSplineNode::ProcessMRMLEvents ( vtkObject *caller,
 void vtkMRMLAnnotationSplineNode::PrintAnnotationInfo(ostream& os, vtkIndent indent, int titleFlag)
 {
   //cout << "vtkMRMLAnnotationRulerNode::PrintAnnotationInfo" << endl;
-  if (titleFlag) 
+  if (titleFlag)
     {
-      
+
       os <<indent << "vtkMRMLAnnotationRulerNode: Annotation Summary";
-      if (this->GetName()) 
+      if (this->GetName())
     {
       os << " of " << this->GetName();
     }
@@ -176,11 +172,11 @@ void vtkMRMLAnnotationSplineNode::PrintAnnotationInfo(ostream& os, vtkIndent ind
   Superclass::PrintAnnotationInfo(os, indent, 0);
 
   os << indent << "rulerDistanceAnnotationFormat: ";
-  if (this->DistanceAnnotationFormat) 
+  if (this->DistanceAnnotationFormat)
     {
       os  << this->DistanceAnnotationFormat << "\n";
     }
-  else 
+  else
     {
       os  << "(None)" << "\n";
     }
@@ -212,7 +208,7 @@ double vtkMRMLAnnotationSplineNode::GetDistanceAnnotationScale()
 void vtkMRMLAnnotationSplineNode::SetDistanceAnnotationScale(double init)
 {
   vtkMRMLAnnotationTextDisplayNode *node = this->GetAnnotationTextDisplayNode();
-  
+
   if (!node)
     {
       vtkErrorMacro("AnnotationRuler: "<< this->GetName() << " cannot get AnnotationTextDisplayNode");
@@ -246,7 +242,7 @@ int vtkMRMLAnnotationSplineNode::SetRuler(vtkIdType line1Id, int sel, int vis)
       vtkErrorMacro("Not valid line definition!");
       return -1;
     }
-  this->SetSelected(sel); 
+  this->SetSelected(sel);
   this->SetDisplayVisibility(vis);
 
   return 1;
@@ -260,11 +256,11 @@ int vtkMRMLAnnotationSplineNode::SetControlPoint(double newControl[3], int id)
   }
 
   int flag = Superclass::SetControlPoint(id, newControl,1,1);
-  if (!flag) 
+  if (!flag)
     {
       return 0;
     }
-  if (this->GetNumberOfControlPoints() < 2) 
+  if (this->GetNumberOfControlPoints() < 2)
     {
       return 1;
     }
@@ -279,7 +275,7 @@ double* vtkMRMLAnnotationSplineNode::GetPointColour()
   vtkMRMLAnnotationPointDisplayNode *node = this->GetAnnotationPointDisplayNode();
   if (!node)
     {
-      return 0;
+      return nullptr;
     }
   return node->GetSelectedColor();
 }
@@ -302,7 +298,7 @@ double* vtkMRMLAnnotationSplineNode::GetDistanceAnnotationTextColour()
   vtkMRMLAnnotationTextDisplayNode *node = this->GetAnnotationTextDisplayNode();
   if (!node)
     {
-      return 0;
+      return nullptr;
     }
   return node->GetSelectedColor();
 }
@@ -325,7 +321,7 @@ double* vtkMRMLAnnotationSplineNode::GetLineColour()
   vtkMRMLAnnotationLineDisplayNode *node = this->GetAnnotationLineDisplayNode();
   if (!node)
     {
-      return 0;
+      return nullptr;
     }
   return node->GetSelectedColor();
 }

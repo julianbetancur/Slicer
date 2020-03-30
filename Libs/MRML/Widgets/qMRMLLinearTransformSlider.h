@@ -22,17 +22,16 @@
 #define __qMRMLLinearTransformSlider_h
 
 // CTK includes
-#include <ctkSliderWidget.h>
-#include <ctkPimpl.h>
 #include <ctkVTKObject.h>
 
-#include "qMRMLWidgetsExport.h"
+// MRML includes
+#include "qMRMLSliderWidget.h"
 
-class vtkMRMLLinearTransformNode;
+class vtkMRMLTransformNode;
 class vtkMatrix4x4;
 class qMRMLLinearTransformSliderPrivate;
 
-class QMRML_WIDGETS_EXPORT qMRMLLinearTransformSlider : public ctkSliderWidget
+class QMRML_WIDGETS_EXPORT qMRMLLinearTransformSlider : public qMRMLSliderWidget
 {
   Q_OBJECT
   QVTK_OBJECT
@@ -43,11 +42,11 @@ class QMRML_WIDGETS_EXPORT qMRMLLinearTransformSlider : public ctkSliderWidget
 
 public:
   /// Constructors
-  typedef ctkSliderWidget Superclass;
+  typedef qMRMLSliderWidget Superclass;
   explicit qMRMLLinearTransformSlider(QWidget* parent);
-  virtual ~qMRMLLinearTransformSlider();
+  ~qMRMLLinearTransformSlider() override;
 
-  /// 
+  ///
   /// Set/Get Transform type
   /// By default, the slider transform type will be set to TRANSLATION_LR
   /// X axis:LR, Y axis:PA, Z axis:IS
@@ -59,34 +58,34 @@ public:
   void setTypeOfTransform(TransformType typeOfTransform);
   TransformType typeOfTransform() const;
 
-  /// 
-  /// Convenience method allowing to get which familly of transform is set
+  ///
+  /// Convenience method allowing to get which family of transform is set
   bool isRotation()const;
   bool isTranslation()const;
 
-  /// 
+  ///
   /// Set/Get Coordinate system
   /// By default, the selector coordinate system will be set to GLOBAL
   enum CoordinateReferenceType { GLOBAL, LOCAL };
   void setCoordinateReference(CoordinateReferenceType coordinateReference);
   CoordinateReferenceType coordinateReference() const;
 
-  /// 
+  ///
   /// Return the current transform node
-  vtkMRMLLinearTransformNode* mrmlTransformNode()const;
+  vtkMRMLTransformNode* mrmlTransformNode()const;
 
 public slots:
-  /// 
+  ///
   /// Set the MRML node of interest
   /// Note that setting transformNode to 0 will disable the widget
-  void setMRMLTransformNode(vtkMRMLLinearTransformNode* transformNode);
+  void setMRMLTransformNode(vtkMRMLTransformNode* transformNode);
 
-  /// 
+  ///
   /// Apply the appropriate rotation/translation according to the typeOfTransform of the slider.
   void applyTransformation(double sliderPosition);
 
 protected slots:
-  /// 
+  ///
   /// Triggered upon MRML scene updates
   void onMRMLTransformNodeModified(vtkObject* caller);
 

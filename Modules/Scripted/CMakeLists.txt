@@ -1,35 +1,41 @@
+set(modules
+  DataProbe
+  Editor
+  EditorLib
+  LabelStatistics
+  PerformanceTests
+  SampleData
+  ScreenCapture
+  SegmentEditor
+  SegmentStatistics
+  SelfTests
+  VectorToScalarVolume
+  )
+if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
+  list(APPEND modules
+    DMRIInstall
+    ExtensionWizard
+    )
+endif()
+if(Slicer_USE_NUMPY)
+  list(APPEND modules
+    Endoscopy
+    )
+endif()
 if(Slicer_BUILD_DICOM_SUPPORT)
-  add_subdirectory(DICOMLib)
+  list(APPEND modules
+    DICOM
+    DICOMLib
+    DICOMPlugins
+    DICOMPatcher
+    )
 endif()
-add_subdirectory(EditorLib)
-add_subdirectory(Scripts)
 
-if(BUILD_TESTING AND PYTHON_EXECUTABLE)
-  add_subdirectory(Testing)
-endif()
+include(SlicerCheckModuleEnabled)
 
-if(Slicer_BUILD_CLI_SUPPORT)
-  if(Slicer_BUILD_ChangeTrackerPy)
-    # NOTE: ChangeTrackerPy source code is checkout using "External_ChangeTrackerPy.cmake".
-    add_subdirectory(
-      ${ChangeTrackerPy_SOURCE_DIR}
-      ${CMAKE_CURRENT_BINARY_DIR}/ChangeTrackerPy
-      )
+foreach(module ${modules})
+  slicer_is_scripted_builtin_module_enabled(${module} _build_module)
+  if(_build_module)
+    add_subdirectory(${module})
   endif()
-endif()
-
-if(Slicer_BUILD_MultiVolumeImporter)
-  # NOTE: MultiVolumeImporter source code is checkout using "External_MultiVolumeImporter.cmake".
-  add_subdirectory(
-    ${MultiVolumeImporter_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/MultiVolumeImporter
-    )
-endif()
-
-if(Slicer_BUILD_SlicerWebGLExport)
-  # NOTE: SlicerWebGLExport source code is checkout using "External_SlicerWebGLExport.cmake".
-  add_subdirectory(
-    ${SlicerWebGLExport_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/SlicerWebGLExport
-    )
-endif()
+endforeach()

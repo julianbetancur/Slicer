@@ -29,17 +29,23 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerIOManager : public qSlicerCoreIOManager
   QVTK_OBJECT;
 public:
   typedef qSlicerCoreIOManager Superclass;
-  qSlicerIOManager(QObject* parent = 0);
-  virtual ~qSlicerIOManager();
+  qSlicerIOManager(QObject* parent = nullptr);
+  ~qSlicerIOManager() override;
 
-  /// Search for the most appropriate dialog based on the fileType,
-  /// and open it.
+  /// Search for the most appropriate dialog based on the action and fileType,
+  /// and open it. Once the user select the file(s), the action (read or write)
+  /// is done. Note that to write a node, the "nodeID" property must be passed.
   /// If no dialog is registered for a given fileType (e.g.
-  /// QString("SceneFile")), a default dialog (qSlicerStandardFileDialog) is 
+  /// QString("SceneFile")), a default dialog (qSlicerStandardFileDialog) is
   /// used.
-  bool openDialog(qSlicerIO::IOFileType fileType,
-                  qSlicerFileDialog::IOAction action,
-                  qSlicerIO::IOProperties ioProperties = qSlicerIO::IOProperties());
+  /// If reading files (action == qSlicerFileDialog::Read) and if loadedNodes
+  /// is not null, the loadedNodes collection is being populated with the
+  /// loaded nodes.
+  /// Returns true on success, false otherwise.
+  Q_INVOKABLE bool openDialog(qSlicerIO::IOFileType fileType,
+                              qSlicerFileDialog::IOAction action,
+                              qSlicerIO::IOProperties ioProperties = qSlicerIO::IOProperties(),
+                              vtkCollection* loadedNodes = nullptr);
 
   void addHistory(const QString& path);
   const QStringList& history()const;
@@ -48,26 +54,33 @@ public:
   const QList<QUrl>& favorites()const;
 
   /// Takes ownership. Any previously set dialog corresponding to the same
-  /// fileType (only 1 dialog per filetype) is overriden.
+  /// fileType (only 1 dialog per filetype) is overridden.
   void registerDialog(qSlicerFileDialog* dialog);
 
   /// Displays a progress dialog if it takes too long to load
   /// There is no way to know in advance how long the loading will take, so the
   /// progress dialog listens to the scene and increment the progress anytime
   /// a node is added.
-  Q_INVOKABLE virtual bool loadNodes(const qSlicerIO::IOFileType& fileType,
+  Q_INVOKABLE bool loadNodes(const qSlicerIO::IOFileType& fileType,
                                      const qSlicerIO::IOProperties& parameters,
-                                     vtkCollection* loadedNodes = 0);
+                                     vtkCollection* loadedNodes = nullptr) override;
   /// If you have a list of nodes to load, it's best to use this function
   /// in order to have a unique progress dialog instead of multiple ones.
   /// It internally calls loadNodes() for each file.
-  virtual bool loadNodes(const QList<qSlicerIO::IOProperties>& files,
-                         vtkCollection* loadedNodes = 0);
+  bool loadNodes(const QList<qSlicerIO::IOProperties>& files,
+                         vtkCollection* loadedNodes = nullptr) override;
 
-  /// A dragEnterEvent has been forwarded to the IOManager;
-  /// it checks whether the dragEnterEvent is accepted or not by itself.
+  /// dragEnterEvents can be forwarded to the IOManager, if a registered dialog
+  /// supports it, the event is accepted, otherwise ignored.
+  /// \sa dropEvent()
   void dragEnterEvent(QDragEnterEvent *event);
-  /// Create a qSlicerDataDialog and forward the drop event to the dialog.
+
+  /// Search, in the list of registered readers, the first dialog that
+  /// handles the drop event. If the event is accepted by the dialog (
+  /// usually the is also used to populate the dialog), the manager opens the dialog,
+  /// otherwise the next dialog is tested. The order in which dialogs are
+  /// being tested is the opposite of the dialogs are registered.
+  /// \sa dragEnterEvent()
   void dropEvent(QDropEvent *event);
 
 public slots:
@@ -85,6 +98,7 @@ public slots:
   inline bool openAddTransformDialog();
   inline bool openAddColorTableDialog();
   inline bool openAddFiducialDialog();
+  inline bool openAddMarkupsDialog();
   inline bool openAddFiberBundleDialog();
   inline bool openSaveDataDialog();
 
@@ -158,6 +172,12 @@ bool qSlicerIOManager::openAddColorTableDialog()
 bool qSlicerIOManager::openAddFiducialDialog()
 {
   return this->openDialog(QString("FiducialListFile"), qSlicerFileDialog::Read);
+}
+
+//-----------------------------------------------------------------------------
+bool qSlicerIOManager::openAddMarkupsDialog()
+{
+  return this->openDialog(QString("MarkupsFiducials"), qSlicerFileDialog::Read);
 }
 
 //-----------------------------------------------------------------------------

@@ -42,7 +42,7 @@ class QMRML_WIDGETS_EXPORT qMRMLROIWidget : public QWidget
 public:
   /// Constructors
   explicit qMRMLROIWidget(QWidget* parent);
-  virtual ~qMRMLROIWidget();
+  ~qMRMLROIWidget() override;
 
   /// Returns the current MRML ROI node
   vtkMRMLROINode* mrmlROINode()const;
@@ -57,7 +57,7 @@ public slots:
   /// the type
   void setMRMLROINode(vtkMRMLNode* node);
 
-  /// Turn on/off the visiblity of the ROI node
+  /// Turn on/off the visibility of the ROI node
   void setDisplayClippingBox(bool visible);
 
   /// Turn on/off the tracking mode of the sliders.

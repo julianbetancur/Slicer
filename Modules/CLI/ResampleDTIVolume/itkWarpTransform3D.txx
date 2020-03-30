@@ -1,3 +1,7 @@
+
+#ifndef itkWarpTransform3D_txx
+#define itkWarpTransform3D_txx
+
 #include "itkWarpTransform3D.h"
 
 namespace itk
@@ -8,9 +12,7 @@ namespace itk
 // Explicit New() method, used here because we need to split the itkNewMacro()
 // in order to overload the CreateAnother() method.
 template <class FieldData>
-typename WarpTransform3D<FieldData>::Pointer
-WarpTransform3D<FieldData>
-::New(void)
+typename WarpTransform3D<FieldData>::Pointer WarpTransform3D<FieldData>::New()
 {
   Pointer smartPtr = ::itk::ObjectFactory<Self>::Create();
 
@@ -25,9 +27,7 @@ WarpTransform3D<FieldData>
 // Explicit New() method, used here because we need to split the itkNewMacro()
 // in order to overload the CreateAnother() method.
 template <class FieldData>
-::itk::LightObject::Pointer
-WarpTransform3D<FieldData>
-::CreateAnother(void) const
+::itk::LightObject::Pointer WarpTransform3D<FieldData>::CreateAnother() const
 {
   ::itk::LightObject::Pointer smartPtr;
   Pointer copyPtr = Self::New().GetPointer();
@@ -42,13 +42,9 @@ WarpTransform3D<FieldData>
 template <class FieldData>
 WarpTransform3D<FieldData>
 ::WarpTransform3D() :
-#if ITK_VERSION_MAJOR >= 4
   Superclass( 1 )
-#else
-  Superclass( 3, 1 )
-#endif
 {
-  m_DeformationField = 0;
+  m_DeformationField = nullptr;
 //  m_OutputSpacing.Fill( 1 ) ;
   for( int i = 0; i < 3; i++ )
     {
@@ -56,7 +52,6 @@ WarpTransform3D<FieldData>
     m_DerivativeWeights[i] = 1.0;
     }
   m_SizeForJacobian.Fill( 1 );
-  this->m_NonThreadsafeSharedJacobian.SetSize( 3, 3 );
 }
 
 // Returns the position of the transformed point. If input point is outside of the deformation
@@ -79,17 +74,6 @@ WarpTransform3D<FieldData>
   transformedPoint = inputPoint + displacement;
   return transformedPoint;
 }
-
-// Copied and modified from dtiprocess
-// available there: http://www.nitrc.org/projects/dtiprocess/
-template <class FieldData>
-const typename WarpTransform3D<FieldData>::JacobianType
-& WarpTransform3D<FieldData>
-::GetJacobian( const InputPointType &inputPoint ) const
-  {
-  this->ComputeJacobianWithRespectToParameters( inputPoint, this->m_NonThreadsafeSharedJacobian );
-  return this->m_NonThreadsafeSharedJacobian;
-  }
 
 template <class FieldData>
 void
@@ -141,3 +125,5 @@ WarpTransform3D<FieldData>
 }
 
 } // end of namespace
+
+#endif

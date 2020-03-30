@@ -17,8 +17,10 @@ Version:   $Revision: 1.14 $
 #include "vtkMRMLDiffusionTensorVolumeDisplayNode.h"
 #include "vtkMRMLDiffusionTensorVolumeNode.h"
 #include "vtkMRMLNRRDStorageNode.h"
+#include "vtkMRMLScene.h"
 
 // VTK includes
+#include <vtkNew.h>
 #include <vtkObjectFactory.h>
 
 //------------------------------------------------------------------------------
@@ -45,8 +47,7 @@ void vtkMRMLDiffusionTensorVolumeNode::SetAndObserveDisplayNodeID(const char *di
 
 //----------------------------------------------------------------------------
 vtkMRMLDiffusionTensorVolumeNode::~vtkMRMLDiffusionTensorVolumeNode()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLDiffusionTensorVolumeNode::PrintSelf(ostream& os, vtkIndent indent)
@@ -64,5 +65,33 @@ vtkMRMLDiffusionTensorVolumeDisplayNode* vtkMRMLDiffusionTensorVolumeNode
 //----------------------------------------------------------------------------
 vtkMRMLStorageNode* vtkMRMLDiffusionTensorVolumeNode::CreateDefaultStorageNode()
 {
-  return vtkMRMLNRRDStorageNode::New();
+  vtkMRMLScene* scene = this->GetScene();
+  if (scene == nullptr)
+    {
+    vtkErrorMacro("CreateDefaultStorageNode failed: scene is invalid");
+    return nullptr;
+    }
+  return vtkMRMLStorageNode::SafeDownCast(
+    scene->CreateNodeByClass("vtkMRMLNRRDStorageNode"));
+}
+
+//----------------------------------------------------------------------------
+void vtkMRMLDiffusionTensorVolumeNode::CreateDefaultDisplayNodes()
+{
+  if (vtkMRMLDiffusionTensorVolumeDisplayNode::SafeDownCast(this->GetDisplayNode())!=nullptr)
+    {
+    // display node already exists
+    return;
+    }
+  if (this->GetScene()==nullptr)
+    {
+    vtkErrorMacro("vtkMRMLDiffusionTensorVolumeNode::CreateDefaultDisplayNodes failed: scene is invalid");
+    return;
+    }
+  vtkMRMLDiffusionTensorVolumeDisplayNode* dispNode = vtkMRMLDiffusionTensorVolumeDisplayNode::SafeDownCast(
+    this->GetScene()->AddNewNodeByClass("vtkMRMLDiffusionTensorVolumeDisplayNode") );
+  dispNode->SetDefaultColorMap();
+  this->SetAndObserveDisplayNodeID(dispNode->GetID());
+  // add slice display nodes
+  dispNode->AddSliceGlyphDisplayNodes( this );
 }

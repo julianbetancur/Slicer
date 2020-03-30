@@ -32,14 +32,25 @@
 #include "qSlicerCoreApplication.h"
 #include "qSlicerUtils.h"
 #include "qSlicerCorePythonManager.h"
+#include "qSlicerScriptedUtils_p.h"
 #include "vtkSlicerConfigure.h"
 
 // VTK includes
 #include <vtkPythonUtil.h>
+#include <vtkVersion.h>
 
 //-----------------------------------------------------------------------------
-qSlicerCorePythonManager::qSlicerCorePythonManager(QObject* _parent) : Superclass(_parent)
+qSlicerCorePythonManager::qSlicerCorePythonManager(QObject* _parent)
+  : Superclass(_parent)
 {
+  this->Factory = nullptr;
+
+  // If it applies, disable import of user site packages
+  QString noUserSite = qgetenv("PYTHONNOUSERSITE");
+  Py_NoUserSiteDirectory = noUserSite.toInt();
+
+  // Import site module to ensure the 'site-packages' directory
+  // is added to the python path. (see site.addsitepackages function).
   int flags = this->initializationFlags();
   flags &= ~(PythonQt::IgnoreSiteModule); // Clear bit
   this->setInitializationFlags(flags);
@@ -48,89 +59,25 @@ qSlicerCorePythonManager::qSlicerCorePythonManager(QObject* _parent) : Superclas
 //-----------------------------------------------------------------------------
 qSlicerCorePythonManager::~qSlicerCorePythonManager()
 {
+  if (this->Factory)
+    {
+    delete this->Factory;
+    this->Factory = nullptr;
+    }
 }
 
 //-----------------------------------------------------------------------------
 QStringList qSlicerCorePythonManager::pythonPaths()
 {
-  qSlicerCoreApplication * app = qSlicerCoreApplication::application();
-  if (!app)
-    {
-    return Superclass::pythonPaths();
-    }
-
-  QStringList paths;
-  paths << Superclass::pythonPaths();
-  paths << app->slicerHome() + "/" Slicer_BIN_DIR "/" + app->intDir();
-  paths << app->slicerHome() + "/" Slicer_BIN_DIR "/Python";
-
-  paths << QSettings().value("Python/AdditionalPythonPaths").toStringList();
-  paths << app->slicerHome() + "/" Slicer_LIB_DIR;
-
-#ifdef Slicer_BUILD_QTLOADABLEMODULES
-  bool appendQtLoadableModulePythonPaths = true;
-#else
-  bool appendQtLoadableModulePythonPaths = app->isInstalled();
-#endif
-  if (appendQtLoadableModulePythonPaths)
-    {
-    paths << app->slicerHome() + "/" Slicer_QTLOADABLEMODULES_LIB_DIR;
-    paths << app->slicerHome() + "/" Slicer_QTLOADABLEMODULES_PYTHON_LIB_DIR;
-    }
-
-#ifdef Slicer_BUILD_QTSCRIPTEDMODULES
-  bool appendQtScriptedModulePythonPaths = true;
-#else
-  bool appendQtScriptedModulePythonPaths = app->isInstalled();
-#endif
-  if(appendQtScriptedModulePythonPaths)
-    {
-    paths << app->slicerHome() + "/" Slicer_QTSCRIPTEDMODULES_LIB_DIR;
-    }
-
-  QString executableExtension = qSlicerUtils::executableExtension();
-  if (!app->isInstalled())
-    {
-    // Add here python path specific to the BUILD tree
-#ifdef CMAKE_INTDIR
-    paths << VTK_DIR"/bin/"CMAKE_INTDIR"/";
-#else
-    paths << VTK_DIR"/bin/";
-#endif
-    paths << QString("%1/Wrapping/Python").arg(VTK_DIR);
-#ifdef CMAKE_INTDIR
-    paths << CTK_DIR"/CTK-build/bin/"CMAKE_INTDIR"/";
-#else
-    paths << CTK_DIR"/CTK-build/bin/";
-#endif
-    paths << QString("%1/CTK-build/bin/Python").arg(CTK_DIR);
-    }
-  else
-    {
-    // Add here python path specific to the INSTALLED tree
-#if defined(Q_WS_WIN)
-    QString pythonLibSubDirectory("/Lib");
-    paths << app->slicerHome() + "/lib/Python" + pythonLibSubDirectory;
-    paths << app->slicerHome() + "/lib/Python" + pythonLibSubDirectory + "/lib-dynload";
-    paths << app->slicerHome() + "/lib/Python" + pythonLibSubDirectory + "/lib-tk";
-#elif defined(Q_WS_X11) || defined(Q_WS_MAC)
-    // On unix-like system, setting PYTHONHOME is enough to have the following path automatically
-    // appended to PYTHONPATH: ../lib/pythonX.Y.zip, ../lib/pythonX.Y/,
-    // and ../lib/pythonX.Y/{lib-tk, lib-old, lib-dynload}
-    // See http://docs.python.org/c-api/intro.html#embedding-python
-    QString pythonLibSubDirectory("/lib/python"Slicer_PYTHON_VERSION_DOT);
-#endif
-    paths << app->slicerHome() + "/lib/Python" + pythonLibSubDirectory + "/site-packages";
-    }
-
-  return paths;
+  return Superclass::pythonPaths();
 }
 
 //-----------------------------------------------------------------------------
 void qSlicerCorePythonManager::preInitialization()
 {
   Superclass::preInitialization();
-  this->addWrapperFactory(new ctkVTKPythonQtWrapperFactory);
+  this->Factory = new ctkVTKPythonQtWrapperFactory;
+  this->addWrapperFactory(this->Factory);
   qSlicerCoreApplication* app = qSlicerCoreApplication::application();
   if (app)
     {
@@ -142,30 +89,17 @@ void qSlicerCorePythonManager::preInitialization()
 //-----------------------------------------------------------------------------
 void qSlicerCorePythonManager::addVTKObjectToPythonMain(const QString& name, vtkObject * object)
 {
-  if (name.isNull() || !object)
-    {
-    return;
-    }
   // Split name using '.'
   QStringList moduleNameList = name.split('.', QString::SkipEmptyParts);
 
   // Remove the last part
-  QString varName = moduleNameList.takeLast();
+  QString attributeName = moduleNameList.takeLast();
 
-  PyObject * module = PythonQt::self()->getMainModule();
-
-  // Loop over module name and try to import them one by one
-  foreach(const QString& moduleName, moduleNameList)
-    {
-    module = PyImport_ImportModule(moduleName.toLatin1());
-    Q_ASSERT(module);
-    }
-
-  // Add the object to the imported module
-  int ret = PyModule_AddObject(module, varName.toLatin1(),
-                               vtkPythonUtil::GetObjectFromPointer(object));
-  Q_ASSERT(ret == 0);
-  if (ret != 0)
+  bool success = qSlicerScriptedUtils::setModuleAttribute(
+        moduleNameList.join("."),
+        attributeName,
+        vtkPythonUtil::GetObjectFromPointer(object));
+  if (!success)
     {
     qCritical() << "qSlicerCorePythonManager::addVTKObjectToPythonMain - "
                    "Failed to add VTK object:" << name;
@@ -176,7 +110,7 @@ void qSlicerCorePythonManager::addVTKObjectToPythonMain(const QString& name, vtk
 void qSlicerCorePythonManager::appendPythonPath(const QString& path)
 {
   // TODO Make sure PYTHONPATH is updated
-  this->executeString(QString("import sys; sys.path.append('%1'); del sys").arg(path));
+  this->executeString(QString("import sys; sys.path.append(%1); del sys").arg(qSlicerCorePythonManager::toPythonStringLiteral(path)));
 }
 
 //-----------------------------------------------------------------------------
@@ -186,4 +120,13 @@ void qSlicerCorePythonManager::appendPythonPaths(const QStringList& paths)
     {
     this->appendPythonPath(path);
     }
+}
+
+//-----------------------------------------------------------------------------
+QString qSlicerCorePythonManager::toPythonStringLiteral(QString path)
+{
+  path = path.replace("\\", "\\\\");
+  path = path.replace("'", "\\'");
+  // since we enclose string in single quotes, double-quotes do not require escaping
+  return "'" + path + "'";
 }

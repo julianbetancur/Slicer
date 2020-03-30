@@ -19,12 +19,13 @@
 ==============================================================================*/
 
 // MRMLDisplayableManager includes
-#include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
-#include <vtkMRMLDisplayableManagerGroup.h>
-#include <vtkThreeDViewInteractorStyle.h>
 #include <vtkMRMLAbstractThreeDViewDisplayableManager.h>
+#include <vtkMRMLDisplayableManagerGroup.h>
+#include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRML includes
+#include <vtkMRMLScene.h>
 #include <vtkMRMLViewNode.h>
 
 // VTK includes
@@ -34,7 +35,10 @@
 #include <vtkRenderer.h>
 #include <vtkSmartPointer.h>
 
-// STD includes
+// Initialize object factory
+#define MRMLDisplayableManagerCxxTests_AUTOINIT 1(MRMLDisplayableManagerCxxTests)
+#include <vtkAutoInit.h>
+VTK_AUTOINIT(MRMLDisplayableManagerCxxTests)
 
 //----------------------------------------------------------------------------
 int vtkMRMLThreeDViewDisplayableManagerFactoryTest1(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
@@ -189,7 +193,7 @@ int vtkMRMLThreeDViewDisplayableManagerFactoryTest1(int vtkNotUsed(argc), char* 
   rw->SetInteractor(ri.GetPointer());
 
   // Set Interactor Style
-  vtkNew<vtkThreeDViewInteractorStyle> iStyle;
+  vtkNew<vtkMRMLThreeDViewInteractorStyle> iStyle;
   ri->SetInteractorStyle(iStyle.GetPointer());
 
   // MRML scene and ViewNode
@@ -203,7 +207,7 @@ int vtkMRMLThreeDViewDisplayableManagerFactoryTest1(int vtkNotUsed(argc), char* 
     }
 
   //----------------------------------------------------------------------------
-  // Instanciate DisplayableManagerGroup
+  // Instantiate DisplayableManagerGroup
   vtkMRMLDisplayableManagerGroup * group =
       factory->InstantiateDisplayableManagers(rr.GetPointer());
   if (!group)
@@ -296,7 +300,7 @@ int vtkMRMLThreeDViewDisplayableManagerFactoryTest1(int vtkNotUsed(argc), char* 
         << " - Problem with group->GetDisplayableManagerByClassName() method" << std::endl;
     std::cerr << "\tdm2 should NOT be NULL" << std::endl;
     }
-  if (!dm2->IsA("vtkMRMLCameraDisplayableManager"))
+  else if (!dm2->IsA("vtkMRMLCameraDisplayableManager"))
     {
     std::cerr << "Line " << __LINE__
         << " - Problem with group->GetDisplayableManagerByClassName() method" << std::endl;

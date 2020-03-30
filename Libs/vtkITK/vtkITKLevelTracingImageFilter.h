@@ -13,15 +13,15 @@
 /// seed point.  The pixels on this level curve "boundary" are labeled
 /// as 1. Does nothing if seed is in uniform area.
 ///
-/// This filter is specialized to volumes. If you are interested in 
+/// This filter is specialized to volumes. If you are interested in
 /// contouring other types of data, use the general vtkContourFilter. If you
 /// want to contour an image (i.e., a volume slice), use vtkMarchingSquares.
 class VTK_ITK_EXPORT vtkITKLevelTracingImageFilter : public vtkPolyDataAlgorithm
 {
 public:
   static vtkITKLevelTracingImageFilter *New();
-  vtkTypeRevisionMacro(vtkITKLevelTracingImageFilter, vtkPolyDataAlgorithm);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkITKLevelTracingImageFilter, vtkPolyDataAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /// Methods to set/get seeds.  Seeds are specified in IJK (not XYZ).
   vtkSetVector3Macro(Seed, int);
@@ -37,17 +37,17 @@ public:
 
 protected:
   vtkITKLevelTracingImageFilter();
-  ~vtkITKLevelTracingImageFilter();
+  ~vtkITKLevelTracingImageFilter() override;
 
-  virtual int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
-  virtual int FillInputPortInformation(int port, vtkInformation *info);
+  int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *) override;
+  int FillInputPortInformation(int port, vtkInformation *info) override;
 
   int Seed[3];
   int Plane;
 
 private:
-  vtkITKLevelTracingImageFilter(const vtkITKLevelTracingImageFilter&);  /// Not implemented.
-  void operator=(const vtkITKLevelTracingImageFilter&);  /// Not implemented.
+  vtkITKLevelTracingImageFilter(const vtkITKLevelTracingImageFilter&) = delete;
+  void operator=(const vtkITKLevelTracingImageFilter&) = delete;
 };
 
 #endif

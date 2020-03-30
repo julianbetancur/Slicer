@@ -25,11 +25,6 @@
 #include <vtkObjectFactory.h>
 
 //----------------------------------------------------------------------------
-vtkCxxRevisionMacro(vtkMRMLThreeDViewDisplayableManagerFactory, "$Revision: 13859 $");
-
-//----------------------------------------------------------------------------
-// Needed when we don't use the vtkStandardNewMacro.
-vtkInstantiatorNewMacro(vtkMRMLThreeDViewDisplayableManagerFactory);
 
 //----------------------------------------------------------------------------
 // vtkMRMLThreeDViewDisplayableManagerFactory methods
@@ -39,7 +34,7 @@ vtkInstantiatorNewMacro(vtkMRMLThreeDViewDisplayableManagerFactory);
 vtkMRMLThreeDViewDisplayableManagerFactory* vtkMRMLThreeDViewDisplayableManagerFactory::New()
 {
   vtkMRMLThreeDViewDisplayableManagerFactory* instance = Self::GetInstance();
-  instance->Register(0);
+  instance->Register(nullptr);
   return instance;
 }
 
@@ -56,6 +51,9 @@ vtkMRMLThreeDViewDisplayableManagerFactory* vtkMRMLThreeDViewDisplayableManagerF
     if(!Self::Instance)
       {
       Self::Instance = new vtkMRMLThreeDViewDisplayableManagerFactory;
+#ifdef VTK_HAS_INITIALIZE_OBJECT_BASE
+      Self::Instance->InitializeObjectBase();
+#endif
       }
     }
   // return the instance
@@ -70,8 +68,7 @@ vtkMRMLThreeDViewDisplayableManagerFactory::
 
 //----------------------------------------------------------------------------
 vtkMRMLThreeDViewDisplayableManagerFactory::~vtkMRMLThreeDViewDisplayableManagerFactory()
-{
-}
+= default;
 
 //----------------------------------------------------------------------------
 void vtkMRMLThreeDViewDisplayableManagerFactory::PrintSelf(ostream& os, vtkIndent indent)

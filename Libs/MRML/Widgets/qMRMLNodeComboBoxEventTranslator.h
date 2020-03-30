@@ -24,7 +24,7 @@
 // QT includes
 #include "QModelIndexList"
 
-// QtTesting inlcudes
+// QtTesting includes
 #include <pqWidgetEventTranslator.h>
 
 // qMRML includes
@@ -38,9 +38,11 @@ class QMRML_WIDGETS_EXPORT qMRMLNodeComboBoxEventTranslator :
   Q_OBJECT
 
 public:
-  qMRMLNodeComboBoxEventTranslator(QObject* parent = 0);
+  typedef pqWidgetEventTranslator Superclass;
+  qMRMLNodeComboBoxEventTranslator(QObject* parent = nullptr);
 
-  virtual bool translateEvent(QObject *Object, QEvent *Event, bool &Error);
+  using Superclass::translateEvent;
+  bool translateEvent(QObject *Object, QEvent *Event, bool &Error) override;
 
 private:
   qMRMLNodeComboBoxEventTranslator(const qMRMLNodeComboBoxEventTranslator&); // NOT implemented

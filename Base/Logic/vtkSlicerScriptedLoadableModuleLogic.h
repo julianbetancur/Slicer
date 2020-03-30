@@ -29,28 +29,28 @@
 #include "vtkObject.h"
 #include "vtkObjectFactory.h"
 
-class VTK_SLICER_BASE_LOGIC_EXPORT vtkSlicerScriptedLoadableModuleLogic : 
-  public vtkSlicerModuleLogic 
+class VTK_SLICER_BASE_LOGIC_EXPORT vtkSlicerScriptedLoadableModuleLogic :
+  public vtkSlicerModuleLogic
 {
 public:
-  
+
   static vtkSlicerScriptedLoadableModuleLogic *New();
-  vtkTypeRevisionMacro(vtkSlicerScriptedLoadableModuleLogic, vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkSlicerScriptedLoadableModuleLogic, vtkSlicerModuleLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   bool SetPythonSource(const std::string& pythonSource);
 
 protected:
 
   vtkSlicerScriptedLoadableModuleLogic();
-  virtual ~vtkSlicerScriptedLoadableModuleLogic();
+  ~vtkSlicerScriptedLoadableModuleLogic() override;
 
 //  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
 
 private:
 
-  vtkSlicerScriptedLoadableModuleLogic(const vtkSlicerScriptedLoadableModuleLogic&); // Not implemented
-  void operator=(const vtkSlicerScriptedLoadableModuleLogic&);       // Not implemented
+  vtkSlicerScriptedLoadableModuleLogic(const vtkSlicerScriptedLoadableModuleLogic&) = delete;
+  void operator=(const vtkSlicerScriptedLoadableModuleLogic&) = delete;
 
   class vtkInternal;
   vtkInternal * Internal;

@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __InitialImageToImageRegistrationMethod_h
-#define __InitialImageToImageRegistrationMethod_h
+#ifndef itkInitialImageToImageRegistrationMethod_h
+#define itkInitialImageToImageRegistrationMethod_h
 
 #include "itkImage.h"
 #include "itkCommand.h"
@@ -76,16 +76,16 @@ public:
    *   functions that exist only in specific transforms (e.g., SetIdentity)
    *   can be called without the caller having to do the casting.
    **/
-  TransformType * GetTypedTransform( void );
+  TransformType* GetTypedTransform();
 
-  const TransformType * GetTypedTransform( void ) const;
+  const TransformType* GetTypedTransform() const;
 
   /** This method creates, initializes and returns an Affine transform.  The
    * transform is initialized with the current results available in the
    * GetTypedTransform() method. The returned transform is not a member
    * variable, and therefore, must be received into a SmartPointer to prevent
    * it from being destroyed by depletion of its reference counting. */
-  TransformPointer GetAffineTransform( void ) const;
+  TransformPointer GetAffineTransform() const;
 
   itkSetMacro( NumberOfMoments, unsigned int );
   itkGetConstMacro( NumberOfMoments, unsigned int );
@@ -101,17 +101,16 @@ public:
   void SetMovingLandmarks( const LandmarkPointContainer& movingLandmarks );
 
 protected:
+  InitialImageToImageRegistrationMethod();
+  ~InitialImageToImageRegistrationMethod() override;
 
-  InitialImageToImageRegistrationMethod( void );
-  virtual ~InitialImageToImageRegistrationMethod( void );
-
-  void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
   //
   //  Methods from Superclass. Only the GenerateData() method should be
   //  overloaded. The Update() method must not be overloaded.
   //
-  void    GenerateData();
+  void    GenerateData() override;
 
 private:
 

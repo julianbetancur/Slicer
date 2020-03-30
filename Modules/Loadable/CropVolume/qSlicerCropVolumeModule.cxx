@@ -1,7 +1,6 @@
 
 // Qt includes
 #include <QDebug>
-#include <QtPlugin>
 
 // Slicer includes
 #include <qSlicerCoreApplication.h>
@@ -17,9 +16,6 @@
 #include "qSlicerCropVolumeModuleWidget.h"
 
 //-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerCropVolumeModule, qSlicerCropVolumeModule);
-
-//-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_CropVolume
 class qSlicerCropVolumeModulePrivate
 {
@@ -32,8 +28,7 @@ public:
 
 //-----------------------------------------------------------------------------
 qSlicerCropVolumeModulePrivate::qSlicerCropVolumeModulePrivate()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 // qSlicerCropVolumeModule methods
@@ -47,8 +42,7 @@ qSlicerCropVolumeModule::qSlicerCropVolumeModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerCropVolumeModule::~qSlicerCropVolumeModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerCropVolumeModule::helpText()const
@@ -104,7 +98,7 @@ void qSlicerCropVolumeModule::setup()
     qSlicerCoreApplication::application()->moduleManager()->module("Volumes");
   if (volumesModule)
     {
-    vtkSlicerVolumesLogic* volumesLogic = 
+    vtkSlicerVolumesLogic* volumesLogic =
       vtkSlicerVolumesLogic::SafeDownCast(volumesModule->logic());
     cropVolumeLogic->SetVolumesLogic(volumesLogic);
     }
@@ -117,7 +111,7 @@ void qSlicerCropVolumeModule::setup()
     qSlicerCoreApplication::application()->moduleManager()->module("ResampleScalarVectorDWIVolume");
   if (resampleModule)
     {
-    vtkSlicerCLIModuleLogic* resampleLogic = 
+    vtkSlicerCLIModuleLogic* resampleLogic =
       vtkSlicerCLIModuleLogic::SafeDownCast(resampleModule->logic());
     cropVolumeLogic->SetResampleLogic(resampleLogic);
     }
@@ -137,4 +131,10 @@ qSlicerAbstractModuleRepresentation * qSlicerCropVolumeModule::createWidgetRepre
 vtkMRMLAbstractLogic* qSlicerCropVolumeModule::createLogic()
 {
   return vtkSlicerCropVolumeLogic::New();
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerCropVolumeModule::associatedNodeTypes() const
+{
+  return QStringList() << "vtkMRMLCropVolumeParametersNode";
 }

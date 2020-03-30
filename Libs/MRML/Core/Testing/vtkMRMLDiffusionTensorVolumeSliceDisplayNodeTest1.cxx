@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,19 +10,13 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLDiffusionTensorVolumeSliceDisplayNode.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLDiffusionTensorVolumeSliceDisplayNode.h"
 
 int vtkMRMLDiffusionTensorVolumeSliceDisplayNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLDiffusionTensorVolumeSliceDisplayNode > node1 = vtkSmartPointer< vtkMRMLDiffusionTensorVolumeSliceDisplayNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
+  vtkNew<vtkMRMLDiffusionTensorVolumeSliceDisplayNode> node1;
   // EXERCISE_BASIC_DISPLAY_MRML_METHODS is failing due to set/get ScalarVisibility
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLDiffusionTensorVolumeSliceDisplayNode, node1);
-  
-
+  CHECK_EXIT_SUCCESS(vtkMRMLCoreTestingUtilities::ExerciseBasicMRMLMethods( node1.GetPointer() ));
   return EXIT_SUCCESS;
 }

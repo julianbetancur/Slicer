@@ -22,30 +22,36 @@
 #include <QApplication>
 #include <QTimer>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // qMRML includes
 #include "qMRMLColorPickerWidget.h"
 
 // MRMLLogic includes
 #include <vtkMRMLColorLogic.h>
+#include <vtkMRMLScene.h>
 
 // VTK includes
-#include <vtkSmartPointer.h>
+#include <vtkNew.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 
 int qMRMLColorPickerWidgetTest1(int argc, char * argv [])
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   qMRMLColorPickerWidget colorPickerWidget;
 
-  vtkSmartPointer<vtkMRMLScene> scene = vtkSmartPointer<vtkMRMLScene>::New();
+  vtkNew<vtkMRMLScene> scene;
 
-  colorPickerWidget.setMRMLScene(scene);
-  vtkSmartPointer<vtkMRMLColorLogic> colorLogic =
-    vtkSmartPointer<vtkMRMLColorLogic>::New();
-  colorLogic->SetMRMLScene(scene);
-  
+  colorPickerWidget.setMRMLScene(scene.GetPointer());
+  vtkNew<vtkMRMLColorLogic> colorLogic;
+  colorLogic->SetMRMLScene(scene.GetPointer());
+
   colorPickerWidget.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )

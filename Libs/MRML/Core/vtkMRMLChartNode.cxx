@@ -41,7 +41,7 @@ vtkMRMLChartNode::vtkMRMLChartNode()
   this->ArrayNames = vtkStringArray::New();
   this->Arrays = vtkStringArray::New();
   this->Properties = new ChartPropertyMap;
-  
+
   // default properties
   this->SetProperty("default", "showLines", "on");
   this->SetProperty("default", "showMarkers", "off");
@@ -76,11 +76,8 @@ vtkMRMLChartNode::~vtkMRMLChartNode()
 //----------------------------------------------------------------------------
 void vtkMRMLChartNode::WriteXML(ostream& of, int nIndent)
 {
-
   // Start by having the superclass write its information
   Superclass::WriteXML(of, nIndent);
-
-  vtkIndent indent(nIndent);
 
   // Write all the IDs
   of << " arrays=\"";
@@ -114,7 +111,6 @@ void vtkMRMLChartNode::WriteXML(ostream& of, int nIndent)
       }
     }
   of << "\"";
-  
 }
 
 
@@ -127,11 +123,11 @@ void vtkMRMLChartNode::ReadXMLAttributes(const char** atts)
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
-    if (!strcmp(attName, "arrays")) 
+    if (!strcmp(attName, "arrays"))
       {
       // format is 'name':'id'
       // Search for 4 single quotes and pull out the pieces.
@@ -144,7 +140,7 @@ void vtkMRMLChartNode::ReadXMLAttributes(const char** atts)
         second = text.find_first_of("'", first+1);
         third = text.find_first_of("'", second+1);
         fourth = text.find_first_of("'", third+1);
-        
+
         this->AddArray(text.substr(first+1, second-first-1).c_str(),
                        text.substr(third+1, fourth-third-1).c_str());
 
@@ -166,14 +162,14 @@ void vtkMRMLChartNode::ReadXMLAttributes(const char** atts)
         fourth = text.find_first_of("'", third+1);
         fifth = text.find_first_of("'", fourth+1);
         sixth = text.find_first_of("'", fifth+1);
-        
+
         this->SetProperty(text.substr(first+1, second-first-1).c_str(),
                           text.substr(third+1, fourth-third-1).c_str(),
                           text.substr(fifth+1, sixth-fifth-1).c_str());
 
         first = text.find_first_of("'",sixth+1);
         }
-      
+
       }
     }
 
@@ -192,7 +188,7 @@ void vtkMRMLChartNode::Copy(vtkMRMLNode *anode)
   Superclass::Copy(anode);
 
   // Need to manage references to other nodes.  Unregister this node's
-  // currrent references (done implictly when clearing the arrays and properties).
+  // current references (done implictly when clearing the arrays and properties).
   this->ClearArrays();
   this->ClearProperties();
 
@@ -296,19 +292,19 @@ const char* vtkMRMLChartNode::GetArray(const char *name)
 {
   if (!name)
     {
-    return 0;
+    return nullptr;
     }
 
   DoubleArrayIDMap::iterator it = (*this->DoubleArrayIDs).find(name);
-  
+
   if (it == this->DoubleArrayIDs->end())
     {
-    return 0;
+    return nullptr;
     }
 
   return (*it).second.c_str();
 }
-    
+
 
 //----------------------------------------------------------------------------
 vtkStringArray* vtkMRMLChartNode::GetArrayNames()
@@ -377,19 +373,19 @@ void vtkMRMLChartNode::SetProperty(const char *name,
       }
     oldValue = (*ait).second;
     }
-  
+
   // new name, property or value. set it and mark modified
   //std::cout << "Set the property" << std::endl;
   (*this->Properties)[name][property] = value;
   this->Modified();
-  
+
   // A ColorNode id can be store as property of the chart or an
   // array. Need to manage the references.
   if (this->Scene && !strcmp(property, "lookupTable"))
     {
     if (found)
       {
-      // overwritting the ColorNode ID at this level
+      // overwriting the ColorNode ID at this level
       this->Scene->RemoveReferencedNodeID(oldValue.c_str(), this);
       }
     this->Scene->AddReferencedNodeID(value, this);
@@ -403,13 +399,13 @@ const char *vtkMRMLChartNode::GetProperty(const char *name,
   ChartPropertyMap::iterator it = this->Properties->find(name);
   if (it == this->Properties->end())
     {
-    return 0;
+    return nullptr;
     }
 
   ArrayPropertyMap::iterator ait = (*it).second.find(property);
   if (ait == (*it).second.end())
     {
-    return 0;
+    return nullptr;
     }
 
   return (*ait).second.c_str();
@@ -527,14 +523,23 @@ void vtkMRMLChartNode::UpdateReferences()
 
    // arrays
    DoubleArrayIDMap::iterator it;
+
+   // create a separate array for removal of dangling references,
+   // cannot remove inside the loop - inavlidates iterators.
+   DoubleArrayIDMap doubleArrayIDsRemove;
    for (it = this->DoubleArrayIDs->begin(); it != this->DoubleArrayIDs->end();++it)
      {
      if (this->Scene && !this->Scene->GetNodeByID((*it).second.c_str()))
        {
-       this->RemoveArray((*it).first.c_str());
+       doubleArrayIDsRemove[(*it).first.c_str()] = (*it).second.c_str();
        }
      }
-   
+   // now remove dangling references
+   for (it = doubleArrayIDsRemove.begin(); it != doubleArrayIDsRemove.end();++it)
+     {
+     this->RemoveArray((*it).first.c_str());
+     }
+
    // properties
    ChartPropertyMap::iterator pit;
    for (pit = this->Properties->begin(); pit != this->Properties->end(); ++pit)

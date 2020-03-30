@@ -37,7 +37,7 @@ vtkMRMLNode* qMRMLSceneTransformModel::parentNode(vtkMRMLNode* node)const
     {
     return transformableNode->GetParentTransformNode();
     }
-  return 0;
+  return nullptr;
 }
 
 /*
@@ -58,7 +58,7 @@ int qMRMLSceneTransformModel::nodeIndex(vtkMRMLNode* node)const
   for (nodes->InitTraversal(it);
        (n = (vtkMRMLNode*)nodes->GetNextItemAsObject(it)) ;)
     {
-    // note: parent can be NULL, it means that the scene is the parent
+    // note: parent can be nullptr, it means that the scene is the parent
     if (parent == qMRMLSceneTransformModel::parentNode(n))
       {
       ++index;
@@ -97,9 +97,15 @@ bool qMRMLSceneTransformModel::reparent(vtkMRMLNode* node, vtkMRMLNode* newParen
   // MRML Transformable Nodes
   vtkMRMLTransformableNode* transformableNode =
     vtkMRMLTransformableNode::SafeDownCast(node);
+  vtkMRMLTransformNode* transformNode =
+    vtkMRMLTransformNode::SafeDownCast(newParent);
   if (transformableNode)
     {
-    transformableNode->SetAndObserveTransformNodeID( newParent ? newParent->GetID() : 0 );
+    if (transformNode && !transformNode->IsTransformToWorldLinear() && !transformableNode->CanApplyNonLinearTransforms())
+      {
+      return false;
+      }
+    transformableNode->SetAndObserveTransformNodeID( newParent ? newParent->GetID() : nullptr );
     return true;
     }
   return false;
@@ -133,8 +139,7 @@ qMRMLSceneTransformModel::qMRMLSceneTransformModel(QObject *vparent)
 
 //------------------------------------------------------------------------------
 qMRMLSceneTransformModel::~qMRMLSceneTransformModel()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 Qt::DropActions qMRMLSceneTransformModel::supportedDropActions()const

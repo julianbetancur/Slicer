@@ -12,19 +12,18 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#ifndef __ImageToImageRegistrationMethodTestingHelper_h
-#define __ImageToImageRegistrationMethodTestingHelper_h
+#ifndef itkImageToImageRegistrationMethodTestingHelper_h
+#define itkImageToImageRegistrationMethodTestingHelper_h
 
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkResampleImageFilter.h"
-#include "itkDifferenceImageFilter.h"
+#include "itkTestingComparisonImageFilter.h"
 
 namespace itk
 {
 
-/** \class ImageToImageRegistrationMethodTestingHelper auxiliary class for
- * factorizing testing tasks.
+/** \class ImageToImageRegistrationMethodTestingHelper
  *
  *  This class provides common tasks required to test all registration methods.
  *
@@ -46,8 +45,8 @@ class ImageToImageRegistrationMethodTestingHelper
   typedef ResampleImageFilter<ImageType, ImageType> ResampleFilterType;
   typedef typename ResampleFilterType::Pointer      ResampleFilterPointer;
 
-  typedef DifferenceImageFilter<ImageType, ImageType> DifferenceFilterType;
-  typedef typename DifferenceFilterType::Pointer      DifferenceFilterPointer;
+  typedef itk::Testing::ComparisonImageFilter<ImageType, ImageType> DifferenceFilterType;
+  typedef typename DifferenceFilterType::Pointer                    DifferenceFilterPointer;
 public:
 
   /** Constructor */

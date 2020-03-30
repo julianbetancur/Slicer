@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,18 +10,12 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLSnapshotClipNode.h"
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLSnapshotClipNode.h"
 
 int vtkMRMLSnapshotClipNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLSnapshotClipNode > node1 = vtkSmartPointer< vtkMRMLSnapshotClipNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLSnapshotClipNode, node1);
-
+  vtkNew<vtkMRMLSnapshotClipNode> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

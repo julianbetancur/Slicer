@@ -23,7 +23,9 @@
 
 // Qt includes
 #include <QStyledItemDelegate>
-class QDoubleSpinBox;
+
+// CTK includes
+class ctkDoubleSpinBox;
 
 // qMRML includes
 #include "qMRMLWidgetsExport.h"
@@ -34,32 +36,33 @@ class QDoubleSpinBox;
 /// a ctkColorPickerButton linked to a color picker dialog on click
 /// If an index has a Qt::EditRole set to a QString that exactly is on the form
 /// X.YY where X is 0 or 1 and Y is a digit (0 to 9), then the editor will be
-/// a QDoubleSpinBox with a slider poping up on mouse hover.
+/// a ctkDoubleSpinBox with a slider popping up on mouse hover.
 class QMRML_WIDGETS_EXPORT qMRMLItemDelegate: public QStyledItemDelegate
 {
   Q_OBJECT
 public:
-  qMRMLItemDelegate(QObject *parent = 0);
-  virtual ~qMRMLItemDelegate();
+  qMRMLItemDelegate(QObject *parent = nullptr);
+  ~qMRMLItemDelegate() override;
+  typedef QStyledItemDelegate Superclass;
 
   bool isColor(const QModelIndex& index)const;
   int colorRole(const QModelIndex& index)const;
   bool is0To1Value(const QModelIndex& index)const;
 
   QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option,
-                          const QModelIndex &index) const;
+                          const QModelIndex &index) const override;
 
-  void setEditorData(QWidget *editor, const QModelIndex &index) const;
+  void setEditorData(QWidget *editor, const QModelIndex &index) const override;
   void setModelData(QWidget *editor, QAbstractItemModel *model,
-                    const QModelIndex &index) const;
+                    const QModelIndex &index) const override;
 
-  virtual QSize sizeHint(const QStyleOptionViewItem &option,
-                         const QModelIndex &index) const;
+  QSize sizeHint(const QStyleOptionViewItem &option,
+                         const QModelIndex &index) const override;
 
   void updateEditorGeometry(QWidget *editor,
-    const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
-  virtual bool eventFilter(QObject *object, QEvent *event);
+  bool eventFilter(QObject *object, QEvent *event) override;
 
   // We make initStyleOption public so it can be used by qMRMLTreeView
   using QStyledItemDelegate::initStyleOption;
@@ -69,7 +72,7 @@ protected slots:
   void commitAndClose();
 
 protected:
-  QDoubleSpinBox* DummySpinBox;
+  ctkDoubleSpinBox* DummySpinBox;
 };
 
 #endif

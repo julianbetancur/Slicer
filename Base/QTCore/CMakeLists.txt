@@ -1,13 +1,48 @@
 project(qSlicerBaseQTCore)
 
 #
-# Third party library
+# Dependencies
 #
 
-if(Slicer_BUILD_CLI_SUPPORT)
-  # Required to define ModuleDescriptionParser_INCLUDE_DIRS
-  find_package(SlicerExecutionModel REQUIRED ModuleDescriptionParser)
+#
+# DCMTK
+#
+if(Slicer_BUILD_DICOM_SUPPORT)
+  find_package(DCMTK REQUIRED)
 endif()
+
+#
+# ModuleDescriptionParser - Required to define ModuleDescriptionParser_INCLUDE_DIRS
+#
+if(Slicer_BUILD_CLI_SUPPORT)
+  find_package(SlicerExecutionModel REQUIRED ModuleDescriptionParser)
+
+  #
+  # ITK
+  #
+  set(${PROJECT_NAME}_ITK_COMPONENTS
+    # Import ITK targets required by ModuleDescriptionParser
+    ${ModuleDescriptionParser_ITK_COMPONENTS}
+    # Import ITK targets required by CTKImageProcessingITKCore
+    ITKCommon
+    )
+  find_package(ITK 4.6 COMPONENTS ${${PROJECT_NAME}_ITK_COMPONENTS} REQUIRED)
+  set(ITK_NO_IO_FACTORY_REGISTER_MANAGER 1) # See Libs/ITKFactoryRegistration/CMakeLists.txt
+  include(${ITK_USE_FILE})
+endif()
+
+#
+# qRestAPI
+#
+if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
+  find_package(qRestAPI REQUIRED)
+  include(${qRestAPI_USE_FILE})
+endif()
+
+#
+# CTKAppLauncherLib
+#
+find_package(CTKAppLauncherLib REQUIRED)
 
 #
 # See CMake/SlicerMacroBuildBaseQtLibrary.cmake for details
@@ -19,7 +54,7 @@ set(KIT_export_directive "Q_SLICER_BASE_QTCORE_EXPORT")
 set(KIT_include_directories
   ${MRMLLogic_INCLUDE_DIRS}
   ${MRMLDisplayableManager_INCLUDE_DIRS}
-  ${FreeSurfer_INCLUDE_DIRS} # for qSlicerXcedeCatalogIO
+  ${FreeSurfer_INCLUDE_DIRS} # for qSlicerXcedeCatalogReader
   )
 
 if(Slicer_BUILD_CLI_SUPPORT)
@@ -61,22 +96,33 @@ set(KIT_SRCS
   qSlicerModuleManager.h
   qSlicerObject.cxx
   qSlicerObject.h
-  qSlicerSceneBundleIO.cxx
-  qSlicerSceneBundleIO.h
+  qSlicerPersistentCookieJar.cxx
+  qSlicerPersistentCookieJar.h
+  qSlicerSceneBundleReader.cxx
+  qSlicerSceneBundleReader.h
   qSlicerSlicer2SceneReader.cxx
   qSlicerSlicer2SceneReader.h
   qSlicerUtils.cxx
   qSlicerUtils.h
-  qSlicerXcedeCatalogIO.cxx
-  qSlicerXcedeCatalogIO.h
+  qSlicerXcedeCatalogReader.cxx
+  qSlicerXcedeCatalogReader.h
   )
 
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_SRCS
+    qSlicerExtensionDownloadTask.cxx
+    qSlicerExtensionDownloadTask.h
     qSlicerExtensionsManagerModel.cxx
     qSlicerExtensionsManagerModel.h
-    qSlicerPersistentCookieJar.cxx
-    qSlicerPersistentCookieJar.h
+    )
+endif()
+
+if(Slicer_USE_PYTHONQT)
+  list(APPEND KIT_SRCS
+    qSlicerScriptedFileWriter.cxx
+    qSlicerScriptedFileWriter.h
+    qSlicerScriptedUtils.cxx
+    qSlicerScriptedUtils_p.h
     )
 endif()
 
@@ -100,34 +146,52 @@ set(KIT_MOC_SRCS
   qSlicerIO.h
   qSlicerModuleFactoryManager.h
   qSlicerModuleManager.h
-  qSlicerSceneBundleIO.h
+  qSlicerSceneBundleReader.h
   qSlicerSlicer2SceneReader.h
-  qSlicerXcedeCatalogIO.h
+  qSlicerXcedeCatalogReader.h
   )
 
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_MOC_SRCS
+    qSlicerExtensionDownloadTask.h
     qSlicerExtensionsManagerModel.h
     )
 endif()
 
-# Additional Target libraries (QT libs already included)
+if(Slicer_USE_PYTHONQT)
+  list(APPEND KIT_MOC_SRCS
+    qSlicerScriptedFileWriter.h
+    )
+endif()
+
+# Additional Target libraries
 set(KIT_target_libraries
+  ${QT_LIBRARIES}
   SlicerBaseLogic
   MRMLDisplayableManager
+  ${CTKAppLauncherLib_LIBRARIES}
   CTKCore
   CTKImageProcessingITKCore
   CTKVisualizationVTKCore
+  ${ITK_LIBRARIES}
   )
+
+if(Slicer_BUILD_DICOM_SUPPORT)
+  list(APPEND KIT_target_libraries
+    ${DCMTK_LIBRARIES}
+    CTKDICOMCore
+    )
+endif()
 
 if(Slicer_BUILD_EXTENSIONMANAGER_SUPPORT)
   list(APPEND KIT_target_libraries
-    qMidasAPI
+    qRestAPI
     )
 endif()
 
 if(Slicer_BUILD_CLI_SUPPORT)
   list(APPEND KIT_target_libraries
+    ${ITK_LIBRARIES}
     ModuleDescriptionParser
     )
 endif()
@@ -137,12 +201,31 @@ set(KIT_resources
   Resources/qSlicerBaseQTCore.qrc
   )
 
+if(APPLE)
+  set(QT_CONF_FILEPATH "${CMAKE_CURRENT_BINARY_DIR}/Resources/qt.conf")
+  file(WRITE ${QT_CONF_FILEPATH}
+"[Paths]
+Plugins = ${Slicer_QtPlugins_DIR}
+")
+
+  configure_file(
+    Resources/qSlicerBaseQTCoreExtra.qrc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/Resources/qSlicerBaseQTCoreExtra.qrc
+    )
+
+  list(APPEND KIT_resources
+    ${CMAKE_CURRENT_BINARY_DIR}/Resources/qSlicerBaseQTCoreExtra.qrc
+    )
+endif()
+
 # Python wrap
 if(Slicer_USE_PYTHONQT)
-
+  set(VTK_COMMON_PYTHON_LIBRARY
+    vtkWrappingPythonCore # For vtkPythonUtil
+    )
   list(APPEND KIT_target_libraries
     CTKScriptingPythonCore
-    vtkCommonPythonD # For vtkPythonUtils
+    ${VTK_COMMON_PYTHON_LIBRARY} # For vtkPythonUtils
     )
   if(WIN32)
     # TODO: this resolves link errors on windows, but shouldn't be
@@ -150,7 +233,7 @@ if(Slicer_USE_PYTHONQT)
     list(APPEND KIT_target_libraries
       ${PYTHONQT_LIBRARY}
       )
-  endif(WIN32)
+  endif()
 
   # Sources
   list(APPEND KIT_SRCS
@@ -163,7 +246,7 @@ if(Slicer_USE_PYTHONQT)
     qSlicerCorePythonManager.h
     )
 
-endif(Slicer_USE_PYTHONQT)
+endif()
 
 SlicerMacroBuildBaseQtLibrary(
   NAME ${PROJECT_NAME}
@@ -175,6 +258,18 @@ SlicerMacroBuildBaseQtLibrary(
   RESOURCES ${KIT_resources}
   WRAP_PYTHONQT
   )
+
+if(Slicer_USE_PYTHONQT_WITH_OPENSSL)
+  configure_file(
+    Resources/Certs/Slicer.crt
+    ${Slicer_BINARY_DIR}/${Slicer_SHARE_DIR}/Slicer.crt
+    COPYONLY
+    )
+  install(
+    FILES Resources/Certs/Slicer.crt
+    DESTINATION ${Slicer_INSTALL_SHARE_DIR} COMPONENT Runtime
+    )
+endif()
 
 # Plugins
 #add_subdirectory(Plugins)

@@ -18,9 +18,6 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // SlicerQt includes
 #include <qSlicerCoreApplication.h>
 #include <qSlicerIOManager.h>
@@ -31,15 +28,21 @@
 #include <vtkSlicerVolumesLogic.h>
 
 // Volumes QTModule includes
-#include "qSlicerVolumesIO.h"
+#include "qSlicerVolumesReader.h"
 #include "qSlicerVolumesModule.h"
 #include "qSlicerVolumesModuleWidget.h"
 
 // MRML Logic includes
 #include <vtkMRMLColorLogic.h>
 
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerVolumesModule, qSlicerVolumesModule);
+// MRML includes
+#include <vtkMRMLScene.h>
+
+// SubjectHierarchy Plugins includes
+#include "qSlicerSubjectHierarchyPluginHandler.h"
+#include "qSlicerSubjectHierarchyVolumesPlugin.h"
+#include "qSlicerSubjectHierarchyLabelMapsPlugin.h"
+#include "qSlicerSubjectHierarchyDiffusionTensorVolumesPlugin.h"
 
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_Volumes
@@ -57,24 +60,17 @@ qSlicerVolumesModule::qSlicerVolumesModule(QObject* _parent)
 
 //-----------------------------------------------------------------------------
 qSlicerVolumesModule::~qSlicerVolumesModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QString qSlicerVolumesModule::helpText()const
 {
   QString help = QString(
-    "The Volumes Module loads and adjusts display parameters of volume data.<br>"
+    "The Volumes Module is the interface for adjusting Window, Level, Threshold, "
+    "Color LUT and other parameters that control the display of volume image data "
+    "in the scene.<br>"
     "<a href=\"%1/Documentation/%2.%3/Modules/Volumes\">"
-    "%1/Documentation/%2.%3/Modules/Volumes</a><br>"
-    "The Diffusion Editor allows modifying "
-    "parameters (gradients, bValues, measurement frame) of DWI data and "
-    "provides a quick way to interpret them. "
-    "For that it estimates a tensor and shows glyphs and tracts "
-    "for visual exploration.<br><br>"
-    "Help for Diffusion Editor: "
-    "<a href=\"%1/Modules:Volumes:Diffusion_Editor-Documentation\">"
-    "%1/Modules:Volumes:Diffusion_Editor-Documentation</a>");
+    "%1/Documentation/%2.%3/Modules/Volumes</a><br>");
   return help.arg(this->slicerWikiUrl()).arg(Slicer_VERSION_MAJOR).arg(Slicer_VERSION_MINOR);
 }
 
@@ -94,8 +90,7 @@ QString qSlicerVolumesModule::acknowledgementText()const
     "</a> for details.<br>"
     "The Volumes module was contributed by Alex Yarmarkovich, Isomics Inc. "
     "(Steve Pieper) and Julien Finet, Kitware Inc. with help from others at "
-    "SPL, BWH (Ron Kikinis).<br><br>"
-    "The Diffusion Editor was developed by Kerstin Kessel.");
+    "SPL, BWH (Ron Kikinis).<br><br>");
   return acknowledgement;
 }
 
@@ -122,12 +117,11 @@ QStringList qSlicerVolumesModule::categories() const
   return QStringList() << "";
 }
 
-
 //-----------------------------------------------------------------------------
 QStringList qSlicerVolumesModule::dependencies() const
 {
   QStringList moduleDependencies;
-  moduleDependencies << "Colors";
+  moduleDependencies << "Colors" << "Units";
   return moduleDependencies;
 }
 
@@ -148,10 +142,15 @@ void qSlicerVolumesModule::setup()
 
   qSlicerCoreIOManager* ioManager =
     qSlicerCoreApplication::application()->coreIOManager();
-  ioManager->registerIO(new qSlicerVolumesIO(volumesLogic,this));
+  ioManager->registerIO(new qSlicerVolumesReader(volumesLogic,this));
   ioManager->registerIO(new qSlicerNodeWriter(
     "Volumes", QString("VolumeFile"),
-    QStringList() << "vtkMRMLVolumeNode", this));
+    QStringList() << "vtkMRMLVolumeNode", true, this));
+
+  // Register Subject Hierarchy core plugins
+  qSlicerSubjectHierarchyPluginHandler::instance()->registerPlugin(new qSlicerSubjectHierarchyVolumesPlugin());
+  qSlicerSubjectHierarchyPluginHandler::instance()->registerPlugin(new qSlicerSubjectHierarchyLabelMapsPlugin());
+  qSlicerSubjectHierarchyPluginHandler::instance()->registerPlugin(new qSlicerSubjectHierarchyDiffusionTensorVolumesPlugin());
 }
 
 //-----------------------------------------------------------------------------
@@ -164,4 +163,12 @@ qSlicerAbstractModuleRepresentation* qSlicerVolumesModule::createWidgetRepresent
 vtkMRMLAbstractLogic* qSlicerVolumesModule::createLogic()
 {
   return vtkSlicerVolumesLogic::New();
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerVolumesModule::associatedNodeTypes() const
+{
+  return QStringList()
+    << "vtkMRMLVolumeNode"
+    << "vtkMRMLVolumeDisplayNode";
 }

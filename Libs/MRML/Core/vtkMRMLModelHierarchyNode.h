@@ -25,45 +25,45 @@ class VTK_MRML_EXPORT vtkMRMLModelHierarchyNode : public vtkMRMLDisplayableHiera
 public:
   static vtkMRMLModelHierarchyNode *New();
   vtkTypeMacro(vtkMRMLModelHierarchyNode,vtkMRMLDisplayableHierarchyNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-  
-  /// 
+  void Copy(vtkMRMLNode *node) override;
+
+  ///
   /// Get node XML tag name (like Volume, ModelHierarchy)
-  virtual const char* GetNodeTagName() {return "ModelHierarchy";};
+  const char* GetNodeTagName() override {return "ModelHierarchy";}
 
-   /// 
-  /// Updates this node if it depends on other nodes 
+   ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void UpdateReferences();
+  void UpdateReferences() override;
 
-  /// 
+  ///
   /// Finds the model node and read the data
-  virtual void UpdateScene(vtkMRMLScene *scene);
+  void UpdateScene(vtkMRMLScene *scene) override;
 
-  /// 
+  ///
   /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
+  void UpdateReferenceID(const char *oldID, const char *newID) override;
 
-  /// 
+  ///
   /// String ID of the model MRML node
   void SetModelNodeID(const char* id)
   {
@@ -81,33 +81,33 @@ public:
   };
 
 
-  /// 
+  ///
   /// Get associated model MRML node
   vtkMRMLModelNode* GetModelNode();
 
-  /// 
+  ///
   /// Get associated display MRML node
   vtkMRMLModelDisplayNode* GetModelDisplayNode();
-    
 
-  /// 
+
+  ///
   /// Get the first parent node in hierarchy which is not expanded
   vtkMRMLModelHierarchyNode* GetCollapsedParentNode();
-  
-  /// 
+
+  ///
   /// Find all child model nodes in the hierarchy
   void GetChildrenModelNodes(vtkCollection *models);
 
-  /// 
+  ///
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
 
 protected:
   vtkMRMLModelHierarchyNode();
-  ~vtkMRMLModelHierarchyNode();
+  ~vtkMRMLModelHierarchyNode() override;
   vtkMRMLModelHierarchyNode(const vtkMRMLModelHierarchyNode&);
   void operator=(const vtkMRMLModelHierarchyNode&);
 

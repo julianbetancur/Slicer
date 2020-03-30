@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,24 +10,27 @@
 
 =========================================================================auto=*/
 
+// MRML includes
+#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLDiffusionTensorDisplayPropertiesNode.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
 
-#include "vtkMRMLCoreTestingMacros.h"
-
+//---------------------------------------------------------------------------
 class vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1 : public vtkMRMLDiffusionTensorDisplayPropertiesNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1 *New(){return new vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1;};
+  static vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1,vtkMRMLDiffusionTensorDisplayPropertiesNode);
+  vtkTypeMacro(vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1,vtkMRMLDiffusionTensorDisplayPropertiesNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1;
+    return vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1::New();
     }
-  virtual const char* GetNodeTagName()
+  const char* GetNodeTagName() override
     {
     return "vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1";
     }
@@ -35,14 +38,12 @@ public:
   virtual int ReadData(vtkMRMLNode *vtkNotUsed(refNode)) { return 0; }
   virtual int WriteData(vtkMRMLNode *vtkNotUsed(refNode)) { return 0; }
 };
- 
+vtkStandardNewMacro(vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1);
+
+//---------------------------------------------------------------------------
 int vtkMRMLDiffusionTensorDisplayPropertiesNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1 >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_STORABLE_MRML_METHODS(vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1, node1);
-  
+  vtkNew<vtkMRMLDiffusionTensorDisplayPropertiesNodeTestHelper1> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

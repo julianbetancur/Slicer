@@ -48,8 +48,8 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerAbstractModule
 public:
 
   typedef qSlicerAbstractCoreModule Superclass;
-  qSlicerAbstractModule(QObject *parent=0);
-  virtual ~qSlicerAbstractModule();
+  qSlicerAbstractModule(QObject *parent=nullptr);
+  ~qSlicerAbstractModule() override;
 
   /// Icon of the module. Anytime a graphical representation of the module
   /// is needed, the icon is used. It's the icon shown in the module selector
@@ -60,7 +60,7 @@ public:
   virtual QImage logo()const;
 
   /// Returns then associated QAction of the module. It contains all the
-  /// informations relative to the module. The text (QAction::text()) and icon
+  /// information relative to the module. The text (QAction::text()) and icon
   /// (QAction::icon()) are the module title and icon; the name of the module
   ///  is saved in the QAction's data (QAction::data().toString()) and the
   /// module index is the QAction property "index"

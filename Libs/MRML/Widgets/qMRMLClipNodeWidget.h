@@ -29,6 +29,7 @@
 
 // qMRML includes
 #include "qMRMLWidgetsExport.h"
+#include "vtkMRMLClipModelsNode.h"
 
 class qMRMLClipNodeWidgetPrivate;
 class vtkMRMLNode;
@@ -39,8 +40,8 @@ class QMRML_WIDGETS_EXPORT qMRMLClipNodeWidget : public QWidget
   Q_OBJECT
   QVTK_OBJECT
 public:
-  qMRMLClipNodeWidget(QWidget *parent=0);
-  virtual ~qMRMLClipNodeWidget();
+  qMRMLClipNodeWidget(QWidget *parent=nullptr);
+  ~qMRMLClipNodeWidget() override;
 
   vtkMRMLClipModelsNode* mrmlClipNode()const;
 
@@ -48,11 +49,13 @@ public:
   int redSliceClipState()const;
   int yellowSliceClipState()const;
   int greenSliceClipState()const;
+  vtkMRMLClipModelsNode::ClippingMethodType clippingMethod()const;
 
   void setClipType(int);
   void setRedSliceClipState(int);
   void setYellowSliceClipState(int);
   void setGreenSliceClipState(int);
+  void setClippingMethod(vtkMRMLClipModelsNode::ClippingMethodType);
 
 public slots:
   /// Set the clip node to represent
@@ -67,6 +70,7 @@ protected slots:
   void updateNodeRedClipState();
   void updateNodeYellowClipState();
   void updateNodeGreenClipState();
+  void updateNodeClippingMethod();
 
 protected:
   QScopedPointer<qMRMLClipNodeWidgetPrivate> d_ptr;

@@ -19,6 +19,7 @@
 #include "vtkMRMLScalarVolumeDisplayNode.h"
 
 // VTK includes
+class vtkAlgorithmOutput;
 class vtkImageData;
 class vtkImageExtractComponents;
 
@@ -36,62 +37,57 @@ class VTK_MRML_EXPORT vtkMRMLDiffusionWeightedVolumeDisplayNode : public vtkMRML
   public:
   static vtkMRMLDiffusionWeightedVolumeDisplayNode *New();
   vtkTypeMacro(vtkMRMLDiffusionWeightedVolumeDisplayNode,vtkMRMLScalarVolumeDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Set node attributes
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "DiffusionWeightedVolumeDisplay";};
+  const char* GetNodeTagName() override {return "DiffusionWeightedVolumeDisplay";}
 
-  /// 
+  ///
   /// Get the pipeline input
-  virtual vtkImageData* GetInputImageData();
+  vtkAlgorithmOutput* GetInputImageDataConnection() override;
 
-  /// 
-  /// Get the pipeline output
-  virtual vtkImageData* GetOutputImageData();
 
-  virtual void UpdateImageDataPipeline();
+  void UpdateImageDataPipeline() override;
 
   //--------------------------------------------------------------------------
   /// Display Information
   //--------------------------------------------------------------------------
 
-  /// 
+  ///
   /// Set/Get interpolate reformated slices
   vtkGetMacro(DiffusionComponent, int);
   vtkSetMacro(DiffusionComponent, int);
- 
+
 protected:
   vtkMRMLDiffusionWeightedVolumeDisplayNode();
-  ~vtkMRMLDiffusionWeightedVolumeDisplayNode();
+  ~vtkMRMLDiffusionWeightedVolumeDisplayNode() override;
   vtkMRMLDiffusionWeightedVolumeDisplayNode(const vtkMRMLDiffusionWeightedVolumeDisplayNode&);
   void operator=(const vtkMRMLDiffusionWeightedVolumeDisplayNode&);
 
-  /// 
+  ///
   /// Set the input of the pipeline
-  virtual void SetInputToImageDataPipeline(vtkImageData *imageData);
+  void SetInputToImageDataPipeline(vtkAlgorithmOutput *imageDataConnection) override;
 
-  virtual vtkImageData* GetScalarImageData();
+  vtkAlgorithmOutput* GetScalarImageDataConnection() override;
 
+  /// This property holds the current diffusion component used for display.
   int DiffusionComponent;
-
   vtkImageExtractComponents *ExtractComponent;
-
-
 };
 
 #endif

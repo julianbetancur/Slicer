@@ -21,18 +21,26 @@
 // Qt includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQt includes
 #include "qSlicerLayoutManager.h"
 
 // MRML includes
+
+// VTK includes
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
 
 int qSlicerLayoutManagerTest1(int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
-  qSlicerLayoutManager* layoutManager = new qSlicerLayoutManager(0);
+  qMRMLWidget::postInitializeApplication();
+  qSlicerLayoutManager* layoutManager = new qSlicerLayoutManager(nullptr);
   delete layoutManager;
   return EXIT_SUCCESS;
 }

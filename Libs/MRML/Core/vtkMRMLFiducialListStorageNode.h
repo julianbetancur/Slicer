@@ -33,41 +33,37 @@ public:
   ///
   static vtkMRMLFiducialListStorageNode *New();
   vtkTypeMacro(vtkMRMLFiducialListStorageNode,vtkMRMLStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "FiducialListStorage";};
-
-  /// 
-  /// Return a default file extension for writing
-  virtual const char* GetDefaultWriteFileExtension();
+  const char* GetNodeTagName() override {return "FiducialListStorage";}
 
   /// Get/Set the storage node version
   vtkGetMacro(Version, int);
   vtkSetMacro(Version, int);
 
-  virtual bool CanReadInReferenceNode(vtkMRMLNode *refNode);
+  bool CanReadInReferenceNode(vtkMRMLNode *refNode) override;
 
 protected:
   vtkMRMLFiducialListStorageNode();
-  ~vtkMRMLFiducialListStorageNode();
+  ~vtkMRMLFiducialListStorageNode() override;
   vtkMRMLFiducialListStorageNode(const vtkMRMLFiducialListStorageNode&);
   void operator=(const vtkMRMLFiducialListStorageNode&);
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedReadFileTypes();
+  void InitializeSupportedReadFileTypes() override;
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
   /// Read data and set it in the referenced node
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
 
   /// Write data from a  referenced node
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
 
   /// the storage node version
   // version 1 has the old glyph numbering (pre svn 12553), starting at 0

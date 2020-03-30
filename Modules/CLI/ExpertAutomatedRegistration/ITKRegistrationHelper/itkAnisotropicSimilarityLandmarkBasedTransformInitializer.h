@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h
-#define __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h
+#ifndef itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h
+#define itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h
 
 #include "itkObject.h"
 #include "itkObjectFactory.h"
@@ -28,7 +28,8 @@
 namespace itk
 {
 
-/** \brief AnisotropicSimilarityLandmarkBasedTransformInitializer is a helper class intended to
+/** \class AnisotropicSimilarityLandmarkBasedTransformInitializer
+ * \brief AnisotropicSimilarityLandmarkBasedTransformInitializer is a helper class intended to
  * The class computes the transform that aligns the fixed and moving images
  * given a set of landmarks. The class is templated over the Transform type.
  *    The transform computed gives the best fit transform that maps the fixed
@@ -56,7 +57,7 @@ namespace itk
 template <class TTransform,
           class TFixedImage,
           class TMovingImage>
-class ITK_EXPORT AnisotropicSimilarityLandmarkBasedTransformInitializer :
+class AnisotropicSimilarityLandmarkBasedTransformInitializer :
   public Object
 {
 public:
@@ -123,7 +124,7 @@ public:
   typedef Point<double, itkGetStaticConstMacro(ImageDimension)> LandmarkPointType;
   typedef std::vector<LandmarkPointType>                        LandmarkPointContainer;
   typedef typename
-  LandmarkPointContainer::const_iterator        PointsContainerConstIterator;
+  LandmarkPointContainer::const_iterator         PointsContainerConstIterator;
   typedef typename TransformType::ParametersType ParametersType;
   typedef typename ParametersType::ValueType     ParameterValueType;
 
@@ -149,11 +150,11 @@ public:
 
 protected:
   AnisotropicSimilarityLandmarkBasedTransformInitializer();
-  ~AnisotropicSimilarityLandmarkBasedTransformInitializer()
+  ~AnisotropicSimilarityLandmarkBasedTransformInitializer() override
   {
-  };
+  }
 
-  void PrintSelf(std::ostream & os, Indent indent) const;
+  void PrintSelf(std::ostream & os, Indent indent) const override;
 
   // Supported Transform types
   typedef enum
@@ -182,4 +183,4 @@ private:
 #include "itkAnisotropicSimilarityLandmarkBasedTransformInitializer.txx"
 #endif
 
-#endif /* __itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h */
+#endif /* itkAnisotropicSimilarityLandmarkBasedTransformInitializer_h */

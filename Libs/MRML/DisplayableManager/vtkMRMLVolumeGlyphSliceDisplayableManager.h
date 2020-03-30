@@ -23,7 +23,7 @@
 
 // MRMLDisplayableManager includes
 #include "vtkMRMLAbstractSliceViewDisplayableManager.h"
-#include "vtkMRMLDisplayableManagerWin32Header.h"
+#include "vtkMRMLDisplayableManagerExport.h"
 
 /// \brief Displayable manager for slice (2D) views.
 ///
@@ -33,30 +33,30 @@
 class VTK_MRML_DISPLAYABLEMANAGER_EXPORT vtkMRMLVolumeGlyphSliceDisplayableManager
   : public vtkMRMLAbstractSliceViewDisplayableManager
 {
-
 public:
   static vtkMRMLVolumeGlyphSliceDisplayableManager* New();
-  vtkTypeRevisionMacro(vtkMRMLVolumeGlyphSliceDisplayableManager,
+  vtkTypeMacro(vtkMRMLVolumeGlyphSliceDisplayableManager,
                        vtkMRMLAbstractSliceViewDisplayableManager);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
 protected:
 
   vtkMRMLVolumeGlyphSliceDisplayableManager();
-  virtual ~vtkMRMLVolumeGlyphSliceDisplayableManager();
+  ~vtkMRMLVolumeGlyphSliceDisplayableManager() override;
 
-  virtual void UnobserveMRMLScene();
-  virtual void UpdateFromMRMLScene();
-  virtual void ProcessMRMLNodesEvents(vtkObject* caller, unsigned long event, void* callData);
+  void UnobserveMRMLScene() override;
+  void UpdateFromMRMLScene() override;
+  void ProcessMRMLNodesEvents(vtkObject* caller, unsigned long event, void* callData) override;
+  void OnMRMLSceneStartClose() override;
 
   /// Initialize the displayable manager based on its associated
   /// vtkMRMLSliceNode
-  virtual void Create();
+  void Create() override;
 
 private:
 
-  vtkMRMLVolumeGlyphSliceDisplayableManager(const vtkMRMLVolumeGlyphSliceDisplayableManager&);// Not implemented
-  void operator=(const vtkMRMLVolumeGlyphSliceDisplayableManager&);                     // Not Implemented
+  vtkMRMLVolumeGlyphSliceDisplayableManager(const vtkMRMLVolumeGlyphSliceDisplayableManager&) = delete;
+  void operator=(const vtkMRMLVolumeGlyphSliceDisplayableManager&) = delete;
 
   class vtkInternal;
   vtkInternal * Internal;

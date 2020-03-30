@@ -33,13 +33,12 @@ vtkMRMLNodeNewMacro(vtkMRMLColorNode);
 //----------------------------------------------------------------------------
 vtkMRMLColorNode::vtkMRMLColorNode()
 {
-  this->Name = NULL;
   this->SetName("");
-  this->FileName = NULL;
+  this->FileName = nullptr;
   this->Type = -1;
   this->HideFromEditors = 1;
 
-  this->NoName = NULL;
+  this->NoName = nullptr;
   this->SetNoName("(none)");
 
   this->NamesInitialised = 0;
@@ -49,15 +48,15 @@ vtkMRMLColorNode::vtkMRMLColorNode()
 vtkMRMLColorNode::~vtkMRMLColorNode()
 {
   if (this->FileName)
-    {  
+    {
     delete [] this->FileName;
-    this->FileName = NULL;
+    this->FileName = nullptr;
     }
 
   if (this->NoName)
     {
     delete [] this->NoName;
-    this->NoName = NULL;
+    this->NoName = nullptr;
     }
 }
 
@@ -65,16 +64,14 @@ vtkMRMLColorNode::~vtkMRMLColorNode()
 void vtkMRMLColorNode::WriteXML(ostream& of, int nIndent)
 {
   // Write all attributes not equal to their defaults
-  
+
   Superclass::WriteXML(of, nIndent);
-  
-  vtkIndent indent(nIndent);
-  
+
   of << " type=\"" << this->GetType() << "\"";
 
-  if (this->FileName != NULL)
+  if (this->FileName != nullptr)
     {
-    // dont' write it out, it's handled by the storage node
+    // don't write it out, it's handled by the storage node
     }
 }
 
@@ -87,7 +84,7 @@ void vtkMRMLColorNode::ReadXMLAttributes(const char** atts)
 
   const char* attName;
   const char* attValue;
-  while (*atts != NULL) 
+  while (*atts != nullptr)
     {
     attName = *(atts++);
     attValue = *(atts++);
@@ -95,7 +92,7 @@ void vtkMRMLColorNode::ReadXMLAttributes(const char** atts)
       {
       this->SetName(attValue);
       }
-    else if (!strcmp(attName, "type")) 
+    else if (!strcmp(attName, "type"))
       {
       int type;
       std::stringstream ss;
@@ -108,21 +105,10 @@ void vtkMRMLColorNode::ReadXMLAttributes(const char** atts)
       this->SetFileName(attValue);
       // don't read in the file with the colours, it's handled by the storage
       // node
-      if (this->GetStorageNode() == NULL)
+      if (this->GetStorageNode() == nullptr)
         {
         vtkWarningMacro("A color node has a file name, but no storage node, trying to create one");
-        vtkSmartPointer<vtkMRMLStorageNode> snode = this->CreateDefaultStorageNode();
-        if (snode && this->GetScene())
-          {
-          snode->SetFileName(attValue);
-          this->GetScene()->AddNode(snode);
-          this->SetAndObserveStorageNodeID(snode->GetID());
-          }
-        else
-          {
-          vtkErrorMacro("Unable to create or add to scene a new color storage node to read file " << attValue);
-          }
-           
+        this->AddDefaultStorageNode(attValue);
         }
       }
     }
@@ -133,7 +119,7 @@ void vtkMRMLColorNode::ReadXMLAttributes(const char** atts)
 vtkLookupTable * vtkMRMLColorNode::GetLookupTable()
 {
   vtkDebugMacro("Subclass has not implemented GetLookupTable, returning NULL");
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -163,7 +149,7 @@ void vtkMRMLColorNode::Copy(vtkMRMLNode *anode)
 
   // copy names
   this->Names = node->Names;
-  
+
   this->NamesInitialised = node->NamesInitialised;
 
   this->EndModify(disabledModify);
@@ -173,12 +159,12 @@ void vtkMRMLColorNode::Copy(vtkMRMLNode *anode)
 //----------------------------------------------------------------------------
 void vtkMRMLColorNode::PrintSelf(ostream& os, vtkIndent indent)
 {
-  
+
   Superclass::PrintSelf(os,indent);
 
   os << indent << "Name: " <<
       (this->Name ? this->Name : "(none)") << "\n";
-  
+
 
   os << indent << "Type: (" << this->GetTypeAsString() << ")\n";
 
@@ -186,7 +172,7 @@ void vtkMRMLColorNode::PrintSelf(ostream& os, vtkIndent indent)
     (this->NoName ? this->NoName : "(not set)") <<  "\n";
 
   os << indent << "Names array initialised: " << (this->GetNamesInitialised() ? "true" : "false") << "\n";
-  
+
   if (this->Names.size() > 0)
     {
     os << indent << "Color Names:\n";
@@ -211,46 +197,51 @@ void vtkMRMLColorNode::PrintSelf(ostream& os, vtkIndent indent)
 
 void vtkMRMLColorNode::UpdateScene(vtkMRMLScene *scene)
 {
-    Superclass::UpdateScene(scene);    
+    Superclass::UpdateScene(scene);
 }
 
 
 //---------------------------------------------------------------------------
 void vtkMRMLColorNode::ProcessMRMLEvents ( vtkObject *caller,
-                                           unsigned long event, 
+                                           unsigned long event,
                                            void *callData )
 {
   Superclass::ProcessMRMLEvents(caller, event, callData);
 /*
   vtkMRMLColorDisplayNode *dnode = this->GetDisplayNode();
-  if (dnode != NULL && dnode == vtkMRMLColorDisplayNode::SafeDownCast(caller) &&
+  if (dnode != nullptr && dnode == vtkMRMLColorDisplayNode::SafeDownCast(caller) &&
       event ==  vtkCommand::ModifiedEvent)
     {
-        this->InvokeEvent(vtkMRMLColorNode::DisplayModifiedEvent, NULL);
+        this->InvokeEvent(vtkMRMLColorNode::DisplayModifiedEvent, nullptr);
     }
 */
   return;
 }
 
 //---------------------------------------------------------------------------
-int vtkMRMLColorNode::GetFirstType()
-{
-  vtkErrorMacro("Subclass has not over ridden this method");
-  return -1;
-}
-
-//---------------------------------------------------------------------------
-int vtkMRMLColorNode::GetLastType()
-{
-  vtkErrorMacro("Subclass has not over ridden this method");
-  return -1;
-}
-
-//---------------------------------------------------------------------------
 const char * vtkMRMLColorNode::GetTypeAsString()
 {
-  vtkErrorMacro("Subclass has not over ridden this method");
+  if (this->Type == this->User)
+    {
+    return "UserDefined";
+    }
+  if (this->Type == this->File)
+    {
+    return "File";
+    }
   return "(unknown)";
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLColorNode::SetTypeToUser()
+{
+  this->SetType(this->User);
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLColorNode::SetTypeToFile()
+{
+  this->SetType(this->File);
 }
 
 //---------------------------------------------------------------------------
@@ -261,17 +252,17 @@ void vtkMRMLColorNode::SetType(int type)
     vtkDebugMacro("SetType: type is already set to " << type);
     return;
     }
-    
+
   this->Type = type;
 
   vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting Type to " << type);
 
   // subclass should over ride this and define colours according to the node
   // type
-  
+
   // invoke a modified event
   this->Modified();
-    
+
   // invoke a type  modified event
   this->InvokeEvent(vtkMRMLColorNode::TypeModifiedEvent);
 }
@@ -299,7 +290,7 @@ void vtkMRMLColorNode::SetNamesFromColors()
 //---------------------------------------------------------------------------
 bool vtkMRMLColorNode::SetNameFromColor(int index)
 {
-  double rgba[4];
+  double rgba[4] = {-1.,-1.,-1.,-1.};
   bool res = this->GetColor(index, rgba);
   std::stringstream ss;
   ss.precision(3);
@@ -382,10 +373,35 @@ const char *vtkMRMLColorNode::GetColorName(int ind)
 }
 
 //---------------------------------------------------------------------------
+int vtkMRMLColorNode::GetColorIndexByName(const char *name)
+{
+  if (name == nullptr)
+    {
+    vtkErrorMacro("vtkMRMLColorNode::GetColorIndexByName: need a non-null name as argument")
+    return -1;
+    }
+
+  if (!this->GetNamesInitialised())
+    {
+    this->SetNamesFromColors();
+    }
+
+  std::string strName = name;
+  for (int i = 0; i < this->GetNumberOfColors(); ++i)
+    {
+    if (strName == this->GetColorName(i))
+      {
+      return i;
+      }
+    }
+  return -1;
+}
+
+//---------------------------------------------------------------------------
 std::string vtkMRMLColorNode::GetColorNameWithoutSpaces(int ind, const char *subst)
 {
   std::string name = std::string(this->GetColorName(ind));
-  if (strstr(name.c_str(), " ") != NULL)
+  if (strstr(name.c_str(), " ") != nullptr)
     {
     std::string::size_type spaceIndex = name.find( " ", 0 );
     while (spaceIndex != std::string::npos)
@@ -426,7 +442,7 @@ int vtkMRMLColorNode::SetColorName(int ind, const char *name)
 {
   if (ind >= static_cast<int>(this->Names.size()) || ind < 0)
     {
-    vtkErrorMacro("ERROR: SetColorName, index was out of bounds: "<< ind << ", current size is " << this->Names.size() << ", table name = " << (this->GetName() == NULL ? "null" : this->GetName()));
+    vtkErrorMacro("ERROR: SetColorName, index was out of bounds: "<< ind << ", current size is " << this->Names.size() << ", table name = " << (this->GetName() == nullptr ? "null" : this->GetName()));
     return 0;
     }
   std::string newName(name);
@@ -434,7 +450,7 @@ int vtkMRMLColorNode::SetColorName(int ind, const char *name)
     {
     this->Names[ind] = newName;
     this->StorableModifiedTime.Modified();
-    // TBD: fire Modified?
+    this->Modified();
     }
   return 1;
 }
@@ -442,11 +458,11 @@ int vtkMRMLColorNode::SetColorName(int ind, const char *name)
 //---------------------------------------------------------------------------
 int vtkMRMLColorNode::SetColorNameWithSpaces(int ind, const char *name, const char *subst)
 {
- 
+
   std::string nameString = std::string(name);
   std::string substString = std::string(subst);
    // does the input name have the subst character in it?
-  if (strstr(name, substString.c_str()) != NULL)
+  if (strstr(name, substString.c_str()) != nullptr)
     {
     std::replace(nameString.begin(), nameString.end(), *subst, ' ');
     return this->SetColorName(ind, nameString.c_str());
@@ -465,17 +481,17 @@ int vtkMRMLColorNode::GetNumberOfColors()
 }
 
 //---------------------------------------------------------------------------
-bool vtkMRMLColorNode::GetColor(int vtkNotUsed(index), double* vtkNotUsed(color))
+bool vtkMRMLColorNode::GetColor(int vtkNotUsed(index), double vtkNotUsed(color)[4])
 {
   return false;
 }
 
 //---------------------------------------------------------------------------
-void vtkMRMLColorNode::Reset()
+void vtkMRMLColorNode::Reset(vtkMRMLNode* vtkNotUsed(defaultNode))
 {
   // don't need to call reset on color nodes, as all but the User color table
   // node are static, and that's taken care of in the vtkMRMLColorTableNode
-  //Superclass::Reset();
+  //Superclass::Reset(defaultNode);
 }
 
 //---------------------------------------------------------------------------

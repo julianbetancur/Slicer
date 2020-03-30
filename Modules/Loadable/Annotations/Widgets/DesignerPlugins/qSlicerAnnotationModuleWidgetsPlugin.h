@@ -22,10 +22,12 @@
 #define __qSlicerAnnotationModuleWidgetsPlugin_h
 
 // Qt includes
-#include <QDesignerCustomWidgetCollectionInterface>
+#include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
 
 // Annotations includes
+#include "qMRMLAnnotationFiducialProjectionPropertyWidgetPlugin.h"
 #include "qMRMLAnnotationROIWidgetPlugin.h"
+#include "qMRMLAnnotationRulerProjectionPropertyWidgetPlugin.h"
 #include "qMRMLAnnotationTreeViewPlugin.h"
 
 // \class Group the plugins in one library
@@ -34,13 +36,16 @@ class Q_SLICER_MODULE_ANNOTATIONS_WIDGETS_PLUGINS_EXPORT qSlicerAnnotationModule
   , public QDesignerCustomWidgetCollectionInterface
 {
   Q_OBJECT
+  Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QDesignerCustomWidgetCollectionInterface")
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface);
 
 public:
-  QList<QDesignerCustomWidgetInterface*> customWidgets() const
+  QList<QDesignerCustomWidgetInterface*> customWidgets() const override
     {
     QList<QDesignerCustomWidgetInterface *> plugins;
-    plugins << new qMRMLAnnotationROIWidgetPlugin
+    plugins << new qMRMLAnnotationFiducialProjectionPropertyWidgetPlugin
+            << new qMRMLAnnotationROIWidgetPlugin
+            << new qMRMLAnnotationRulerProjectionPropertyWidgetPlugin
             << new qMRMLAnnotationTreeViewPlugin;
     return plugins;
     }

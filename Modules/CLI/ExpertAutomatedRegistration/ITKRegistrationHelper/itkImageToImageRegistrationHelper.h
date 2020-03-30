@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __ImageToImageRegistrationHelper_h
-#define __ImageToImageRegistrationHelper_h
+#ifndef itkImageToImageRegistrationHelper_h
+#define itkImageToImageRegistrationHelper_h
 
 #include "itkImage.h"
 #include "itkCommand.h"
@@ -196,11 +196,11 @@ public:
   //  Update
   // **************
   // **************
-  void Initialize( void );
+  void Initialize();
 
   /** This class provides an Update() method to fit the appearance of a
    * ProcessObject API, but it is not a ProcessObject.  */
-  void Update( void );
+  void Update();
 
   // **************
   // **************
@@ -210,8 +210,8 @@ public:
   typename TImage::ConstPointer  ResampleImage(
     InterpolationMethodEnumType interp
       = OptimizedRegistrationMethodType
-        ::LINEAR_INTERPOLATION, const TImage * movingImage = NULL,
-    const MatrixTransformType * matrixTransform = NULL, const BSplineTransformType * bsplineTransform = NULL,
+        ::LINEAR_INTERPOLATION, const TImage * movingImage = nullptr,
+    const MatrixTransformType * matrixTransform = nullptr, const BSplineTransformType * bsplineTransform = nullptr,
     PixelType defaultPixelValue = 0 );
 
   // Returns the moving image resampled into the space of the fixed image
@@ -239,7 +239,7 @@ public:
   // Must be called after setting the BaselineImage in order to resample
   //   the moving image into the BaselineImage space, compute differences,
   //   and determine if it passed the test within the specified tolerances
-  void ComputeBaselineDifference( void );
+  void ComputeBaselineDifference();
 
   itkGetConstObjectMacro( BaselineDifferenceImage, TImage );
   itkGetConstObjectMacro( BaselineResampledMovingImage, TImage );
@@ -421,14 +421,13 @@ public:
   itkGetConstObjectMacro( BSplineTransform, BSplineTransformType );
   itkGetMacro( BSplineMetricValue, double );
 protected:
-
-  ImageToImageRegistrationHelper( void );
-  virtual ~ImageToImageRegistrationHelper( void );
+  ImageToImageRegistrationHelper();
+  ~ImageToImageRegistrationHelper() override;
 
   void PrintSelfHelper( std::ostream & os, Indent indent, const std::string basename, MetricMethodEnumType metric,
                         InterpolationMethodEnumType interpolation ) const;
 
-  void PrintSelf( std::ostream & os, Indent indent ) const;
+  void PrintSelf( std::ostream & os, Indent indent ) const override;
 
 private:
 
@@ -447,9 +446,9 @@ private:
   bool   m_SampleFromOverlap;
   double m_SampleIntensityPortion;
 
-  bool m_UseFixedImageMaskObject;
+  bool                                  m_UseFixedImageMaskObject;
   typename MaskObjectType::ConstPointer m_FixedImageMaskObject;
-  bool m_UseMovingImageMaskObject;
+  bool                                  m_UseMovingImageMaskObject;
   typename MaskObjectType::ConstPointer m_MovingImageMaskObject;
 
   bool      m_UseRegionOfInterest;
@@ -474,7 +473,7 @@ private:
   RegistrationStageEnumType m_CompletedStage;
   bool                      m_CompletedResampling;
 
-  typename TImage::ConstPointer         m_CurrentMovingImage;
+  typename TImage::ConstPointer           m_CurrentMovingImage;
   typename MatrixTransformType::Pointer   m_CurrentMatrixTransform;
   typename BSplineTransformType::Pointer  m_CurrentBSplineTransform;
 
@@ -484,17 +483,16 @@ private:
 
   double m_FinalMetricValue;
 
-  typename TImage::ConstPointer         m_BaselineImage;
-  unsigned int m_BaselineNumberOfFailedPixelsTolerance;
-  PixelType    m_BaselineIntensityTolerance;
-  unsigned int m_BaselineRadiusTolerance;
-  typename TImage::ConstPointer         m_BaselineResampledMovingImage;
-  typename TImage::ConstPointer         m_BaselineDifferenceImage;
-  unsigned int m_BaselineNumberOfFailedPixels;
-  bool         m_BaselineTestPassed;
+  typename TImage::ConstPointer  m_BaselineImage;
+  unsigned int                   m_BaselineNumberOfFailedPixelsTolerance;
+  PixelType                      m_BaselineIntensityTolerance;
+  unsigned int                   m_BaselineRadiusTolerance;
+  typename TImage::ConstPointer  m_BaselineResampledMovingImage;
+  typename TImage::ConstPointer  m_BaselineDifferenceImage;
+  unsigned int                   m_BaselineNumberOfFailedPixels;
+  bool                           m_BaselineTestPassed;
 
   bool m_ReportProgress;
-
   bool m_MinimizeMemory;
 
   //  Loaded Tansform
@@ -502,18 +500,19 @@ private:
   typename BSplineTransformType::Pointer  m_LoadedBSplineTransform;
 
   //  Initial Parameters
-  InitialMethodEnumType m_InitialMethodEnum;
+  InitialMethodEnumType                   m_InitialMethodEnum;
   typename InitialTransformType::Pointer  m_InitialTransform;
-  LandmarkPointContainer m_FixedLandmarks;
-  LandmarkPointContainer m_MovingLandmarks;
+  LandmarkPointContainer                  m_FixedLandmarks;
+  LandmarkPointContainer                  m_MovingLandmarks;
 
   //  Rigid Parameters
   double       m_RigidSamplingRatio;
   double       m_RigidTargetError;
   unsigned int m_RigidMaxIterations;
-  typename RigidTransformType::Pointer    m_RigidTransform;
-  MetricMethodEnumType        m_RigidMetricMethodEnum;
-  InterpolationMethodEnumType m_RigidInterpolationMethodEnum;
+
+  typename RigidTransformType::Pointer m_RigidTransform;
+  MetricMethodEnumType                 m_RigidMetricMethodEnum;
+  InterpolationMethodEnumType          m_RigidInterpolationMethodEnum;
 
   double m_RigidMetricValue;
 
@@ -521,9 +520,10 @@ private:
   double       m_AffineSamplingRatio;
   double       m_AffineTargetError;
   unsigned int m_AffineMaxIterations;
-  typename AffineTransformType::Pointer   m_AffineTransform;
-  MetricMethodEnumType        m_AffineMetricMethodEnum;
-  InterpolationMethodEnumType m_AffineInterpolationMethodEnum;
+
+  typename AffineTransformType::Pointer m_AffineTransform;
+  MetricMethodEnumType                  m_AffineMetricMethodEnum;
+  InterpolationMethodEnumType           m_AffineInterpolationMethodEnum;
 
   double m_AffineMetricValue;
 
@@ -532,9 +532,10 @@ private:
   double       m_BSplineTargetError;
   unsigned int m_BSplineMaxIterations;
   double       m_BSplineControlPointPixelSpacing;
-  typename BSplineTransformType::Pointer  m_BSplineTransform;
-  MetricMethodEnumType        m_BSplineMetricMethodEnum;
-  InterpolationMethodEnumType m_BSplineInterpolationMethodEnum;
+
+  typename BSplineTransformType::Pointer m_BSplineTransform;
+  MetricMethodEnumType                   m_BSplineMetricMethodEnum;
+  InterpolationMethodEnumType            m_BSplineInterpolationMethodEnum;
 
   double m_BSplineMetricValue;
 

@@ -11,8 +11,8 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DRigidTransform_txx
-#define __itkDiffusionTensor3DRigidTransform_txx
+#ifndef itkDiffusionTensor3DRigidTransform_txx
+#define itkDiffusionTensor3DRigidTransform_txx
 
 #include "itkDiffusionTensor3DRigidTransform.h"
 
@@ -46,11 +46,11 @@ DiffusionTensor3DRigidTransform<TData>
 }
 
 template <class TData>
-itk::Rigid3DTransform<double>::Pointer
+itk::VersorRigid3DTransform<double>::Pointer
 DiffusionTensor3DRigidTransform<TData>
 ::GetRigidTransform()
 {
-  typename Rigid3DTransformType::Pointer rigidTransform = Rigid3DTransformType::New();
+  typename VersorRigid3DTransformType::Pointer rigidTransform = VersorRigid3DTransformType::New();
   rigidTransform->SetMatrix( this->m_TransformMatrix );
   rigidTransform->SetTranslation( this->m_Translation );
   return rigidTransform;
@@ -155,7 +155,7 @@ DiffusionTensor3DRigidTransform<TData>
   this->m_TransformT = MeasurementFrameTranspose * this->m_TransformMatrix;
   this->m_Transform = TransformMatrixTranspose * this->m_MeasurementFrame;
   this->ComputeOffset();
-  this->latestTime = Object::GetMTime();
+  this->m_LatestTime = Object::GetMTime();
 
 }
 

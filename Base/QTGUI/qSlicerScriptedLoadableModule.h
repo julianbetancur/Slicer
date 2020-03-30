@@ -38,6 +38,7 @@ class Q_SLICER_BASE_QTGUI_EXPORT qSlicerScriptedLoadableModule : public qSlicerL
   /// Reimplemented to expose the setter setCategories
   Q_PROPERTY(QStringList categories READ categories WRITE setCategories)
   Q_PROPERTY(QStringList contributors READ contributors WRITE setContributors)
+  Q_PROPERTY(QStringList associatedNodeTypes READ associatedNodeTypes WRITE setAssociatedNodeTypes)
   Q_PROPERTY(QString helpText READ helpText WRITE setHelpText)
   Q_PROPERTY(QString acknowledgementText READ acknowledgementText WRITE setAcknowledgementText)
   Q_PROPERTY(QVariantMap extensions READ extensions WRITE setExtensions)
@@ -50,51 +51,58 @@ public:
 
   typedef qSlicerLoadableModule Superclass;
   typedef qSlicerScriptedLoadableModulePrivate Pimpl;
-  qSlicerScriptedLoadableModule(QObject *parent=0);
-  virtual ~qSlicerScriptedLoadableModule();
+  qSlicerScriptedLoadableModule(QObject *parent=nullptr);
+  ~qSlicerScriptedLoadableModule() override;
 
   QString pythonSource()const;
   bool setPythonSource(const QString& newPythonSource);
 
-  virtual QString title()const ;
+  QString title()const override ;
   void setTitle(const QString& newTitle);
 
-  virtual QStringList categories()const;
+  QStringList categories()const override;
   void setCategories(const QStringList& newCategories);
 
-  virtual QStringList contributors()const;
+  QStringList contributors()const override;
   void setContributors(const QStringList& newContributors);
 
-  virtual QString helpText()const;
+  QStringList associatedNodeTypes()const override;
+  void setAssociatedNodeTypes(const QStringList& newAssociatedNodeTypes);
+
+  QString helpText()const override;
   void setHelpText(const QString& newHelpText);
 
-  virtual QString acknowledgementText()const;
+  QString acknowledgementText()const override;
   void setAcknowledgementText(const QString& newAcknowledgementText);
 
   virtual QVariantMap extensions()const;
   void setExtensions(const QVariantMap& extensions);
 
-  virtual QIcon icon()const;
+  QIcon icon()const override;
   void setIcon(const QIcon& newIcon);
 
-  virtual QStringList dependencies() const;
+  QStringList dependencies() const override;
   void setDependencies(const QStringList& dependencies);
 
-  virtual int index() const;
+  int index() const override;
   void setIndex(const int index);
 
   /// Enable/Disable hide state of the module
   /// Needs to be hidden before the module menu is created.
-  virtual bool isHidden()const;
+  bool isHidden()const override;
   void setHidden(bool hidden);
 
 protected:
 
-  virtual void setup();
+  void setup() override;
 
-  virtual qSlicerAbstractModuleRepresentation* createWidgetRepresentation();
+  void registerFileDialog();
 
-  virtual vtkMRMLAbstractLogic* createLogic();
+  void registerIO();
+
+  qSlicerAbstractModuleRepresentation* createWidgetRepresentation() override;
+
+  vtkMRMLAbstractLogic* createLogic() override;
 
 protected:
   QScopedPointer<qSlicerScriptedLoadableModulePrivate> d_ptr;

@@ -22,13 +22,15 @@
 #include <vtkMRMLThreeDViewDisplayableManagerFactory.h>
 #include <vtkMRMLDisplayableManagerGroup.h>
 #include <vtkMRMLAnnotationFiducialDisplayableManager.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
 
 // MRML includes
+#include <vtkMRMLCoreTestingMacros.h>
 #include <vtkMRMLInteractionNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLViewNode.h>
 
 // VTK includes
@@ -37,11 +39,9 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkCamera.h>
 
-// STD includes
-
-#include "vtkMRMLCoreTestingMacros.h"
-
-
+// DisplayableManager initialization
+#include <vtkAutoInit.h>
+VTK_MODULE_INIT(vtkSlicerAnnotationsModuleMRMLDisplayableManager)
 
 //----------------------------------------------------------------------------
 class vtkRenderRequestCallback : public vtkCommand
@@ -53,14 +53,14 @@ public:
     { this->Renderer =  renderer; }
   int GetRenderRequestCount()
     { return this->RenderRequestCount; }
-  virtual void Execute(vtkObject*, unsigned long , void* )
+  void Execute(vtkObject*, unsigned long , void* ) override
     {
     this->Renderer->GetRenderWindow()->Render();
     this->RenderRequestCount++;
     //std::cout << "RenderRequestCount [" << this->RenderRequestCount << "]" << std::endl;
     }
 protected:
-  vtkRenderRequestCallback():Renderer(0), RenderRequestCount(0){}
+  vtkRenderRequestCallback():Renderer(nullptr), RenderRequestCount(0){}
   vtkRenderer * Renderer;
   int           RenderRequestCount;
 };
@@ -80,7 +80,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
   rw->SetInteractor(ri);
 
   // Set Interactor Style
-  vtkThreeDViewInteractorStyle * iStyle = vtkThreeDViewInteractorStyle::New();
+  vtkMRMLThreeDViewInteractorStyle * iStyle = vtkMRMLThreeDViewInteractorStyle::New();
   ri->SetInteractorStyle(iStyle);
   iStyle->Delete();
 
@@ -139,10 +139,10 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
   double windowWidth = displayableManagerGroup->GetInteractor()->GetRenderWindow()->GetSize()[0];
   double windowHeight = displayableManagerGroup->GetInteractor()->GetRenderWindow()->GetSize()[1];
   std::cout << "Render window size: " << windowWidth << "x" << windowHeight << std::endl;
-  
+
   // change to place mode
   vtkMRMLNode *mrmlNode = scene->GetNodeByID("vtkMRMLInteractionNode1");
-  vtkMRMLInteractionNode *interactionNode = NULL;
+  vtkMRMLInteractionNode *interactionNode = nullptr;
   if (mrmlNode)
     {
     interactionNode = vtkMRMLInteractionNode::SafeDownCast(mrmlNode);
@@ -153,7 +153,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
   // OnClickInRenderWindow method
   vtkMRMLAbstractDisplayableManager * dm1 =
       displayableManagerGroup->GetDisplayableManagerByClassName("vtkMRMLAnnotationDisplayableManager");
-  vtkMRMLAnnotationDisplayableManager *adm = NULL;
+  vtkMRMLAnnotationDisplayableManager *adm = nullptr;
   if (dm1)
     {
     adm = vtkMRMLAnnotationDisplayableManager::SafeDownCast(dm1);
@@ -163,7 +163,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
     std::cerr << "Unable to get the annotation displayable manager from the displayble manager group!" << std::endl;
     return EXIT_FAILURE;
     }
-  if (adm ==  NULL)
+  if (adm ==  nullptr)
     {
     std::cerr << "Unable to cast the annotation displayable manager from the displayble manager!" << std::endl;
     return EXIT_FAILURE;
@@ -212,12 +212,12 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
 
   double d34 = sqrt(vtkMath::Distance2BetweenPoints(worldCoords3, worldCoords4));
   std::cout << "Distance between world coords 3 and 4: " << d34 << std::endl;
-  
-  // Interactor style should be vtkThreeDViewInteractorStyle
+
+  // Interactor style should be vtkMRMLThreeDViewInteractorStyle
   vtkInteractorObserver * currentInteractoryStyle = ri->GetInteractorStyle();
-  if (!vtkThreeDViewInteractorStyle::SafeDownCast(currentInteractoryStyle))
+  if (!vtkMRMLThreeDViewInteractorStyle::SafeDownCast(currentInteractoryStyle))
     {
-    std::cerr << "Expected interactorStyle: vtkThreeDViewInteractorStyle" << std::endl;
+    std::cerr << "Expected interactorStyle: vtkMRMLThreeDViewInteractorStyle" << std::endl;
     std::cerr << "Current RenderWindowInteractor: "
       << (currentInteractoryStyle ? currentInteractoryStyle->GetClassName() : "Null") << std::endl;
     return EXIT_FAILURE;
@@ -232,7 +232,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
       currentDefRenderer = displayableManagerGroup->GetRenderer();
       currentInteractoryStyle->SetCurrentRenderer(displayableManagerGroup->GetRenderer());
       currentDefRenderer = currentInteractoryStyle->GetCurrentRenderer();
-      if (currentDefRenderer == NULL)
+      if (currentDefRenderer == nullptr)
         {
         std::cerr << "ERROR: unable to set the interactor style renderer from the displayble manager group's renderer!" << std::endl;
         return EXIT_FAILURE;
@@ -250,7 +250,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
       std::cout << "\tcurrentSize = " << currentSize[0] << ", " << currentSize[1] << std::endl;
       }
     }
-  
+
   // check out the camera
   vtkCamera *cam = displayableManagerGroup->GetRenderer()->GetActiveCamera();
   if (cam)
@@ -271,10 +271,10 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
       {
       std::cout << "\tViewUp = " << camviewup[0] << ", " << camviewup[1] << ", " << camviewup[2] << std::endl;
       }
-    
+
     // compare to the current camera node?
     mrmlNode = scene->GetNodeByID("vtkMRMLCameraNode1");
-    vtkMRMLCameraNode *camnode = NULL;
+    vtkMRMLCameraNode *camnode = nullptr;
     if (mrmlNode)
       {
       camnode = vtkMRMLCameraNode::SafeDownCast(mrmlNode);
@@ -304,7 +304,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
         }
       }
     }
-  
+
   // try getting the world to display coords now for the last display point
   double worldCoords5[4];
   worldCoords5[0] = worldCoords5[1] = worldCoords5[2] = worldCoords5[3] = 0.0;
@@ -312,7 +312,7 @@ int vtkMRMLAnnotationDisplayableManagerTest1(int vtkNotUsed(argc), char* vtkNotU
   std::cout << "Last Check: Display: " << dispCoords[0] << "," << dispCoords[1] << ". World: " << worldCoords5[0] << "," << worldCoords5[1] << "," << worldCoords5[2] << "," << worldCoords5[3] << std::endl;
   double d45 = sqrt(vtkMath::Distance2BetweenPoints(worldCoords4, worldCoords5));
   std::cout << "Distance between world coords 4 and 5 (should be < epsilon): " << d45 << std::endl;
-   
+
 
 
   renderRequestCallback->Delete();

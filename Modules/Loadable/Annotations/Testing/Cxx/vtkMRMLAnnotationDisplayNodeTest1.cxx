@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,18 +10,12 @@
 
 =========================================================================auto=*/
 
-// MRML includes
-#include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLAnnotationDisplayNode.h"
-
-// VTK includes
-#include <vtkNew.h>
+#include "vtkMRMLCoreTestingMacros.h"
 
 int vtkMRMLAnnotationDisplayNodeTest1(int , char * [] )
 {
   vtkNew<vtkMRMLAnnotationDisplayNode> node1;
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1.GetPointer() );
-
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

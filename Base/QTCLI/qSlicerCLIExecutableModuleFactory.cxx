@@ -20,19 +20,38 @@
 
 // Qt includes
 #include <QProcess>
+#include <QStandardPaths>
 
 // SlicerQt includes
 #include "qSlicerCLIExecutableModuleFactory.h"
 #include "qSlicerCLIModule.h"
 #include "qSlicerCLIModuleFactoryHelper.h"
 #include "qSlicerUtils.h"
-#ifdef Q_OS_MAC
-# include "qSlicerCoreApplication.h"
-#endif
+#include <vtkSlicerCLIModuleLogic.h>
+
+//-----------------------------------------------------------------------------
+QString findPython()
+{
+  QString python_path = QStandardPaths::findExecutable("python-real");
+  if (python_path.isEmpty())
+    {
+    python_path = QStandardPaths::findExecutable("python");
+    }
+
+  QFileInfo python(python_path);
+  if (!(python.exists() && python.isExecutable()))
+    {
+    return QString();
+    }
+  return python_path;
+
+}
 
 //-----------------------------------------------------------------------------
 qSlicerCLIExecutableModuleFactoryItem::qSlicerCLIExecutableModuleFactoryItem(
-  const QString& newTempDirectory) : TempDirectory(newTempDirectory)
+  const QString& newTempDirectory)
+  : TempDirectory(newTempDirectory)
+  , CLIModule(nullptr)
 {
 }
 
@@ -40,6 +59,13 @@ qSlicerCLIExecutableModuleFactoryItem::qSlicerCLIExecutableModuleFactoryItem(
 bool qSlicerCLIExecutableModuleFactoryItem::load()
 {
   return true;
+}
+
+//-----------------------------------------------------------------------------
+QString qSlicerCLIExecutableModuleFactoryItem::xmlModuleDescriptionFilePath()
+{
+  QFileInfo info = QFileInfo(this->path());
+  return QDir(info.path()).filePath(info.baseName() + ".xml");
 }
 
 //-----------------------------------------------------------------------------
@@ -51,10 +77,73 @@ qSlicerAbstractCoreModule* qSlicerCLIExecutableModuleFactoryItem::instanciator()
   module->setModuleType("CommandLineModule");
   module->setEntryPoint(this->path());
 
+  // Identify CLI-only .py scripts by `#!` first line
+  // then set up interpreter path in SEM module `Location` parameter.
+  if (QFileInfo(this->path()).suffix().toLower() == "py")
+    {
+      QString python_path = findPython();
+      if (python_path.isEmpty())
+        {
+        this->appendInstantiateErrorString(
+          QString("Failed to find python interpreter for CLI: %1").arg(this->path()));
+        return nullptr;
+        }
+
+      module->setEntryPoint("python");
+      module->moduleDescription().SetLocation(python_path.toStdString());
+      module->moduleDescription().SetTarget(this->path().toStdString());
+    }
+
+  QString xmlFilePath = this->xmlModuleDescriptionFilePath();
+
+  //
+  // If the xml file exists, read it and associate it with the module
+  // description. If not, run the CLI executable with "--xml".
+  //
+  QString xmlDescription;
+  if (QFile::exists(xmlFilePath))
+    {
+    QFile xmlFile(xmlFilePath);
+    if (xmlFile.open(QIODevice::ReadOnly))
+      {
+      xmlDescription = QTextStream(&xmlFile).readAll();
+      }
+    else
+      {
+      this->appendInstantiateErrorString(QString("CLI description: %1").arg(xmlFilePath));
+      this->appendInstantiateErrorString("Failed to read Xml Description");
+      }
+    }
+  else
+    {
+    xmlDescription = this->runCLIWithXmlArgument();
+    }
+  if (xmlDescription.isEmpty())
+    {
+    return nullptr;
+    }
+
+  module->setXmlModuleDescription(xmlDescription.toUtf8());
+  module->setTempDirectory(this->TempDirectory);
+  module->setPath(this->path());
+  module->setInstalled(qSlicerCLIModuleFactoryHelper::isInstalled(this->path()));
+  module->setBuiltIn(qSlicerCLIModuleFactoryHelper::isBuiltIn(this->path()));
+
+  this->CLIModule = module.data();
+
+  return module.take();
+}
+
+//-----------------------------------------------------------------------------
+QString qSlicerCLIExecutableModuleFactoryItem::runCLIWithXmlArgument()
+{
   ctkScopedCurrentDir scopedCurrentDir(QFileInfo(this->path()).path());
 
   int cliProcessTimeoutInMs = 5000;
   QProcess cli;
+  QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+  env.insert("ITK_AUTOLOAD_PATH", "");
+  cli.setProcessEnvironment(env);
   cli.start(this->path(), QStringList(QString("--xml")));
   bool res = cli.waitForFinished(cliProcessTimeoutInMs);
   if (!res)
@@ -92,7 +181,7 @@ qSlicerAbstractCoreModule* qSlicerCLIExecutableModuleFactoryItem::instanciator()
         break;
       }
     this->appendInstantiateErrorString(errorString);
-    return 0;
+    return nullptr;
     }
   QString errors = cli.readAllStandardError();
   if (!errors.isEmpty())
@@ -111,7 +200,7 @@ qSlicerAbstractCoreModule* qSlicerCLIExecutableModuleFactoryItem::instanciator()
     {
     this->appendInstantiateErrorString(QString("CLI executable: %1").arg(this->path()));
     this->appendInstantiateErrorString("Failed to retrieve Xml Description");
-    return 0;
+    return QString();
     }
   if (!xmlDescription.startsWith("<?xml"))
     {
@@ -121,13 +210,38 @@ qSlicerAbstractCoreModule* qSlicerCLIExecutableModuleFactoryItem::instanciator()
                                            xmlDescription.mid(0, xmlDescription.indexOf("<?xml"))));
     xmlDescription.remove(0, xmlDescription.indexOf("<?xml"));
     }
+  return xmlDescription;
+}
 
-  module->setXmlModuleDescription(xmlDescription.toLatin1());
-  module->setTempDirectory(this->TempDirectory);
-  module->setPath(this->path());
-  module->setInstalled(qSlicerCLIModuleFactoryHelper::isInstalled(this->path()));
+//-----------------------------------------------------------------------------
+void qSlicerCLIExecutableModuleFactoryItem::uninstantiate()
+{
+  this->CLIModule->cliModuleLogic()->KillProcesses();
+  this->ctkAbstractFactoryFileBasedItem<qSlicerAbstractCoreModule>::uninstantiate();
+}
 
-  return module.take();
+//-----------------------------------------------------------------------------
+// qSlicerCLIExecutableModuleFactoryPrivate
+
+//-----------------------------------------------------------------------------
+class qSlicerCLIExecutableModuleFactoryPrivate
+{
+  Q_DECLARE_PUBLIC(qSlicerCLIExecutableModuleFactory);
+protected:
+  qSlicerCLIExecutableModuleFactory* const q_ptr;
+public:
+  typedef qSlicerCLIExecutableModuleFactoryPrivate Self;
+  qSlicerCLIExecutableModuleFactoryPrivate(qSlicerCLIExecutableModuleFactory& object);
+
+private:
+  QString TempDirectory;
+};
+
+//-----------------------------------------------------------------------------
+qSlicerCLIExecutableModuleFactoryPrivate::qSlicerCLIExecutableModuleFactoryPrivate(qSlicerCLIExecutableModuleFactory& object)
+:q_ptr(&object)
+{
+  this->TempDirectory = QDir::tempPath();
 }
 
 //-----------------------------------------------------------------------------
@@ -135,28 +249,18 @@ qSlicerAbstractCoreModule* qSlicerCLIExecutableModuleFactoryItem::instanciator()
 
 //-----------------------------------------------------------------------------
 qSlicerCLIExecutableModuleFactory::qSlicerCLIExecutableModuleFactory()
+  : d_ptr(new qSlicerCLIExecutableModuleFactoryPrivate(*this))
 {
-  this->TempDirectory = QDir::tempPath();
 }
 
 //-----------------------------------------------------------------------------
-qSlicerCLIExecutableModuleFactory::qSlicerCLIExecutableModuleFactory(const QString& tempDir)
-{
-  this->setTempDirectory(tempDir);
-}
+qSlicerCLIExecutableModuleFactory::~qSlicerCLIExecutableModuleFactory()
+= default;
 
 //-----------------------------------------------------------------------------
 void qSlicerCLIExecutableModuleFactory::registerItems()
 {
   QStringList modulePaths = qSlicerCLIModuleFactoryHelper::modulePaths();
-
-#ifdef Q_OS_MAC
-  // HACK - See CMakeLists.txt for additional details
-  if (qSlicerCoreApplication::application()->isInstalled())
-    {
-    modulePaths.prepend(qSlicerCoreApplication::application()->slicerHome() + "/" Slicer_CLIMODULES_SUBDIR);
-    }
-#endif
   this->registerAllFileItems(modulePaths);
 }
 
@@ -167,7 +271,10 @@ bool qSlicerCLIExecutableModuleFactory::isValidFile(const QFileInfo& file)const
     {
     return false;
     }
-  if (!file.isExecutable())
+
+  // consider .py files to be executable. interpreter is set in ::instanciator
+  if ((!file.isExecutable()) &&
+      (!file.filePath().endsWith(".py", Qt::CaseInsensitive)))
     {
     return false;
     }
@@ -178,7 +285,8 @@ bool qSlicerCLIExecutableModuleFactory::isValidFile(const QFileInfo& file)const
 ctkAbstractFactoryItem<qSlicerAbstractCoreModule>* qSlicerCLIExecutableModuleFactory
 ::createFactoryFileBasedItem()
 {
-  return new qSlicerCLIExecutableModuleFactoryItem(this->TempDirectory);
+  Q_D(qSlicerCLIExecutableModuleFactory);
+  return new qSlicerCLIExecutableModuleFactoryItem(d->TempDirectory);
 }
 
 //-----------------------------------------------------------------------------
@@ -190,5 +298,6 @@ QString qSlicerCLIExecutableModuleFactory::fileNameToKey(const QString& executab
 //-----------------------------------------------------------------------------
 void qSlicerCLIExecutableModuleFactory::setTempDirectory(const QString& newTempDirectory)
 {
-  this->TempDirectory = newTempDirectory;
+  Q_D(qSlicerCLIExecutableModuleFactory);
+  d->TempDirectory = newTempDirectory;
 }

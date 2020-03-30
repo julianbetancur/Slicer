@@ -19,15 +19,17 @@
 #include "vtkMRMLVolumeDisplayNode.h"
 
 // VTK includes
-class vtkImageAccumulateDiscrete;
+class vtkImageAlgorithm;
 class vtkImageAppendComponents;
-class vtkImageBimodalAnalysis;
+class vtkImageHistogramStatistics;
 class vtkImageCast;
-class vtkImageData;
 class vtkImageLogic;
 class vtkImageMapToColors;
 class vtkImageMapToWindowLevelColors;
+class vtkImageStencil;
 class vtkImageThreshold;
+class vtkImageExtractComponents;
+class vtkImageMathematics;
 
 // STD includes
 #include <vector>
@@ -40,47 +42,52 @@ class VTK_MRML_EXPORT vtkMRMLScalarVolumeDisplayNode : public vtkMRMLVolumeDispl
   public:
   static vtkMRMLScalarVolumeDisplayNode *New();
   vtkTypeMacro(vtkMRMLScalarVolumeDisplayNode,vtkMRMLVolumeDisplayNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
-  /// 
+  ///
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "VolumeDisplay";};
+  const char* GetNodeTagName() override {return "VolumeDisplay";}
 
 
   //--------------------------------------------------------------------------
   /// Display Information
   //--------------------------------------------------------------------------
-  
-  /// 
+
+  ///
+  /// Window/Level cannot be edited through the user interface
+  vtkGetMacro(WindowLevelLocked, bool);
+  vtkSetMacro(WindowLevelLocked, bool);
+
+  ///
   /// Specifies whether windowing and leveling are to be performed automatically
   vtkBooleanMacro(AutoWindowLevel, int);
   vtkGetMacro(AutoWindowLevel, int);
   vtkSetMacro(AutoWindowLevel, int);
-  
-  /// 
+
+  ///
   /// The window value to use when autoWindowLevel is 'no'
   double GetWindow();
   virtual void SetWindow(double);
 
-  /// 
+  ///
   /// The level value to use when autoWindowLevel is 'no'
   double GetLevel();
   virtual void SetLevel(double);
-  
+
   /// Sets the window and level at once, generates only 1 modified event if
   /// needed.
   virtual void SetWindowLevel(double window, double level);
@@ -93,85 +100,85 @@ class VTK_MRML_EXPORT vtkMRMLScalarVolumeDisplayNode : public vtkMRMLVolumeDispl
   /// Utility function that returns the maximum value of the window level
   double GetWindowLevelMax();
 
-  /// 
+  ///
   /// Specifies whether to apply the threshold
   vtkBooleanMacro(ApplyThreshold, int);
   vtkGetMacro(ApplyThreshold, int);
   virtual void SetApplyThreshold(int);
 
-  /// 
+  ///
   /// Specifies whether the threshold should be set automatically
   vtkBooleanMacro(AutoThreshold, int);
   vtkGetMacro(AutoThreshold, int);
   vtkSetMacro(AutoThreshold, int);
 
-  /// 
+  ///
   /// The lower threshold value to use when autoThreshold is 'no'
   /// Defaults to VTK_SHORT_MIN
   virtual double GetLowerThreshold();
   virtual void SetLowerThreshold(double lower);
 
-  /// 
+  ///
   /// The upper threshold value to use when autoThreshold is 'no'
   /// Defaults to VTK_SHORT_MAX
   virtual double GetUpperThreshold();
   virtual void SetUpperThreshold(double upper);
-  
+
   virtual void SetThreshold(double lower, double upper);
 
-  /// 
+  ///
   /// Set/Get interpolate reformated slices
   vtkGetMacro(Interpolate, int);
   vtkSetMacro(Interpolate, int);
   vtkBooleanMacro(Interpolate, int);
 
-  virtual void SetDefaultColorMap();
+  void SetDefaultColorMap() override;
 
-  /// 
+  ///
   /// alternative method to propagate events generated in Display nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
   /// Set the pipeline input
-  virtual void SetInputImageData(vtkImageData *imageData);
+  void SetInputImageDataConnection(vtkAlgorithmOutput *imageDataConnection) override;
 
   /// Gets the pipeline input
-  virtual vtkImageData* GetInputImageData();
+  vtkAlgorithmOutput* GetInputImageDataConnection() override;
 
   /// Gets the pipeline output
-  virtual vtkImageData* GetOutputImageData();
+  vtkAlgorithmOutput* GetOutputImageDataConnection() override;
 
-  /// 
-  /// Sets ImageData for background mask 
-  virtual void SetBackgroundImageData(vtkImageData *imageData);
-  virtual vtkImageData* GetBackgroundImageData();
+  ///
+  /// Get/set background mask stencil
+  void SetBackgroundImageStencilDataConnection(vtkAlgorithmOutput *imageDataConnection) override;
+  vtkAlgorithmOutput* GetBackgroundImageStencilDataConnection() override;
 
-  /// 
-  /// Parse a string with window and level as double|double, and add a preset 
+  ///
+  /// Parse a string with window and level as double|double, and add a preset
   void AddWindowLevelPresetFromString(const char *preset);
-  /// 
+  ///
   /// Add a window level preset
   void AddWindowLevelPreset(double window, double level);
 
-  /// 
+  ///
   /// Remove all presets
   void ResetWindowLevelPresets();
 
-  /// 
+  ///
   /// Set Window and Level from preset p
   void SetWindowLevelFromPreset(int p);
 
-  /// 
+  ///
   /// Get the number of window/level presets
   int GetNumberOfWindowLevelPresets();
 
-  /// 
+  ///
   /// Return a specific preset, returns 0 if p out of range
   double GetWindowPreset(int p);
   double GetLevelPreset(int p);
 
-  /// 
+  ///
   /// Defines the expected range of the output data after
   /// having been mapped through the current display options
   /// If no input is set, then it searches the scene to find the associated
@@ -180,21 +187,22 @@ class VTK_MRML_EXPORT vtkMRMLScalarVolumeDisplayNode : public vtkMRMLVolumeDispl
 
 protected:
   vtkMRMLScalarVolumeDisplayNode();
-  virtual ~vtkMRMLScalarVolumeDisplayNode();
+  ~vtkMRMLScalarVolumeDisplayNode() override;
   vtkMRMLScalarVolumeDisplayNode(const vtkMRMLScalarVolumeDisplayNode&);
   void operator=(const vtkMRMLScalarVolumeDisplayNode&);
 
-  virtual void SetColorNodeInternal(vtkMRMLColorNode* newColorNode);
+  void SetColorNodeInternal(vtkMRMLColorNode* newColorNode) override;
   void UpdateLookupTable(vtkMRMLColorNode* newColorNode);
   void CalculateAutoLevels();
 
   /// Return the image data with scalar type, it can be in the middle of the
   /// pipeline, it's typically the input of the threshold/windowlevel filters
-  virtual vtkImageData* GetScalarImageData();
-  
-  virtual void SetInputToImageDataPipeline(vtkImageData* input);
+  vtkImageData* GetScalarImageData();
+  virtual vtkAlgorithmOutput* GetScalarImageDataConnection();
 
-  /// 
+  void SetInputToImageDataPipeline(vtkAlgorithmOutput *imageDataConnection) override;
+
+  ///
   /// To hold preset values for window and level, so can restore this display
   /// node's window and level to ones read from DICOM files, or defined by
   /// users
@@ -213,25 +221,27 @@ protected:
 
   /// Booleans
   int Interpolate;
+  bool WindowLevelLocked;
   int AutoWindowLevel;
   int ApplyThreshold;
   int AutoThreshold;
 
-  vtkImageCast *ResliceAlphaCast;
   vtkImageLogic *AlphaLogic;
   vtkImageMapToColors *MapToColors;
   vtkImageThreshold *Threshold;
   vtkImageAppendComponents *AppendComponents;
   vtkImageMapToWindowLevelColors *MapToWindowLevelColors;
+  vtkImageExtractComponents *ExtractRGB;
+  vtkImageExtractComponents *ExtractAlpha;
+  vtkImageStencil *MultiplyAlpha;
 
-  /// 
+  ///
   /// window level presets
   std::vector<WindowLevelPreset> WindowLevelPresets;
 
-  /// 
+  ///
   /// Used internally in CalculateScalarAutoLevels and CalculateStatisticsAutoLevels
-  vtkImageAccumulateDiscrete *Accumulate;
-  vtkImageBimodalAnalysis *Bimodal;
+  vtkImageHistogramStatistics *HistogramStatistics;
   bool IsInCalculateAutoLevels;
 };
 

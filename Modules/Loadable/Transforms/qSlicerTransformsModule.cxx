@@ -18,23 +18,30 @@
 
 ==============================================================================*/
 
-// Qt includes
-#include <QtPlugin>
-
 // SlicerQt includes
 #include "qSlicerApplication.h"
 #include "qSlicerCoreIOManager.h"
 #include "qSlicerNodeWriter.h"
+
 #include "vtkSlicerTransformLogic.h"
+#include "vtkMRMLSliceViewDisplayableManagerFactory.h"
+#include "vtkMRMLThreeDViewDisplayableManagerFactory.h"
 
 // Transforms includes
-#include "qSlicerTransformsIO.h"
 #include "qSlicerTransformsModule.h"
 #include "qSlicerTransformsModuleWidget.h"
+#include "qSlicerTransformsReader.h"
 
-//-----------------------------------------------------------------------------
-Q_EXPORT_PLUGIN2(qSlicerTransformsModule, qSlicerTransformsModule);
+// VTK includes
+#include "vtkSmartPointer.h"
 
+// SubjectHierarchy Plugins includes
+#include "qSlicerSubjectHierarchyPluginHandler.h"
+#include "qSlicerSubjectHierarchyTransformsPlugin.h"
+
+// DisplayableManager initialization
+#include <vtkAutoInit.h>
+VTK_MODULE_INIT(vtkSlicerTransformsModuleMRMLDisplayableManager)
 
 //-----------------------------------------------------------------------------
 class qSlicerTransformsModulePrivate
@@ -51,8 +58,7 @@ qSlicerTransformsModule::qSlicerTransformsModule(QObject* _parentObject)
 
 //-----------------------------------------------------------------------------
 qSlicerTransformsModule::~qSlicerTransformsModule()
-{
-}
+= default;
 
 //-----------------------------------------------------------------------------
 QIcon qSlicerTransformsModule::icon()const
@@ -65,6 +71,14 @@ QIcon qSlicerTransformsModule::icon()const
 QStringList qSlicerTransformsModule::categories() const
 {
   return QStringList() << "" << "Registration";
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerTransformsModule::dependencies() const
+{
+  QStringList moduleDependencies;
+  moduleDependencies << "Units";
+  return moduleDependencies;
 }
 
 //-----------------------------------------------------------------------------
@@ -107,6 +121,8 @@ QStringList qSlicerTransformsModule::contributors()const
   moduleContributors << QString("Alex Yarmarkovich (Isomics)");
   moduleContributors << QString("Jean-Christophe Fillion-Robin (Kitware)");
   moduleContributors << QString("Julien Finet (Kitware)");
+  moduleContributors << QString("Andras Lasso (PerkLab, Queen's)");
+  moduleContributors << QString("Franklin King (PerkLab, Queen's)");
   return moduleContributors;
 }
 
@@ -121,8 +137,24 @@ void qSlicerTransformsModule::setup()
   vtkSlicerTransformLogic* transformLogic =
     vtkSlicerTransformLogic::SafeDownCast(this->logic());
   app->coreIOManager()->registerIO(
-    new qSlicerTransformsIO(transformLogic, this));
+    new qSlicerTransformsReader(transformLogic, this));
   app->coreIOManager()->registerIO(new qSlicerNodeWriter(
     "Transforms", QString("TransformFile"),
-    QStringList() << "vtkMRMLTransformNode", this));
+    QStringList() << "vtkMRMLTransformNode", true, this));
+
+  // Register displayable managers
+  vtkMRMLSliceViewDisplayableManagerFactory::GetInstance()->RegisterDisplayableManager("vtkMRMLTransformsDisplayableManager2D");
+  vtkMRMLThreeDViewDisplayableManagerFactory::GetInstance()->RegisterDisplayableManager("vtkMRMLTransformsDisplayableManager3D");
+  vtkMRMLThreeDViewDisplayableManagerFactory::GetInstance()->RegisterDisplayableManager("vtkMRMLLinearTransformsDisplayableManager3D");
+
+  // Register Subject Hierarchy core plugins
+  qSlicerSubjectHierarchyPluginHandler::instance()->registerPlugin(new qSlicerSubjectHierarchyTransformsPlugin());
+}
+
+//-----------------------------------------------------------------------------
+QStringList qSlicerTransformsModule::associatedNodeTypes() const
+{
+  return QStringList()
+    << "vtkMRMLTransformNode"
+    << "vtkMRMLTransformDisplayNode";
 }

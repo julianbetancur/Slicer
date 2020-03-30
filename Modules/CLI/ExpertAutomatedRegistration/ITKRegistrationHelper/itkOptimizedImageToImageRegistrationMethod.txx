@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __OptimizedImageToImageRegistrationMethod_txx
-#define __OptimizedImageToImageRegistrationMethod_txx
+#ifndef itkOptimizedImageToImageRegistrationMethod_txx
+#define itkOptimizedImageToImageRegistrationMethod_txx
 
 #include "itkOptimizedImageToImageRegistrationMethod.h"
 
@@ -43,6 +43,8 @@
 #include "itkImageMaskSpatialObject.h"
 
 #include "itkImage.h"
+#include <itkConstantBoundaryCondition.h>
+
 
 #include <sstream>
 
@@ -66,14 +68,14 @@ public:
   itkSetMacro(DontShowParameters, bool);
   itkSetMacro(UpdateInterval, int);
 
-  void Execute( Object * caller, const EventObject & event )
+  void Execute( Object * caller, const EventObject & event ) override
   {
     Execute( (const Object *)caller, event );
   }
 
-  void Execute( const Object * object, const EventObject & event )
+  void Execute( const Object * object, const EventObject & event ) override
   {
-    if( typeid( event ) != typeid( IterationEvent ) || object == NULL )
+    if( typeid( event ) != typeid( IterationEvent ) || object == nullptr )
       {
       return;
       }
@@ -82,11 +84,7 @@ public:
 
     if( ++m_Iteration % m_UpdateInterval == 0 )
       {
-#if ITK_VERSION_MAJOR < 4
-      RealTimeClock::TimeStampType t = m_Clock->GetTimeStamp();
-#else
       RealTimeClock::TimeStampType t = m_Clock->GetTimeInSeconds();
-#endif
       if( !m_DontShowParameters )
         {
         std::cout << "   " << m_Iteration << " : "
@@ -108,7 +106,7 @@ public:
 
   void Update()
   {
-    this->Execute( (const Object *)NULL, IterationEvent() );
+    this->Execute( (const Object *)nullptr, IterationEvent() );
   }
 
 protected:
@@ -123,24 +121,19 @@ protected:
   ImageRegistrationViewer()
   {
     m_Clock = RealTimeClock::New();
-#if ITK_VERSION_MAJOR < 4
-    m_LastTime = m_Clock->GetTimeStamp();
-#else
     m_LastTime = m_Clock->GetTimeInSeconds();
-#endif
     m_Iteration = 0;
     m_UpdateInterval = 1;
     m_DontShowParameters = false;
-  };
-  ~ImageRegistrationViewer()
+  }
+  ~ImageRegistrationViewer() override
   {
-  };
+  }
 
 };
 
 template <class TImage>
-OptimizedImageToImageRegistrationMethod<TImage>
-::OptimizedImageToImageRegistrationMethod( void )
+OptimizedImageToImageRegistrationMethod<TImage>::OptimizedImageToImageRegistrationMethod()
 {
   m_InitialTransformParameters = TransformParametersType(1);
   m_InitialTransformParameters.Fill( 0.0f ); \
@@ -180,12 +173,10 @@ OptimizedImageToImageRegistrationMethod<TImage>
   m_InterpolationMethodEnum = LINEAR_INTERPOLATION;
 
   m_FinalMetricValue = 0;
-
 }
 
 template <class TImage>
-OptimizedImageToImageRegistrationMethod<TImage>
-::~OptimizedImageToImageRegistrationMethod( void )
+OptimizedImageToImageRegistrationMethod<TImage>::~OptimizedImageToImageRegistrationMethod()
 {
 }
 
@@ -199,9 +190,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-void
-OptimizedImageToImageRegistrationMethod<TImage>
-::GenerateData( void )
+void OptimizedImageToImageRegistrationMethod<TImage>::GenerateData()
 {
   if( this->GetReportProgress() )
     {
@@ -255,15 +244,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
   metric->SetFixedImage( fixedImage );
   metric->SetMovingImage( movingImage );
 
-#ifdef ITK_USE_REVIEW
-#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
   metric->SetNumberOfSpatialSamples( m_NumberOfSamples );
-#else
-  itkWarningMacro(<< "ITK not compiled with ITK_USE_OPTIMIZED_REGISTRATION_METHODS. Performance will suffer.");
-#endif
-#else
-  itkWarningMacro(<< "ITK not compiled with ITK_USE_REVIEW. Performance will suffer.");
-#endif
 
   if( this->GetUseRegionOfInterest() ||
       this->GetSampleFromOverlap() ||
@@ -306,7 +287,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
       if( this->GetUseFixedImageMaskObject() )
         {
         double val;
-        if( this->GetFixedImageMaskObject()->ValueAt( fixedPoint, val ) )
+        if( this->GetFixedImageMaskObject()->ValueAtInWorldSpace( fixedPoint, val ) )
           {
           if( val == 0 )
             {
@@ -347,15 +328,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
       samplingRate = 1;
       itkWarningMacro(<< "Adjusting the number of samples due to restrictive threshold/overlap criteria.");
       this->SetNumberOfSamples( count );
-#ifdef ITK_USE_REVIEW
-#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
       metric->SetNumberOfSpatialSamples( m_NumberOfSamples );
-#else
-      itkWarningMacro(<< "ITK not compiled with ITK_USE_OPTIMIZED_REGISTRATION_METHODS. Performance will suffer.");
-#endif
-#else
-      itkWarningMacro(<< "ITK not compiled with ITK_USE_REVIEW. Performance will suffer.");
-#endif
       }
     double step = 0;
     typename MetricType::FixedImageIndexContainer indexList;
@@ -382,7 +355,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
       if( this->GetUseFixedImageMaskObject() )
         {
         double val;
-        if( this->GetFixedImageMaskObject()->ValueAt( fixedPoint, val ) )
+        if( this->GetFixedImageMaskObject()->ValueAtInWorldSpace( fixedPoint, val ) )
           {
           if( val == 0 )
             {
@@ -410,15 +383,7 @@ OptimizedImageToImageRegistrationMethod<TImage>
       itkWarningMacro(<< "Full set of samples not collected. Collected "
                       << indexList.size() << " of " << m_NumberOfSamples );
       this->SetNumberOfSamples( indexList.size() );
-#ifdef ITK_USE_REVIEW
-#ifdef ITK_USE_OPTIMIZED_REGISTRATION_METHODS
       metric->SetNumberOfSpatialSamples( m_NumberOfSamples );
-#else
-      itkWarningMacro(<< "ITK not compiled with ITK_USE_OPTIMIZED_REGISTRATION_METHODS. Performance will suffer.");
-#endif
-#else
-      itkWarningMacro(<< "ITK not compiled with ITK_USE_REVIEW. Performance will suffer.");
-#endif
       }
     std::cout << "Passing index list to metric..." << std::endl;
     std::cout << "  List size = " << indexList.size() << std::endl;
@@ -743,6 +708,6 @@ OptimizedImageToImageRegistrationMethod<TImage>
     }
 }
 
-};
+}
 
 #endif

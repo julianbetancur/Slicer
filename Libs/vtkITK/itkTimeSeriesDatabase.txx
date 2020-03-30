@@ -1,4 +1,6 @@
 
+#ifndef itkTimeSeriesDatabase_txx
+#define itkTimeSeriesDatabase_txx
 
 #include <itkTimeSeriesDatabase.h>
 #include <itkImageRegionConstIterator.h>
@@ -18,10 +20,10 @@ namespace itk {
   template<class T> T TSD_MIN ( T a, T b ) { return a < b ? a : b; }
   template<class T> T TSD_MAX ( T a, T b ) { return a > b ? a : b; }
 
-  
+
 template <class TPixel>
-bool TimeSeriesDatabase<TPixel>::CalculateIntersection ( Size<3> BlockIndex, 
-                                                         typename OutputImageType::RegionType RequestedRegion, 
+bool TimeSeriesDatabase<TPixel>::CalculateIntersection ( Size<3> BlockIndex,
+                                                         typename OutputImageType::RegionType RequestedRegion,
                                                          typename OutputImageType::RegionType& BlockRegion,
                                                          typename OutputImageType::RegionType& ImageRegion )
 {
@@ -30,23 +32,24 @@ bool TimeSeriesDatabase<TPixel>::CalculateIntersection ( Size<3> BlockIndex,
   bool IsFullBlock = true;
   for ( unsigned int i = 0; i < 3; i++ )
   {
-    ImageRegion.SetIndex ( i, TSD_MAX ( (long unsigned int) RequestedRegion.GetIndex ( i ), TimeSeriesBlockSize * BlockIndex[i] ) );
+    ImageRegion.SetIndex ( i, TSD_MAX<itk::IndexValueType> (
+                             RequestedRegion.GetIndex ( i ),
+                             static_cast<IndexValueType>( TimeSeriesBlockSize * BlockIndex[i] ) ) );
     BlockRegion.SetIndex ( i, ImageRegion.GetIndex(i) % TimeSeriesBlockSize );
 
     // This is the end index
     long unsigned int Tmp = RequestedRegion.GetIndex ( i ) + RequestedRegion.GetSize ( i );
-    Tmp = TSD_MIN ( (long unsigned int) Tmp, TimeSeriesBlockSize * (BlockIndex[i]+1) );
+    Tmp = TSD_MIN<itk::IndexValueType> (
+          Tmp, static_cast<IndexValueType>( TimeSeriesBlockSize * (BlockIndex[i]+1) ) );
     Tmp = Tmp - ImageRegion.GetIndex(i);
 
     ImageRegion.SetSize ( i, Tmp );
     BlockRegion.SetSize ( i, Tmp );
     IsFullBlock = IsFullBlock & ( Tmp == TimeSeriesBlockSize );
   }
-  return IsFullBlock;    
+  return IsFullBlock;
 }
 
-
-  
 template <class TPixel>
 bool TimeSeriesDatabase<TPixel>::IsOpen () const
 {
@@ -64,7 +67,7 @@ void TimeSeriesDatabase<TPixel>::Disconnect ()
   this->m_DatabaseFiles.clear();
   this->m_DatabaseFileNames.clear();
 }
-  
+
 template <class TPixel>
 void TimeSeriesDatabase<TPixel>::Connect ( const char* filename )
 {
@@ -136,7 +139,7 @@ void TimeSeriesDatabase<TPixel>::Connect ( const char* filename )
   */
 }
 
-  
+
 template <class TPixel>
 unsigned int TimeSeriesDatabase<TPixel>::CalculateFileIndex ( unsigned long Index, unsigned long BlocksPerFile )
 {
@@ -154,21 +157,21 @@ template <class TPixel>
 unsigned long TimeSeriesDatabase<TPixel>::CalculateIndex ( Size<3> p, int ImagePosition, unsigned int BlocksPerImage[3] )
 {
   // Remember that we use the first 16K as our header
-  unsigned long index = 1 + p[0] 
+  unsigned long index = 1 + p[0]
     + p[1] * BlocksPerImage[0]
     + p[2] * BlocksPerImage[0] * BlocksPerImage[1]
     + ImagePosition * BlocksPerImage[0] * BlocksPerImage[1] * BlocksPerImage[2];
   return index;
 }
-  
+
 
 template <class TPixel>
 unsigned long TimeSeriesDatabase<TPixel>::CalculateIndex ( Size<3> p, int ImagePosition )
 {
   unsigned int t[3];
-  t[0] = this->m_BlocksPerImage[0]; 
-  t[1] = this->m_BlocksPerImage[1]; 
-  t[2] = this->m_BlocksPerImage[2]; 
+  t[0] = this->m_BlocksPerImage[0];
+  t[1] = this->m_BlocksPerImage[1];
+  t[2] = this->m_BlocksPerImage[2];
   return this->CalculateIndex ( p, ImagePosition, t );
 }
 
@@ -184,11 +187,11 @@ template <class TPixel>
 typename TimeSeriesDatabase<TPixel>::CacheBlock* TimeSeriesDatabase<TPixel>::GetCacheBlock ( unsigned long index )
 {
   CacheBlock* Buffer = this->m_Cache.find ( index );
-  if ( Buffer == 0 ) {
+  if ( Buffer == nullptr ) {
     // Fill it in
     CacheBlock B;
     int FileIdx = this->CalculateFileIndex ( index );
-    
+
     this->m_DatabaseFiles[FileIdx]->seekg ( this->CalculatePosition ( index, this->m_BlocksPerFile ) );
     this->m_DatabaseFiles[FileIdx]->read ( reinterpret_cast<char*> ( B.data ), TimeSeriesVolumeBlockSize * sizeof ( TPixel ) );
     this->m_Cache.insert ( index, B );
@@ -222,17 +225,17 @@ void TimeSeriesDatabase<TPixel>::GetVoxelTimeSeries ( typename OutputImageType::
 
 
 template <class TPixel>
-void TimeSeriesDatabase<TPixel>::GenerateOutputInformation ( ) 
+void TimeSeriesDatabase<TPixel>::GenerateOutputInformation ( )
 {
   typename OutputImageType::Pointer output = this->GetOutput();
-  output->SetSpacing ( this->m_OutputSpacing );     
-  output->SetOrigin ( this->m_OutputOrigin );       
-  output->SetDirection ( this->m_OutputDirection ); 
+  output->SetSpacing ( this->m_OutputSpacing );
+  output->SetOrigin ( this->m_OutputOrigin );
+  output->SetDirection ( this->m_OutputDirection );
   output->SetLargestPossibleRegion ( this->m_OutputRegion );
-}  
+}
 
 template <class TPixel>
-void TimeSeriesDatabase<TPixel>::GenerateData() 
+void TimeSeriesDatabase<TPixel>::GenerateData()
 {
   typename OutputImageType::Pointer output = this->GetOutput();
   typename OutputImageType::RegionType Region;
@@ -254,7 +257,7 @@ void TimeSeriesDatabase<TPixel>::GenerateData()
 
   bool print = Region.GetIndex(0) == 0 && Region.GetIndex(1) == 0 && Region.GetIndex(2) == 80;
   print = false;
-  if ( print ) 
+  if ( print )
     {
     std::cout << "GenerateData for " << output->GetRequestedRegion() << std::endl;
     output->Print ( std::cout );
@@ -281,7 +284,9 @@ void TimeSeriesDatabase<TPixel>::GenerateData()
             std::cout << "Block Region: " << BR;
             std::cout << "Image Region: " << IR;
           }
-          Index<3> BlockIndex = {{ CurrentBlock[0] * TimeSeriesBlockSize,  CurrentBlock[1] * TimeSeriesBlockSize,  CurrentBlock[2] * TimeSeriesBlockSize }};
+          Index<3> BlockIndex = {{ static_cast<IndexValueType>( CurrentBlock[0] * TimeSeriesBlockSize),
+                                   static_cast<IndexValueType>( CurrentBlock[1] * TimeSeriesBlockSize),
+                                   static_cast<IndexValueType>( CurrentBlock[2] * TimeSeriesBlockSize) }};
           BlockRegion.SetIndex ( BlockIndex );
           ImageRegionIterator<OutputImageType> it ( output, IR );
           it.GoToBegin();
@@ -328,10 +333,10 @@ void TimeSeriesDatabase<TPixel>::GenerateData()
         }
       }
     }
-  
+
   return;
 }
-  
+
 
 template <class TPixel>
 void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilename, const char* archetype )
@@ -356,10 +361,10 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
     }
   ArchetypeSeriesFileNames::Pointer fit = itk::ArchetypeSeriesFileNames::New();
   fit->SetArchetype ( fileNameCollapsed );
-  
-  typedef Image<TPixel,3> ImageType;
+
+  typedef Image<TPixel,3>            ImageType;
   typedef ImageFileReader<ImageType> ReaderType;
-  ImageRegion<3> region;
+  ImageRegion<3>                     region;
 
   // Load the first image's size
   candidateFiles = fit->GetFileNames();
@@ -413,7 +418,7 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
       {
       db[idx]->close();
       }
-    itkGenericExceptionMacro ( << " size of the data in " << candidateFiles[i] << " is (" 
+    itkGenericExceptionMacro ( << " size of the data in " << candidateFiles[i] << " is ("
                                << region.GetSize()[0] << ", "
                                << region.GetSize()[1] << ", "
                                << region.GetSize()[2] << ") "
@@ -422,13 +427,13 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
                                << m_Dimensions[1] << ", "
                                << m_Dimensions[2] << ")" );
     }
-    
+
     // Build and write our blocks
     TPixel buffer[TimeSeriesBlockSize*TimeSeriesBlockSize*TimeSeriesBlockSize];
     Size<3> BlockSize = { {TimeSeriesBlockSize, TimeSeriesBlockSize, TimeSeriesBlockSize }};
     ImageRegion<3> BlockRegion;
     unsigned int m_BlocksPerImage[3];
-    
+
     BlockRegion.SetSize ( BlockSize );
     for ( int idx = 0; idx < 3; idx++ )
       {
@@ -453,7 +458,10 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
                && ( ( CurrentBlock[2] * TimeSeriesBlockSize + TimeSeriesBlockSize ) < region.GetSize()[2] ) )
             {
             // Good we can use an iterator!
-            Index<3> BlockIndex = { {CurrentBlock[0] * TimeSeriesBlockSize,  CurrentBlock[1] * TimeSeriesBlockSize,  CurrentBlock[2] * TimeSeriesBlockSize }};
+            Index<3> BlockIndex = { {
+               static_cast<IndexValueType>(CurrentBlock[0] * TimeSeriesBlockSize),
+               static_cast<IndexValueType>(CurrentBlock[1] * TimeSeriesBlockSize),
+               static_cast<IndexValueType>(CurrentBlock[2] * TimeSeriesBlockSize) } };
             BlockRegion.SetIndex ( BlockIndex );
             ImageRegionIteratorWithIndex<ImageType> it ( reader->GetOutput(), BlockRegion );
             it.GoToBegin();
@@ -464,25 +472,25 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
               ++it;
               ++ptr;
               }
-            } 
+            }
           else
             {
             // cout << "The Hard way" << std::endl;
             // Now we do it the hard way...
             Index<3> BlockIndex;
             Size<3> StartIndex, EndIndex;
-            for ( int ii = 0; ii < 3; ii++ ) 
+            for ( int ii = 0; ii < 3; ii++ )
               {
               StartIndex[ii] = CurrentBlock[ii]*TimeSeriesBlockSize;
               EndIndex[ii] = TSD_MIN ( StartIndex[ii] + TimeSeriesBlockSize, region.GetSize()[ii] );
-              }            
-            for ( unsigned int bz = StartIndex[2]; bz < EndIndex[2]; bz++ ) 
+              }
+            for ( unsigned int bz = StartIndex[2]; bz < EndIndex[2]; bz++ )
               {
               BlockIndex[2] = bz;
-              for ( unsigned int by = StartIndex[1]; by < EndIndex[1]; by++ ) 
+              for ( unsigned int by = StartIndex[1]; by < EndIndex[1]; by++ )
                 {
                 BlockIndex[1] = by;
-                for ( unsigned int bx = StartIndex[0]; bx < EndIndex[0]; bx++ ) 
+                for ( unsigned int bx = StartIndex[0]; bx < EndIndex[0]; bx++ )
                   {
                   // Put bx,by,bz into bx-xoff,by-yoff,bz-zoff
                   BlockIndex[0] = bx;
@@ -508,7 +516,7 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
             db.push_back ( StreamPtr ( new std::fstream ( newFN.str().c_str(), ::std::ios::out | ::std::ios::binary ) ) );
             Filenames.push_back ( newFN.str() );
             }
-          
+
           db[FileIndex]->seekp ( position );
           db[FileIndex]->write ( reinterpret_cast<char*> ( buffer ), TimeSeriesBlockSize*TimeSeriesBlockSize*TimeSeriesBlockSize*sizeof(TPixel) );
           }
@@ -550,7 +558,7 @@ void TimeSeriesDatabase<TPixel>::CreateFromFileArchetype ( const char* TSDFilena
 }
 
 template <class TPixel>
-float TimeSeriesDatabase<TPixel>::GetCacheSizeInMiB() 
+float TimeSeriesDatabase<TPixel>::GetCacheSizeInMiB()
 {
   unsigned cachesize = this->m_Cache.get_maxsize();
   return (float) cachesize * sizeof ( TPixel ) * TimeSeriesVolumeBlockSize / ( 1024*1024.);
@@ -565,19 +573,20 @@ void TimeSeriesDatabase<TPixel>::SetCacheSizeInMiB ( float sz )
   this->m_Cache.set_maxsize ( blocks );
 }
 
-
-
 template <class TPixel>
-TimeSeriesDatabase<TPixel>::TimeSeriesDatabase () : m_Cache ( 1024 ){
+TimeSeriesDatabase<TPixel>::TimeSeriesDatabase ()
+: m_CurrentImage(0)
+, m_Cache(1024)
+, m_BlocksPerFile(0)
+{
   this->m_Dimensions.SetSize ( 4 );
   this->m_BlocksPerImage.SetSize ( 4 );
 }
-  
+
 template <class TPixel>
 TimeSeriesDatabase<TPixel>::~TimeSeriesDatabase () {
   // m_Cache.statistics ( std::cout );
 }
-  
 
 template <class TPixel>
 void
@@ -604,9 +613,10 @@ TimeSeriesDatabase<TPixel>
   } else {
     os << indent << "Database is closed." << "\n";
   }
-  
+
   this->m_Cache.statistics ( os );
 }
 
-
 }
+
+#endif

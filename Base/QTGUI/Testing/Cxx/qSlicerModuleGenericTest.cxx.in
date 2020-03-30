@@ -59,9 +59,11 @@
 int qSlicer@MODULENAME@ModuleGenericTest( int argc, char * argv[] )
 {
   qSlicerApplication app(argc, argv);
-  app.errorLogModel()->setTerminalOutputs(ctkErrorLogModel::All);
+  app.errorLogModel()->setTerminalOutputs(ctkErrorLogTerminalOutput::All);
 
   qSlicer@MODULENAME@Module * module = new qSlicer@MODULENAME@Module;
+  module->setName("@MODULENAME@");
+  module->setObjectName(QString("%1Module").arg("@MODULENAME@"));
 
 #ifndef GENERIC_CXX_MODULE_TEST_SKIP_DEPENDENCIES
   if (!module->dependencies().isEmpty())
@@ -104,7 +106,7 @@ int qSlicer@MODULENAME@ModuleGenericTest( int argc, char * argv[] )
     }
   QString modulePath = moduleDir.filePath(moduleFileName);
 
-  // Path can be required for modules depending on locale ressources.
+  // Path can be required for modules depending on locale resources.
   // This usually applies to widget representation implemented in python.
   module->setPath(modulePath);
 

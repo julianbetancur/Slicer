@@ -40,40 +40,48 @@ public:
 
   typedef qSlicerLoadableModule Self;
   typedef qSlicerAbstractModule Superclass;
-  qSlicerLoadableModule(QObject *parent=0);
-  virtual ~qSlicerLoadableModule();
+  qSlicerLoadableModule(QObject *parent=nullptr);
+  ~qSlicerLoadableModule() override;
 
   /// Return help/acknowledgement text
-  virtual QString helpText()const;
-  virtual QString acknowledgementText()const;
+  QString helpText()const override;
+  QString acknowledgementText()const override;
 
-  /// Import python extensions associated with \a modulePath.
+  /// \brief Import python extensions associated with \a modulePath.
+  ///
+  /// \a modulePath can either be the path to the module library or the
+  /// directory containing the module library.
+  ///
   /// Python extensions corresponds to files matching the following wildcard expression:
   /// <ul>
   ///   <li>vtkSlicer*ModuleLogic.py</li>
   ///   <li>vtkSlicer*ModuleMRML.py</li>
+  ///   <li>vtkSlicer*ModuleMRMLDisplayableManager.py</li>
   ///   <li>qSlicer*PythonQt.* python</li>
   /// </ul>
-  /// These files are searched within the \a modulePath minus the \a IntDir
+  ///
+  /// These files are searched within the \a modulePath directory minus the \a IntDir
   /// if it applies.
+  ///
   /// \sa qSlicerCoreApplication::intDir(), qSlicerCoreApplication::corePythonManager()
   static bool importModulePythonExtensions(qSlicerCorePythonManager * pythonManager,
                                            const QString& intDir,
-                                           const QString& modulePath);
+                                           const QString& modulePath,
+                                           bool isEmbedded=false);
 
-  /// Set \a module identified by \a moduleName has an attibute of "slicer.modules" module dictionnary.
+  /// Set \a module identified by \a moduleName has an attribute of "slicer.modules" module dictionary.
   /// qSlicerCoreApplication::corePythonManager()
   static bool addModuleToSlicerModules(qSlicerCorePythonManager * pythonManager,
                                        qSlicerAbstractModule *module,
                                        const QString& moduleName);
 
-  /// Set \a \a moduleName has an attibute of "slicer.moduleNames" module dictionnary.
+  /// Set \a moduleName has an attribute of "slicer.moduleNames" module dictionary.
   /// qSlicerCoreApplication::corePythonManager()
   static bool addModuleNameToSlicerModuleNames(qSlicerCorePythonManager * pythonManager,
                                                const QString& moduleName);
 
 protected:
-  virtual void setup();
+  void setup() override;
 
 protected:
   QScopedPointer<qSlicerLoadableModulePrivate> d_ptr;

@@ -19,6 +19,7 @@
 ==============================================================================*/
 
 // QT includes
+#include <QButtonGroup>
 
 // qMRML includes
 #include "qMRMLClipNodeWidget.h"
@@ -101,8 +102,11 @@ void qMRMLClipNodeWidgetPrivate::init()
   QObject::connect(this->GreenNegativeRadioButton, SIGNAL(toggled(bool)),
                    q, SLOT(updateNodeGreenClipState()));
 
+  QObject::connect(this->WholeCellClippingCheckBox, SIGNAL(toggled(bool)),
+                   q, SLOT(updateNodeClippingMethod()));
 
-  q->setEnabled(this->MRMLClipNode.GetPointer() != 0);
+
+  q->setEnabled(this->MRMLClipNode.GetPointer() != nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -116,8 +120,7 @@ qMRMLClipNodeWidget::qMRMLClipNodeWidget(QWidget *_parent)
 
 //------------------------------------------------------------------------------
 qMRMLClipNodeWidget::~qMRMLClipNodeWidget()
-{
-}
+= default;
 
 //------------------------------------------------------------------------------
 vtkMRMLClipModelsNode* qMRMLClipNodeWidget::mrmlClipNode()const
@@ -229,11 +232,29 @@ int qMRMLClipNodeWidget::greenSliceClipState()const
 }
 
 //------------------------------------------------------------------------------
+void qMRMLClipNodeWidget::setClippingMethod(vtkMRMLClipModelsNode::ClippingMethodType state)
+{
+  Q_D(qMRMLClipNodeWidget);
+  if (!d->MRMLClipNode.GetPointer())
+    {
+    return;
+    }
+  d->MRMLClipNode->SetClippingMethod(state);
+}
+
+//------------------------------------------------------------------------------
+vtkMRMLClipModelsNode::ClippingMethodType qMRMLClipNodeWidget::clippingMethod()const
+{
+  Q_D(const qMRMLClipNodeWidget);
+  return d->WholeCellClippingCheckBox->isChecked() ? vtkMRMLClipModelsNode::WholeCells : vtkMRMLClipModelsNode::Straight;
+}
+
+//------------------------------------------------------------------------------
 void qMRMLClipNodeWidget::updateWidgetFromMRML()
 {
   Q_D(qMRMLClipNodeWidget);
-  this->setEnabled(d->MRMLClipNode.GetPointer() != 0);
-  if (d->MRMLClipNode.GetPointer() == 0)
+  this->setEnabled(d->MRMLClipNode.GetPointer() != nullptr);
+  if (d->MRMLClipNode.GetPointer() == nullptr)
     {
     return;
     }
@@ -267,6 +288,9 @@ void qMRMLClipNodeWidget::updateWidgetFromMRML()
     d->MRMLClipNode->GetGreenSliceClipState() == vtkMRMLClipModelsNode::ClipPositiveSpace);
   d->GreenNegativeRadioButton->setChecked(
     d->MRMLClipNode->GetGreenSliceClipState() == vtkMRMLClipModelsNode::ClipNegativeSpace);
+
+  d->WholeCellClippingCheckBox->setChecked(
+    d->MRMLClipNode->GetClippingMethod() != vtkMRMLClipModelsNode::Straight);
 
   d->IsUpdatingWidgetFromMRML = oldUpdating;
 }
@@ -308,4 +332,14 @@ void qMRMLClipNodeWidget::updateNodeGreenClipState()
     return;
     }
   this->setGreenSliceClipState(this->greenSliceClipState());
+}
+
+void qMRMLClipNodeWidget::updateNodeClippingMethod()
+{
+  Q_D(const qMRMLClipNodeWidget);
+  if (d->IsUpdatingWidgetFromMRML)
+    {
+    return;
+    }
+  this->setClippingMethod(this->clippingMethod());
 }

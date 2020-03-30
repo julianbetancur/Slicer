@@ -20,7 +20,7 @@
 
 // MRMLDisplayableManager includes
 #include <vtkMRMLDisplayableManagerGroup.h>
-#include <vtkThreeDViewInteractorStyle.h>
+#include <vtkMRMLThreeDViewInteractorStyle.h>
 
 // MRMLLogic includes
 #include <vtkMRMLApplicationLogic.h>
@@ -29,6 +29,7 @@
 #include <vtkMRMLModelDisplayNode.h>
 #include <vtkMRMLModelSliceDisplayableManager.h>
 #include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
 #include <vtkMRMLSliceNode.h>
 
 // VTK includes
@@ -103,7 +104,7 @@ bool TestBatchRemoveDisplayNode()
 {
   vtkSmartPointer<vtkRenderWindow> renderWindow = CreateRenderWindow();
   vtkNew<vtkMRMLScene> scene;
-  vtkSmartPointer<vtkMRMLDisplayableManagerGroup> displayableManagerGroup = 
+  vtkSmartPointer<vtkMRMLDisplayableManagerGroup> displayableManagerGroup =
     CreateDisplayableManager(scene.GetPointer(),
                              renderWindow->GetRenderers()->GetFirstRenderer());
 
@@ -118,7 +119,8 @@ bool TestBatchRemoveDisplayNode()
   vtkNew<vtkSphereSource> sphereSource;
   sphereSource->SetRadius(10.);
   sphereSource->Update();
-  modelNode->SetAndObservePolyData(sphereSource->GetOutput());
+
+  modelNode->SetPolyDataConnection(sphereSource->GetOutputPort());
   modelNode->AddAndObserveDisplayNodeID(modelDisplayNode->GetID());
   scene->AddNode(modelNode);
   modelNode->Delete();

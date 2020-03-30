@@ -8,22 +8,22 @@ class VTK_MRML_EXPORT vtkMRMLInteractionNode : public vtkMRMLNode
 public:
   static vtkMRMLInteractionNode *New();
   vtkTypeMacro(vtkMRMLInteractionNode,vtkMRMLNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
-  virtual vtkMRMLNode* CreateNodeInstance();
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
+  vtkMRMLNode* CreateNodeInstance() override;
 
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
+  void Copy(vtkMRMLNode *node) override;
 
   /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "Interaction";};
-  
+  const char* GetNodeTagName() override {return "Interaction";}
+
   /// Get/Set Current and Last mouse mode.
   vtkGetMacro(CurrentInteractionMode, int);
   void SetCurrentInteractionMode(int mode);
@@ -47,10 +47,11 @@ public:
   /// bit field operations
   enum
     {
-      //SelectRegion,
-      //LassoRegion,
-      Place = 0x1,
-      ViewTransform = 0x2,
+      Place = 1,
+      ViewTransform = 2,
+      Select = 4,
+      AdjustWindowLevel,
+      User = 1000
     };
 
   /// events
@@ -73,9 +74,13 @@ public:
   void SwitchToSinglePlaceMode();
   void SwitchToViewTransformMode();
 
+/// Enable/Disable Editing of Fibers
+  vtkGetMacro(EnableFiberEdit, int);
+  vtkSetMacro(EnableFiberEdit, int);
+
 protected:
   vtkMRMLInteractionNode();
-  ~vtkMRMLInteractionNode();
+  ~vtkMRMLInteractionNode() override;
 
   vtkMRMLInteractionNode(const vtkMRMLInteractionNode&);
   void operator=(const vtkMRMLInteractionNode&);
@@ -85,6 +90,8 @@ protected:
 
   int PlaceModePersistence;
   int TransformModePersistence;
+
+  int EnableFiberEdit;
 };
 
 #endif

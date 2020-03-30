@@ -31,88 +31,111 @@ class VTK_MRML_EXPORT vtkMRMLCameraNode : public vtkMRMLTransformableNode
 public:
   static vtkMRMLCameraNode *New();
   vtkTypeMacro(vtkMRMLCameraNode,vtkMRMLTransformableNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
-  
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   //--------------------------------------------------------------------------
   /// MRMLNode methods
   //--------------------------------------------------------------------------
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Read node attributes from XML file
-  virtual void ReadXMLAttributes( const char** atts);
+  void ReadXMLAttributes( const char** atts) override;
 
-  /// 
+  ///
   /// Write this node's information to a MRML file in XML format.
-  virtual void WriteXML(ostream& of, int indent);
+  void WriteXML(ostream& of, int indent) override;
 
 
-  /// 
+  ///
   /// Copy the node's attributes to this object
-  virtual void Copy(vtkMRMLNode *node);
-  
-  /// 
-  /// Get node XML tag name (like Volume, Model)
-  virtual const char* GetNodeTagName() {return "Camera";};
+  void Copy(vtkMRMLNode* node) override;
 
-  /// 
+  ///
+  /// Get node XML tag name (like Volume, Model)
+  const char* GetNodeTagName() override {return "Camera";};
+
+  ///
   /// Set the camera active tag, i.e. the tag for which object (view) this
   /// camera is active.
   const char* GetActiveTag();
   virtual void SetActiveTag(const char *);
 
-  /// 
+  ///
   /// vtkCamera
-  vtkGetObjectMacro(Camera, vtkCamera); 
+  vtkGetObjectMacro(Camera, vtkCamera);
 
-  /// 
-  /// Set camera ParallelProjection flag 
+  ///
+  /// Set camera ParallelProjection flag
   void SetParallelProjection(int parallelProjection);
-  
-  /// 
-  /// Set camera ParallelProjection flag   
+
+  ///
+  /// Set camera ParallelProjection flag
   int GetParallelProjection();
 
-  /// 
-  /// Set camera Parallel Scale 
+  ///
+  /// Set camera Parallel Scale
   void SetParallelScale(double scale);
-  
-  /// 
-  /// Set camera Parallel Scale   
+
+  ///
+  /// Set camera Parallel Scale
   double GetParallelScale();
 
-  /// 
-  /// Set camera Position 
+  ///
+  /// Set the camera view angle
+  /// \sa GetViewAngle(), vtkCamera::SetViewAngle(), SetParallelScale(),
+  /// SetParallelProjection()
+  void SetViewAngle(double viewAngle);
+
+  ///
+  /// Get the camera view angle
+  /// \sa SetViewAngle(), vtkCamera::GetViewAngle(), GetParallelScale(),
+  /// GetParallelProjection()
+  double GetViewAngle();
+
+  ///
+  /// Set the position of the camera in world coordinates.
+  /// \sa GetPosition(), SetFocalPoint(), SetViewUp()
   void SetPosition(double position[3]);
   inline void SetPosition(double x, double y, double z);
 
-  /// 
-  /// Get camera Position   
+  ///
+  /// Get the position of the camera in world coordinates.
+  /// \sa SetPosition(), GetFocalPoint(), GetViewUp()
   double *GetPosition();
+  void GetPosition(double position[3]);
 
-  /// 
-  /// Set camera Focal Point 
+  ///
+  /// Set the focal point of the camera in world coordinates.
+  /// It is also the point around which the camera rotates around.
+  /// \sa GetFocalPoint(), SetPosition(), SetViewUp()
   void SetFocalPoint(double focalPoint[3]);
   inline void SetFocalPoint(double x, double y, double z);
-  
-  /// 
-  /// Get camera Focal Point 
-  double *GetFocalPoint();
 
-  /// 
+  ///
+  /// Get the focal point of the camera in world coordinates.
+  /// \sa SetFocalPoint(), GetPosition(), GetViewUp()
+  double *GetFocalPoint();
+  void GetFocalPoint(double focalPoint[3]);
+
+  ///
   /// Set camera Up vector
+  /// \sa GetViewUp(), SetPosition(), SetFocalPoint()
   void SetViewUp(double viewUp[3]);
-  
-  /// 
+  inline void SetViewUp(double vx, double vy, double vz);
+
+  ///
   /// Get camera Up vector
+  /// \sa SetViewUp(), GetPosition(), GetFocalPoint()
   double *GetViewUp();
-  
-  /// 
+  void GetViewUp(double viewUp[3]);
+
+  ///
   /// alternative method to propagate events generated in Camera nodes
-  virtual void ProcessMRMLEvents ( vtkObject * /*caller*/, 
-                                   unsigned long /*event*/, 
-                                   void * /*callData*/ );
+  void ProcessMRMLEvents ( vtkObject * /*caller*/,
+                                   unsigned long /*event*/,
+                                   void * /*callData*/ ) override;
 
   /// This is the transform that was last applied
   /// to the position, focal point, and up vector
@@ -121,24 +144,26 @@ public:
   vtkGetObjectMacro(AppliedTransform, vtkMatrix4x4);
   virtual void SetAppliedTransform(vtkMatrix4x4* appliedTransform);
 
-  /// 
+  ///
   /// Events
   enum
   {
-    ActiveTagModifiedEvent = 30000
+    ActiveTagModifiedEvent = 30000,
+    CameraInteractionEvent = 31000,
+    ResetCameraClippingEvent = 32000,
   };
 
   /// Mark the active tag node as references.
-  virtual void SetSceneReferences();
+  void SetSceneReferences() override;
 
-  /// 
-  /// Updates this node if it depends on other nodes 
+  ///
+  /// Updates this node if it depends on other nodes
   /// when the node is deleted in the scene
-  virtual void UpdateReferences();
+  void UpdateReferences() override;
 
-  /// 
+  ///
   /// Update the stored reference to another node in the scene
-  virtual void UpdateReferenceID(const char *oldID, const char *newID);
+  void UpdateReferenceID(const char* oldID, const char* newID) override;
 
   /// Reset the clipping range just based on its position and focal point
   void ResetClippingRange();
@@ -159,9 +184,9 @@ public:
   };
 
   enum ScreenAxis{
-    X = 0,
-    Y = 1,
-    Z = 2
+    X = 0, // left
+    Y = 1, // up
+    Z = 2  // forward
   };
 
   /// Moves the camera toward a position.
@@ -189,24 +214,60 @@ public:
   void Reset(bool resetRotation,
              bool resetTranslation = true,
              bool resetDistance = true,
-             vtkRenderer* renderer = 0);
+             vtkRenderer* renderer = nullptr);
+
+  /// Get/Set a flag indicating whether this node is actively being
+  /// manipulated (usually) by a user interface. This flag is used by
+  /// logic classes to determine whether state changes should be
+  /// propagated to other nodes to implement linked controls. Does not
+  /// cause a Modified().
+  void SetInteracting(int);
+  vtkGetMacro(Interacting, int);
+  vtkBooleanMacro(Interacting, int);
+
+  /// Enum identifying the parameters being manipulated with calls to
+  /// InteractionOn() and InteractionOff(). Identifiers are powers of
+  /// two so they can be combined into a bitmask to manipulate
+  /// multiple parameters.
+  /// The meanings for the flags are:
+  enum InteractionFlagType
+  {
+    None = 0,
+    LookFromAxis,
+    ZoomInFlag,
+    ZoomOutFlag,
+    CenterFlag,
+    CameraInteractionFlag,
+  };
+
+  /// Get/Set a flag indicating what parameters are being manipulated
+  /// within calls to InteractingOn() and InteractingOff(). These
+  /// fields are used to propagate linked behaviors. This flag is a
+  /// bitfield, with multiple parameters OR'd to compose the
+  /// flag. Does not cause a Modified().
+  void SetInteractionFlags(unsigned int);
+  vtkGetMacro(InteractionFlags, unsigned int);
+
 protected:
   vtkMRMLCameraNode();
-  ~vtkMRMLCameraNode();
+  ~vtkMRMLCameraNode() override;
   vtkMRMLCameraNode(const vtkMRMLCameraNode&);
   void operator=(const vtkMRMLCameraNode&);
 
 
-  void SetCamera(vtkCamera* camera); 
-  void SetAndObserveCamera(vtkCamera *camera);
-  vtkCamera *Camera;
+  void SetCamera(vtkCamera* camera);
+  void SetAndObserveCamera(vtkCamera* camera);
+  vtkCamera* Camera;
 
-  vtkMRMLCameraNode* FindActiveTagInScene(const char *tag);
+  vtkMRMLCameraNode* FindActiveTagInScene(const char* tag);
 
   void SetInternalActiveTag(const char* id);
-  char *InternalActiveTag;
+  char* InternalActiveTag;
 
-  vtkMatrix4x4 *AppliedTransform;
+  vtkMatrix4x4* AppliedTransform;
+
+  int Interacting;
+  unsigned int InteractionFlags;
 };
 
 //---------------------------------------------------------------------------
@@ -221,6 +282,13 @@ void vtkMRMLCameraNode::SetFocalPoint(double x, double y, double z)
 {
   double pos[3] = {x, y, z};
   this->SetFocalPoint(pos);
+}
+
+//---------------------------------------------------------------------------
+void vtkMRMLCameraNode::SetViewUp(double vx, double vy, double vz)
+{
+  double viewUp[3] = {vx, vy, vz};
+  this->SetViewUp(viewUp);
 }
 
 #endif

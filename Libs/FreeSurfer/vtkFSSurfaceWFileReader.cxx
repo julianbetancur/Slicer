@@ -26,14 +26,13 @@ vtkStandardNewMacro(vtkFSSurfaceWFileReader);
 //-------------------------------------------------------------------------
 vtkFSSurfaceWFileReader::vtkFSSurfaceWFileReader()
 {
-  this->Scalars = NULL;
+  this->Scalars = nullptr;
   this->NumberOfVertices = 0;
 }
 
 //-------------------------------------------------------------------------
 vtkFSSurfaceWFileReader::~vtkFSSurfaceWFileReader()
-{
-}
+= default;
 
 //-------------------------------------------------------------------------
 vtkFloatArray * vtkFSSurfaceWFileReader::GetOutput()
@@ -61,14 +60,14 @@ int vtkFSSurfaceWFileReader::ReadWFile()
   vtkFloatArray *output = this->Scalars;
 
   // Do some basic sanity checks.
-  if (output == NULL)
+  if (output == nullptr)
     {
     cerr << "ERROR vtkFSSurfaceWFileReader ReadWFile() : output is null" << endl;
     return this->FS_ERROR_W_OUTPUT_NULL;
     }
   vtkDebugMacro( << "vtkFSSurfaceWFileReader Execute() " << endl);
 
-  if (!this->FileName)
+  if (!this->GetFileName())
     {
     vtkErrorMacro(<<"vtkFSSurfaceWFileReader Execute: FileName not specified.");
     return this->FS_ERROR_W_NO_FILENAME;
@@ -77,10 +76,10 @@ int vtkFSSurfaceWFileReader::ReadWFile()
   vtkDebugMacro(<<"Reading surface WFile data...");
 
   // Try to open the file.
-  wFile = fopen(this->FileName, "rb") ;
+  wFile = fopen(this->GetFileName(), "rb") ;
   if (!wFile)
     {
-    vtkErrorMacro (<< "Could not open file " << this->FileName);
+    vtkErrorMacro (<< "Could not open file " << this->GetFileName());
     return this->FS_ERROR_W_OPEN;
     }
 
@@ -117,7 +116,7 @@ int vtkFSSurfaceWFileReader::ReadWFile()
   // make the array big enough to hold all vertices, calloc inits all values
   // to zero as a default
   FSscalars = (float*) calloc (this->NumberOfVertices, sizeof(float));
-  if (FSscalars == NULL)
+  if (FSscalars == nullptr)
     {
     vtkErrorMacro(<<"vtkFSSurfaceWFileReader: error allocating " << this->NumberOfVertices << " floats!");
     return this->FS_ERROR_W_ALLOC;

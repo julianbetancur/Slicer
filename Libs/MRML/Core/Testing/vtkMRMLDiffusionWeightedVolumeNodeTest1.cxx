@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -10,20 +10,15 @@
 
 =========================================================================auto=*/
 
-#include "vtkMRMLDiffusionWeightedVolumeNode.h"
-
-#include <vtkPolyData.h>
-
-
 #include "vtkMRMLCoreTestingMacros.h"
+#include "vtkMRMLDiffusionWeightedVolumeNode.h"
+#include "vtkMRMLScene.h"
 
 int vtkMRMLDiffusionWeightedVolumeNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLDiffusionWeightedVolumeNode > node1 = vtkSmartPointer< vtkMRMLDiffusionWeightedVolumeNode >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_DISPLAYABLE_MRML_METHODS(vtkMRMLDiffusionWeightedVolumeNode, node1);
-  
+  vtkNew<vtkMRMLDiffusionWeightedVolumeNode> node1;
+  vtkNew<vtkMRMLScene> scene;
+  scene->AddNode(node1.GetPointer());
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
   return EXIT_SUCCESS;
 }

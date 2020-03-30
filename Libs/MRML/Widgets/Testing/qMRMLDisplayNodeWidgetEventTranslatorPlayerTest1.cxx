@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QTreeView>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // CTK includes
 #include "ctkCallback.h"
 #include "ctkEventTranslatorPlayerWidget.h"
@@ -39,6 +42,7 @@
 
 // VTK includes
 #include <vtkSmartPointer.h>
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -51,22 +55,19 @@ void checkFinalWidgetState(void* data)
   {
   qMRMLDisplayNodeWidget* widget = reinterpret_cast<qMRMLDisplayNodeWidget*>(data);
 
-  CTKCOMPARE(widget->opacity(), 0.55);
-//  CTKCOMPARE(widget->ambient(), 0.1);
-  CTKCOMPARE(widget->diffuse(), 0.8);
-  CTKCOMPARE(widget->specular(), 0.5);
   CTKCOMPARE(widget->visibility(), false);
   CTKCOMPARE(widget->selected(), true);
   CTKCOMPARE(widget->clipping(), true);
   CTKCOMPARE(widget->sliceIntersectionVisible(), true);
-  CTKCOMPARE(widget->backfaceCulling(), false);
   }
 }
 
 //-----------------------------------------------------------------------------
 int qMRMLDisplayNodeWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 

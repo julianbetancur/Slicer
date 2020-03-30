@@ -18,13 +18,18 @@
 #pragma warning ( disable : 4786 )
 #endif
 
-#include "vtkDebugLeaks.h"
-#include "vtkXMLPolyDataReader.h"
-#include "vtkXMLPolyDataWriter.h"
-#include "vtkPolyDataReader.h"
-#include "vtkPolyDataWriter.h"
-#include "vtkAppendPolyData.h"
 #include "MergeModelsCLP.h"
+
+// VTK includes
+#include <vtkAlgorithmOutput.h>
+#include <vtkAppendPolyData.h>
+#include <vtkDebugLeaks.h>
+#include <vtkPolyDataReader.h>
+#include <vtkPolyDataWriter.h>
+#include <vtkXMLPolyDataReader.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkVersion.h>
+#include <vtksys/SystemTools.hxx>
 
 int main( int argc, char * argv[] )
 {
@@ -32,79 +37,74 @@ int main( int argc, char * argv[] )
 
   vtkDebugLeaks::SetExitError(true);
 
-  vtkPolyData *         model1 = NULL;
-  vtkPolyDataReader *   pdReader1 = NULL;
-  vtkXMLPolyDataReader *pdxReader1 = NULL;
-  vtkPolyData *         model2 = NULL;
-  vtkPolyDataReader *   pdReader2 = NULL;
-  vtkXMLPolyDataReader *pdxReader2 = NULL;
+  vtkAlgorithmOutput* reader1 = nullptr;
+  vtkAlgorithmOutput* reader2 = nullptr;
 
   // do we have vtk or vtp models?
-  std::string::size_type loc = Model1.find_last_of(".");
-  if( loc == std::string::npos )
+  std::string extension = vtksys::SystemTools::LowerCase(
+    vtksys::SystemTools::GetFilenameLastExtension(Model1) );
+  if( extension.empty() )
     {
     std::cerr << "Failed to find an extension for " << Model1 << std::endl;
     return EXIT_FAILURE;
     }
-  std::string extension = Model1.substr(loc);
-  // read the first poly data
 
+  // read the first poly data
   if( extension == std::string(".vtk") )
     {
-    pdReader1 = vtkPolyDataReader::New();
+    vtkPolyDataReader* pdReader1 = vtkPolyDataReader::New();
     pdReader1->SetFileName(Model1.c_str() );
     pdReader1->Update();
-    model1 = pdReader1->GetOutput();
-
+    reader1 = pdReader1->GetOutputPort();
     }
   else if( extension == std::string(".vtp") )
     {
-    pdxReader1 = vtkXMLPolyDataReader::New();
+    vtkXMLPolyDataReader* pdxReader1 = vtkXMLPolyDataReader::New();
     pdxReader1->SetFileName(Model1.c_str() );
     pdxReader1->Update();
-    model1 = pdxReader1->GetOutput();
+    reader1 = pdxReader1->GetOutputPort();
     }
-  if( model1 == NULL )
+  if( reader1->GetProducer()->GetErrorCode() != 0 )
     {
     std::cerr << "Failed to read model 1 " << Model1 << std::endl;
     return EXIT_FAILURE;
     }
   // read the second poly data
 
-  loc = Model2.find_last_of(".");
-  if( loc == std::string::npos )
+  extension = vtksys::SystemTools::LowerCase( vtksys::SystemTools::GetFilenameLastExtension(Model2) );
+  if( extension.empty() )
     {
     std::cerr << "Failed to find an extension for " << Model2 << std::endl;
     return EXIT_FAILURE;
     }
   if( extension == std::string(".vtk") )
     {
-    pdReader2 = vtkPolyDataReader::New();
+    vtkPolyDataReader* pdReader2 = vtkPolyDataReader::New();
     pdReader2->SetFileName(Model2.c_str() );
     pdReader2->Update();
-    model2 = pdReader2->GetOutput();
+    reader2 = pdReader2->GetOutputPort();
     }
   else if( extension == std::string(".vtp") )
     {
-    pdxReader2 = vtkXMLPolyDataReader::New();
+    vtkXMLPolyDataReader* pdxReader2 = vtkXMLPolyDataReader::New();
     pdxReader2->SetFileName(Model2.c_str() );
     pdxReader2->Update();
-    model2 = pdxReader2->GetOutput();
+    reader2 = pdxReader2->GetOutputPort();
     }
-  if( model2 == NULL )
+  if( reader2->GetProducer()->GetErrorCode() != 0 )
     {
     std::cerr << "Failed to read model 1 " << Model2 << std::endl;
     return EXIT_FAILURE;
     }
   // add them together
   vtkAppendPolyData *add = vtkAppendPolyData::New();
-  add->AddInput(model1);
-  add->AddInput(model2);
+  add->AddInputConnection(reader1);
+  add->AddInputConnection(reader2);
   add->Update();
 
   // write the output
-  loc = ModelOutput.find_last_of(".");
-  if( loc == std::string::npos )
+  extension = vtksys::SystemTools::LowerCase( vtksys::SystemTools::GetFilenameLastExtension(ModelOutput) );
+  if( extension.empty() )
     {
     std::cerr << "Failed to find an extension for " << ModelOutput << std::endl;
     return EXIT_FAILURE;
@@ -113,7 +113,7 @@ int main( int argc, char * argv[] )
     {
     vtkPolyDataWriter *pdWriter = vtkPolyDataWriter::New();
     pdWriter->SetFileName(ModelOutput.c_str() );
-    pdWriter->SetInput(add->GetOutput() );
+    pdWriter->SetInputConnection(add->GetOutputPort() );
     pdWriter->Write();
     pdWriter->Delete();
     }
@@ -122,28 +122,14 @@ int main( int argc, char * argv[] )
     vtkXMLPolyDataWriter *pdWriter = vtkXMLPolyDataWriter::New();
     pdWriter->SetIdTypeToInt32();
     pdWriter->SetFileName(ModelOutput.c_str() );
-    pdWriter->SetInput(add->GetOutput() );
+    pdWriter->SetInputConnection(add->GetOutputPort() );
     pdWriter->Write();
     pdWriter->Delete();
     }
 
   // clean up
   add->Delete();
-  if( pdReader1 )
-    {
-    pdReader1->Delete();
-    }
-  if( pdReader2 )
-    {
-    pdReader2->Delete();
-    }
-  if( pdxReader1 )
-    {
-    pdxReader1->Delete();
-    }
-  if( pdxReader2 )
-    {
-    pdxReader2->Delete();
-    }
+  reader1->GetProducer()->Delete();
+  reader2->GetProducer()->Delete();
   return EXIT_SUCCESS;
 }

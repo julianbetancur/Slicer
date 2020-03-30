@@ -42,15 +42,14 @@ public:
   typedef ctkSettingsPanel Superclass;
 
   /// Constructor
-  explicit qSlicerSettingsGeneralPanel(QWidget* parent = 0);
+  explicit qSlicerSettingsGeneralPanel(QWidget* parent = nullptr);
 
   /// Destructor
-  virtual ~qSlicerSettingsGeneralPanel();
+  ~qSlicerSettingsGeneralPanel() override;
 
-protected slots:
-  void onFontChanged(const QFont& font);
-  void onShowToolTipsToggled(bool);
-  void onShowToolButtonTextToggled(bool enable);
+public slots:
+  void setDefaultScenePath(const QString& path);
+  void openSlicerRCFile();
 
 protected:
   QScopedPointer<qSlicerSettingsGeneralPanelPrivate> d_ptr;

@@ -20,16 +20,16 @@
 
 #include "vtkMRMLLightBoxRendererManagerProxy.h"
 
+// VTK includes
+#include <vtkObjectFactory.h>
+
 //---------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMRMLLightBoxRendererManagerProxy );
-vtkCxxRevisionMacro(vtkMRMLLightBoxRendererManagerProxy, "$Revision: 13525 $");
 
 //---------------------------------------------------------------------------
 vtkMRMLLightBoxRendererManagerProxy::vtkMRMLLightBoxRendererManagerProxy()
-{
-}
+= default;
 
 //---------------------------------------------------------------------------
 vtkMRMLLightBoxRendererManagerProxy::~vtkMRMLLightBoxRendererManagerProxy()
-{
-}
+= default;

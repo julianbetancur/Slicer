@@ -1,5 +1,5 @@
 #include "GUI/qSlicerAnnotationModuleWidget.h"
-#include "ui_qSlicerAnnotationModule.h"
+#include "ui_qSlicerAnnotationModuleWidget.h"
 #include "Logic/vtkSlicerAnnotationModuleLogic.h"
 
 
@@ -30,19 +30,25 @@
 #include "GUI/qSlicerAnnotationModulePropertyDialog.h"
 #include "GUI/qSlicerAnnotationModuleSnapShotDialog.h"
 
+// MRML includes
+#include "vtkMRMLAnnotationDisplayNode.h"
+#include "vtkMRMLAnnotationHierarchyNode.h"
+#include "vtkMRMLAnnotationNode.h"
+#include "vtkMRMLDisplayableHierarchyNode.h"
+#include "vtkMRMLInteractionNode.h"
+#include "vtkMRMLNode.h"
+#include "vtkMRMLScene.h"
+#include "vtkMRMLSelectionNode.h"
+
 // VTK includes
 #include <vtkCommand.h>
 #include <vtkCollection.h>
 #include <vtkNew.h>
 #include <vtkSmartPointer.h>
 
-// MRML includes
-#include "vtkMRMLInteractionNode.h"
-#include "vtkMRMLSelectionNode.h"
-
 //-----------------------------------------------------------------------------
 /// \ingroup Slicer_QtModules_Annotation
-class qSlicerAnnotationModuleWidgetPrivate: public Ui_qSlicerAnnotationModule
+class qSlicerAnnotationModuleWidgetPrivate: public Ui_qSlicerAnnotationModuleWidget
 {
   Q_DECLARE_PUBLIC(qSlicerAnnotationModuleWidget);
 protected:
@@ -71,14 +77,12 @@ qSlicerAnnotationModuleWidgetPrivate::logic() const
 qSlicerAnnotationModuleWidgetPrivate::qSlicerAnnotationModuleWidgetPrivate(qSlicerAnnotationModuleWidget& object)
   : q_ptr(&object)
 {
-  this->m_SnapShotDialog = 0;
+  this->m_SnapShotDialog = nullptr;
 }
 
 //-----------------------------------------------------------------------------
 qSlicerAnnotationModuleWidgetPrivate::~qSlicerAnnotationModuleWidgetPrivate()
-{
-
-}
+= default;
 
 //-----------------------------------------------------------------------------
 // qSlicerAnnotationModuleWidgetPrivate methods
@@ -88,7 +92,7 @@ void qSlicerAnnotationModuleWidgetPrivate::setupUi(qSlicerWidget* widget)
 {
   Q_Q(qSlicerAnnotationModuleWidget);
 
-  this->Ui_qSlicerAnnotationModule::setupUi(widget);
+  this->Ui_qSlicerAnnotationModuleWidget::setupUi(widget);
 
 
   // setup the hierarchy treeWidget
@@ -98,7 +102,7 @@ void qSlicerAnnotationModuleWidgetPrivate::setupUi(qSlicerWidget* widget)
   this->hierarchyTreeView->hideScene();
   // enable scrolling when drag past end of window
   this->hierarchyTreeView->setFitSizeToVisibleIndexes(false);
-  
+
   // connect the tree's edit property button to the widget's slot
   QObject::connect(this->hierarchyTreeView, SIGNAL(onPropertyEditButtonClicked(QString)),
                    q, SLOT(propertyEditButtonClicked(QString)));
@@ -150,6 +154,10 @@ void qSlicerAnnotationModuleWidgetPrivate::setupUi(qSlicerWidget* widget)
                  q, SLOT(updateActiveHierarchyLabel()));
   q->qvtkConnect(this->logic(), vtkSlicerAnnotationModuleLogic::RefreshRequestEvent,
                  q, SLOT(refreshTree()));
+  // listen to the logic for when it adds a new hierarchy node that has to be
+  // expanded
+  q->qvtkConnect(this->logic(), vtkSlicerAnnotationModuleLogic::HierarchyNodeAddedEvent,
+                 q, SLOT(onHierarchyNodeAddedEvent(vtkObject*,vtkObject*)));
 
   // update from the mrml scene
   q->refreshTree();
@@ -161,8 +169,8 @@ qSlicerAnnotationModuleWidget::qSlicerAnnotationModuleWidget(QWidget* parent) :
   , d_ptr(new qSlicerAnnotationModuleWidgetPrivate(*this))
 {
   Q_D(qSlicerAnnotationModuleWidget);
-  this->m_ReportDialog = 0;
-  this->m_PropertyDialog = 0;
+  this->m_ReportDialog = nullptr;
+  this->m_PropertyDialog = nullptr;
   this->m_CurrentAnnotationType = 0;
 
   d->m_SnapShotDialog = new qSlicerAnnotationModuleSnapShotDialog(this);
@@ -175,14 +183,14 @@ qSlicerAnnotationModuleWidget::~qSlicerAnnotationModuleWidget()
     {
     this->m_ReportDialog->close();
     delete this->m_ReportDialog;
-    this->m_ReportDialog = 0;
+    this->m_ReportDialog = nullptr;
     }
 
   if (this->m_PropertyDialog)
     {
     this->m_PropertyDialog->close();
     delete this->m_PropertyDialog;
-    this->m_PropertyDialog = 0;
+    this->m_PropertyDialog = nullptr;
     }
 }
 
@@ -199,10 +207,12 @@ void qSlicerAnnotationModuleWidget::moveDownSelected()
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  const char* mrmlId = d->logic()->MoveAnnotationDown(d->hierarchyTreeView->firstSelectedNode());
+  const char* mrmlId =
+    d->logic()->MoveAnnotationDown(d->hierarchyTreeView->firstSelectedNode());
+  vtkMRMLNode* mrmlNode = this->mrmlScene()->GetNodeByID(mrmlId);
 
   d->hierarchyTreeView->clearSelection();
-  d->hierarchyTreeView->setSelectedNode(mrmlId);
+  d->hierarchyTreeView->setCurrentNode(mrmlNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -211,9 +221,10 @@ void qSlicerAnnotationModuleWidget::moveUpSelected()
   Q_D(qSlicerAnnotationModuleWidget);
 
   const char* mrmlId = d->logic()->MoveAnnotationUp(d->hierarchyTreeView->firstSelectedNode());
+  vtkMRMLNode* mrmlNode = this->mrmlScene()->GetNodeByID(mrmlId);
 
   d->hierarchyTreeView->clearSelection();
-  d->hierarchyTreeView->setSelectedNode(mrmlId);
+  d->hierarchyTreeView->setCurrentNode(mrmlNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -223,7 +234,7 @@ void qSlicerAnnotationModuleWidget::selectAllButtonClicked()
 
   d->hierarchyTreeView->selectAll();
   d->logic()->SetAllAnnotationsSelected(1);
-  d->logic()->SetActiveHierarchyNodeID(NULL);
+  d->logic()->SetActiveHierarchyNodeID(nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -233,7 +244,7 @@ void qSlicerAnnotationModuleWidget::unselectAllButtonClicked()
 
   d->hierarchyTreeView->clearSelection();
   d->logic()->SetAllAnnotationsSelected(0);
-  d->logic()->SetActiveHierarchyNodeID(NULL);
+  d->logic()->SetActiveHierarchyNodeID(nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -255,7 +266,7 @@ void qSlicerAnnotationModuleWidget::propertyEditButtonClicked(QString mrmlId)
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  QByteArray mrmlIdArray = mrmlId.toLatin1();
+  QByteArray mrmlIdArray = mrmlId.toUtf8();
 
   // special case for snapshots
   if (d->logic()->IsSnapshotNode(mrmlIdArray.data()))
@@ -308,7 +319,7 @@ void qSlicerAnnotationModuleWidget::propertyEditButtonClicked(QString mrmlId)
     // for now just make the dialog modal so can't change the annotations
     // while have the dialog open
     this->m_PropertyDialog->setModal(true);
-    
+
     this->m_PropertyDialog->setVisible(true);
 
     this->connect(this->m_PropertyDialog, SIGNAL(rejected()), this,
@@ -331,7 +342,7 @@ void qSlicerAnnotationModuleWidget::propertyRestored()
   d->logic()->SetAnnotationSelected(mrmlID, false);
 
   //delete this->m_PropertyDialog;
-  this->m_PropertyDialog = 0;
+  this->m_PropertyDialog = nullptr;
 
 }
 
@@ -348,7 +359,7 @@ void qSlicerAnnotationModuleWidget::propertyAccepted()
 
 
   //delete this->m_PropertyDialog;
-  this->m_PropertyDialog = 0;
+  this->m_PropertyDialog = nullptr;
 
 }
 
@@ -389,7 +400,7 @@ void qSlicerAnnotationModuleWidget::invisibleHierarchyButtonClicked()
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  d->logic()->SetHierarchyAnnotationsVisibleFlag(NULL, false);
+  d->logic()->SetHierarchyAnnotationsVisibleFlag(nullptr, false);
 }
 
 //-----------------------------------------------------------------------------
@@ -397,7 +408,7 @@ void qSlicerAnnotationModuleWidget::visibleHierarchyButtonClicked()
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  d->logic()->SetHierarchyAnnotationsVisibleFlag(NULL, true);
+  d->logic()->SetHierarchyAnnotationsVisibleFlag(nullptr, true);
 }
 
 //-----------------------------------------------------------------------------
@@ -405,7 +416,7 @@ void qSlicerAnnotationModuleWidget::lockHierarchyButtonClicked()
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  d->logic()->SetHierarchyAnnotationsLockFlag(NULL, true);
+  d->logic()->SetHierarchyAnnotationsLockFlag(nullptr, true);
 }
 
 //-----------------------------------------------------------------------------
@@ -413,7 +424,7 @@ void qSlicerAnnotationModuleWidget::unlockHierarchyButtonClicked()
 {
   Q_D(qSlicerAnnotationModuleWidget);
 
-  d->logic()->SetHierarchyAnnotationsLockFlag(NULL, false);
+  d->logic()->SetHierarchyAnnotationsLockFlag(nullptr, false);
 }
 
 //-----------------------------------------------------------------------------
@@ -424,7 +435,25 @@ void qSlicerAnnotationModuleWidget::onAddHierarchyButtonClicked()
   this->refreshTree();
   if (d->logic()->AddHierarchy())
     {
-    d->hierarchyTreeView->setSelectedNode(d->logic()->GetActiveHierarchyNodeID());
+    vtkMRMLNode* node = d->logic()->GetMRMLScene()->GetNodeByID(
+      d->logic()->GetActiveHierarchyNodeID());
+    d->hierarchyTreeView->setCurrentNode(node);
+    }
+  // set expanded state to match hierarchy node
+  vtkMRMLNode *mrmlNode = this->mrmlScene()->GetNodeByID(d->logic()->GetActiveHierarchyNodeID());
+  if (mrmlNode)
+    {
+    QModelIndex hierarchyIndex = d->hierarchyTreeView->sortFilterProxyModel()->indexFromMRMLNode(mrmlNode);
+    vtkMRMLDisplayableHierarchyNode *hierarchyNode = vtkMRMLDisplayableHierarchyNode::SafeDownCast(mrmlNode);
+    if (hierarchyNode)
+      {
+      d->hierarchyTreeView->setExpanded(hierarchyIndex, hierarchyNode->GetExpanded());
+      }
+    else
+      {
+      // otherwise just expand by default
+      d->hierarchyTreeView->expand(hierarchyIndex);
+      }
     }
 }
 
@@ -439,9 +468,11 @@ void qSlicerAnnotationModuleWidget::updateActiveHierarchyLabel()
   if (id)
     {
     //idString = QString(" (") + QString(id) + QString(")");
-    if (d->logic() && d->logic()->GetMRMLScene() && d->logic()->GetMRMLScene()->GetNodeByID(id))
+    vtkMRMLNode* node = d->logic()->GetMRMLScene() ?
+      d->logic()->GetMRMLScene()->GetNodeByID(id) : nullptr;
+    if (node)
       {
-      name = QString(d->logic()->GetMRMLScene()->GetNodeByID(id)->GetName());
+      name = QString(node->GetName());
       }
     }
   d->activeHierarchyLabel->setText(QString("Active list: ") + name);
@@ -461,11 +492,43 @@ void qSlicerAnnotationModuleWidget::refreshTree()
     // scene is updating, return
     return;
     }
-  // this gets called on scene closed, can we make sure that the widget is
-  // visible?
-  
-  d->hierarchyTreeView->setMRMLScene(d->logic()->GetMRMLScene());
+  // don't reset unless scene is different as it also resets the expanded
+  // level on the tree
+  if (d->hierarchyTreeView->mrmlScene() != d->logic()->GetMRMLScene())
+    {
+    // this gets called on scene closed, can we make sure that the widget is
+    // visible?
+    d->hierarchyTreeView->setMRMLScene(d->logic()->GetMRMLScene());
+    }
   d->hierarchyTreeView->hideScene();
+}
+
+//-----------------------------------------------------------------------------
+void qSlicerAnnotationModuleWidget::onHierarchyNodeAddedEvent(vtkObject *vtkNotUsed(caller), vtkObject *callData)
+{
+  Q_D(qSlicerAnnotationModuleWidget);
+
+  // the call data should be the annotation hierarchy node that was just
+  // added, passed along from the logic
+  if (callData == nullptr)
+    {
+    return;
+    }
+  vtkMRMLNode *node = nullptr;
+  node = reinterpret_cast<vtkMRMLNode*>(callData);
+  if (node == nullptr)
+    {
+    return;
+    }
+
+  // get the model index of the hierarchy node in the tree
+  QModelIndex hierarchyIndex = d->hierarchyTreeView->sortFilterProxyModel()->indexFromMRMLNode(node);
+  vtkMRMLDisplayableHierarchyNode *hierarchyNode = vtkMRMLDisplayableHierarchyNode::SafeDownCast(node);
+  if (hierarchyNode)
+    {
+    // set the expanded state to match the node
+    d->hierarchyTreeView->setExpanded(hierarchyIndex, hierarchyNode->GetExpanded());
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -549,3 +612,32 @@ void qSlicerAnnotationModuleWidget::reportDialogRejected()
 
 }
 
+//-----------------------------------------------------------
+bool qSlicerAnnotationModuleWidget::setEditedNode(vtkMRMLNode* node,
+                                                  QString role /* = QString()*/,
+                                                  QString context /* = QString()*/)
+{
+  Q_D(qSlicerAnnotationModuleWidget);
+  Q_UNUSED(role);
+  Q_UNUSED(context);
+
+  if (vtkMRMLAnnotationNode::SafeDownCast(node) || vtkMRMLAnnotationHierarchyNode::SafeDownCast(node))
+    {
+    d->hierarchyTreeView->setCurrentNode(node);
+    return true;
+    }
+
+  if (vtkMRMLAnnotationDisplayNode::SafeDownCast(node))
+    {
+    vtkMRMLAnnotationDisplayNode* displayNode = vtkMRMLAnnotationDisplayNode::SafeDownCast(node);
+    vtkMRMLAnnotationNode* displayableNode = vtkMRMLAnnotationNode::SafeDownCast(displayNode->GetDisplayableNode());
+    if (!displayableNode)
+      {
+      return false;
+      }
+    d->hierarchyTreeView->setCurrentNode(displayableNode);
+    return true;
+    }
+
+  return false;
+}

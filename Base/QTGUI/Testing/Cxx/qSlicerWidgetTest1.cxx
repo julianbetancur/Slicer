@@ -21,25 +21,33 @@
 // Qt includes
 #include <QApplication>
 
+// Slicer includes
+#include "vtkSlicerConfigure.h"
+
 // SlicerQt includes
 #include "qSlicerWidget.h"
 
 // MRML includes
 #include <vtkMRMLScene.h>
 
+// VTK includes
+#include "qMRMLWidget.h"
+
 // STD includes
 
 int qSlicerWidgetTest1(int argc, char * argv[] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
   qSlicerWidget widget;
-  if (widget.mrmlScene() != 0)
+  if (widget.mrmlScene() != nullptr)
     {
     std::cerr << "scene incorrectly initialized." << std::endl;
     return EXIT_FAILURE;
     }
   // check for infinite loop
-  QObject::connect(&widget, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)), 
+  QObject::connect(&widget, SIGNAL(mrmlSceneChanged(vtkMRMLScene*)),
                    &widget, SLOT(setMRMLScene(vtkMRMLScene*)));
   vtkMRMLScene* scene = vtkMRMLScene::New();
   widget.setMRMLScene(scene);

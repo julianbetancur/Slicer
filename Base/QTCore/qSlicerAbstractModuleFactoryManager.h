@@ -46,7 +46,7 @@ class qSlicerAbstractModuleFactoryManagerPrivate;
 /// 3) Optionally:
 ///    - specify module names to ignore: For startup speed-up and memory consummation,
 ///    it can be useful to not load some modules:
-///     factoryManager->setModulesToIgnore(QStringList(QString("Data")));
+///     factoryManager->setModulesToIgnore(QStringList(QLatin1String("Data")));
 ///    - specify an explicit list of modules to register/instantiate/load. All other discovered
 ///    modules won't be loaded.
 /// 4) scan the directories and test which file is a module and register it (not instantiated yet)
@@ -71,24 +71,27 @@ class Q_SLICER_BASE_QTCORE_EXPORT qSlicerAbstractModuleFactoryManager : public Q
   /// A module can be a library (dll, so),
   /// an executable (exe), a python file (py) or any other file type supported
   /// by the registered factories.
-  /// The search is not recursive (\tdb?), you need to provide each subdirectory
+  /// The search is not recursive, you need to provide each subdirectory
   /// manually.
+  ///
+  /// \todo In qSlicerAbstractModuleFactoryManager, should the module search recursively descend \a searchPaths
   Q_PROPERTY(QStringList searchPaths READ searchPaths WRITE setSearchPaths)
 
-  /// This property holds the name of the modules to ignore at registration time.
+  /// This property holds the names of the modules to ignore at registration time.
+  ///
   /// Due to the large amount of modules to load, it can be faster (and less
-  /// overwhelming) to load only a subset of volume. Specify the names of the
+  /// overwhelming) to load only a subset of the modules.
   Q_PROPERTY(QStringList modulesToIgnore READ modulesToIgnore WRITE setModulesToIgnore NOTIFY modulesToIgnoreChanged)
 public:
   typedef ctkAbstractFileBasedFactory<qSlicerAbstractCoreModule> qSlicerFileBasedModuleFactory;
   typedef ctkAbstractFactory<qSlicerAbstractCoreModule> qSlicerModuleFactory;
 
   typedef QObject Superclass;
-  qSlicerAbstractModuleFactoryManager(QObject * newParent = 0);
+  qSlicerAbstractModuleFactoryManager(QObject * newParent = nullptr);
 
   /// Destructor, Deallocates resources
   /// Unregister (and delete) all registered factories.
-  virtual ~qSlicerAbstractModuleFactoryManager();
+  ~qSlicerAbstractModuleFactoryManager() override;
 
   /// Print internal state using qDebug()
   virtual void printAdditionalInfo();
@@ -96,10 +99,15 @@ public:
   /// \brief Register a \a factory
   /// The factory will be deleted when unregistered
   /// (e.g. in ~qSlicerAbstractModuleFactoryManager())
+  ///
   /// Example:
+  ///
+  /// \code{.cpp}
   /// qSlicerAbstractModuleFactoryManager factoryManager;
   /// factoryManager.registerFactory(new qSlicerCoreModuleFactory);
   /// factoryManager.registerFactory(new qSlicerLoadableModuleFactory);
+  /// \endcode
+  ///
   /// The order in which factories are registered is important. When scanning
   /// directories, registered factories are browse and the first factory that
   /// can read a file is used.
@@ -122,19 +130,26 @@ public:
   ///  list.
   inline void removeSearchPaths(const QStringList& paths);
 
-  /// Utility function that removes a path to the current \a searchPaths list.
+  /// Utility function that removes a path from the current \a searchPaths list.
   inline void removeSearchPath(const QString& path);
 
   void setExplicitModules(const QStringList& moduleNames);
   QStringList explicitModules()const;
 
+
+  /// Set or get the \a modulesToIgnore list.
+  ///
+  /// If list is modified, the signal
+  /// modulesToIgnoreChanged(const QStringLists&) is emitted.
   void setModulesToIgnore(const QStringList& modulesNames);
   QStringList modulesToIgnore()const;
 
   /// Utility function that adds a module to the \a modulesToIgnore list.
+  /// \sa removeModuleToIgnore(const QString& moduleName)
   inline void addModuleToIgnore(const QString& moduleName);
 
   /// Utility function that removes a module to the \a modulesToIgnore list.
+  /// \sa addModuleToIgnore(const QString& moduleName)
   inline void removeModuleToIgnore(const QString& moduleName);
 
   /// After the modules are registered, ignoredModules contains the list
@@ -145,13 +160,15 @@ public:
   /// using one of the registered factories.
   void registerModules();
 
+  Q_INVOKABLE void registerModule(const QFileInfo& file);
+
   /// Convenient method returning the list of all registered module names
   Q_INVOKABLE QStringList registeredModuleNames() const;
 
   /// Return true if a module has been registered, false otherwise
   Q_INVOKABLE bool isRegistered(const QString& name)const;
 
-  /// Instanciate all previously registered modules.
+  /// Instantiate all previously registered modules.
   virtual void instantiateModules();
 
   /// List of registered and instantiated modules
@@ -209,7 +226,6 @@ protected:
   QScopedPointer<qSlicerAbstractModuleFactoryManagerPrivate> d_ptr;
 
   void registerModules(const QString& directoryPath);
-  void registerModule(const QFileInfo& file);
 
   /// Instantiate a module given its \a name
   qSlicerAbstractCoreModule* instantiateModule(const QString& name);

@@ -15,8 +15,8 @@
 
 =========================================================================*/
 
-#ifndef __BSplineImageToImageRegistrationMethod_txx
-#define __BSplineImageToImageRegistrationMethod_txx
+#ifndef itkBSplineImageToImageRegistrationMethod_txx
+#define itkBSplineImageToImageRegistrationMethod_txx
 
 #include "itkBSplineImageToImageRegistrationMethod.h"
 
@@ -53,14 +53,14 @@ public:
   itkSetMacro(DontShowParameters, bool);
   itkSetMacro(UpdateInterval, int);
 
-  void Execute( Object * caller, const EventObject & event )
+  void Execute( Object * caller, const EventObject & event ) override
   {
     Execute( (const Object *)caller, event );
   }
 
-  void Execute( const Object * object, const EventObject & event )
+  void Execute( const Object * object, const EventObject & event ) override
   {
-    if( typeid( event ) != typeid( IterationEvent ) || object == NULL )
+    if( typeid( event ) != typeid( IterationEvent ) || object == nullptr )
       {
       return;
       }
@@ -69,11 +69,7 @@ public:
 
     if( ++m_Iteration % m_UpdateInterval == 0 )
       {
-#if ITK_VERSION_MAJOR < 4
-      RealTimeClock::TimeStampType t = m_Clock->GetTimeStamp();
-#else
       RealTimeClock::TimeStampType t = m_Clock->GetTimeInSeconds();
-#endif
       if( !m_DontShowParameters )
         {
         std::cout << "   " << m_Iteration << " : "
@@ -95,7 +91,7 @@ public:
 
   void Update()
   {
-    this->Execute( (const Object *)NULL, IterationEvent() );
+    this->Execute( (const Object *)nullptr, IterationEvent() );
   }
 
 protected:
@@ -110,24 +106,19 @@ protected:
   BSplineImageRegistrationViewer()
   {
     m_Clock = RealTimeClock::New();
-#if ITK_VERSION_MAJOR < 4
-    m_LastTime = m_Clock->GetTimeStamp();
-#else
     m_LastTime = m_Clock->GetTimeInSeconds();
-#endif
     m_Iteration = 0;
     m_UpdateInterval = 1;
     m_DontShowParameters = false;
-  };
-  ~BSplineImageRegistrationViewer()
+  }
+  ~BSplineImageRegistrationViewer() override
   {
-  };
+  }
 
 };
 
 template <class TImage>
-BSplineImageToImageRegistrationMethod<TImage>
-::BSplineImageToImageRegistrationMethod( void )
+BSplineImageToImageRegistrationMethod<TImage>::BSplineImageToImageRegistrationMethod()
 {
   m_NumberOfControlPoints = 10;
   m_NumberOfLevels = 4;
@@ -142,8 +133,7 @@ BSplineImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-BSplineImageToImageRegistrationMethod<TImage>
-::~BSplineImageToImageRegistrationMethod( void )
+BSplineImageToImageRegistrationMethod<TImage>::~BSplineImageToImageRegistrationMethod()
 {
 }
 
@@ -187,7 +177,7 @@ BSplineImageToImageRegistrationMethod<TImage>
   gridDirection    = this->GetFixedImage()->GetDirection();
   for( unsigned int i = 0; i < ImageDimension; i++ )
     {
-    gridSpacing[i] *=  static_cast<double>(fixedImageSize[i] - 1)
+    gridSpacing[i] *= static_cast<double>(fixedImageSize[i] - 1)
       / static_cast<double>(gridSizeOnImage[i] - 1);
     }
 
@@ -203,9 +193,7 @@ BSplineImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-void
-BSplineImageToImageRegistrationMethod<TImage>
-::GenerateData( void )
+void BSplineImageToImageRegistrationMethod<TImage>::GenerateData()
 {
   this->SetTransform( BSplineTransformType::New() );
 
@@ -249,7 +237,6 @@ BSplineImageToImageRegistrationMethod<TImage>
   /*  Set scales = expected amount of movement of a control point */
   /**/
   typename Superclass::TransformParametersType params( numberOfParameters );
-  typename TImage::SizeType fixedImageSize = this->GetFixedImage()->GetLargestPossibleRegion().GetSize();
   typename TransformType::SpacingType spacing   = this->GetFixedImage()->GetSpacing();
   double scale = 1.0 / (m_ExpectedDeformationMagnitude * spacing[0]);
   params.Fill( scale );
@@ -773,25 +760,22 @@ BSplineImageToImageRegistrationMethod<TImage>
 }
 
 template <class TImage>
-typename BSplineImageToImageRegistrationMethod<TImage>::TransformType
-* BSplineImageToImageRegistrationMethod<TImage>
-::GetTypedTransform( void )
-  {
+typename BSplineImageToImageRegistrationMethod<TImage>::TransformType*
+BSplineImageToImageRegistrationMethod<TImage>::GetTypedTransform()
+{
   return static_cast<TransformType  *>( Superclass::GetTransform() );
-  }
+}
 
 template <class TImage>
-const typename BSplineImageToImageRegistrationMethod<TImage>::TransformType
-* BSplineImageToImageRegistrationMethod<TImage>
-::GetTypedTransform( void ) const
-  {
+const typename BSplineImageToImageRegistrationMethod<TImage>::TransformType*
+BSplineImageToImageRegistrationMethod<TImage>::GetTypedTransform() const
+{
   return static_cast<const TransformType  *>( Superclass::GetTransform() );
-  }
+}
 
 template <class TImage>
 typename BSplineImageToImageRegistrationMethod<TImage>::BSplineTransformPointer
-BSplineImageToImageRegistrationMethod<TImage>
-::GetBSplineTransform( void ) const
+BSplineImageToImageRegistrationMethod<TImage>::GetBSplineTransform() const
 {
   typename BSplineTransformType::Pointer trans = BSplineTransformType::New();
 
@@ -827,13 +811,11 @@ BSplineImageToImageRegistrationMethod<TImage>
 
   int parameterCounter = 0;
 
-  typedef typename BSplineTransformType::ImageType ParametersImageType;
-  typedef ResampleImageFilter<ParametersImageType, ParametersImageType>
-  ResamplerType;
-  typedef BSplineResampleImageFunction<ParametersImageType, double>
-  FunctionType;
-  typedef IdentityTransform<double, ImageDimension> IdentityTransformType;
-  typedef itk::ImageFileWriter<ParametersImageType> WriterType;
+  typedef typename BSplineTransformType::ImageType                      ParametersImageType;
+  typedef ResampleImageFilter<ParametersImageType, ParametersImageType> ResamplerType;
+  typedef BSplineResampleImageFunction<ParametersImageType, double>     FunctionType;
+  typedef IdentityTransform<double, ImageDimension>                     IdentityTransformType;
+
   for( unsigned int k = 0; k < ImageDimension; k++ )
     {
     typename ResamplerType::Pointer upsampler = ResamplerType::New();
@@ -866,7 +848,7 @@ BSplineImageToImageRegistrationMethod<TImage>
     */
 
     upsampler->SetInput( this->GetTypedTransform()
-                         ->GetCoefficientImage()[k] );
+                         ->GetCoefficientImages()[k] );
     upsampler->SetInterpolator( function );
     upsampler->SetTransform( identity );
     upsampler->SetSize( gridSize );
@@ -951,6 +933,6 @@ BSplineImageToImageRegistrationMethod<TImage>
   Superclass::PrintSelf(os, indent);
 }
 
-};
+}
 
 #endif

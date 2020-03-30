@@ -1,6 +1,6 @@
 /*=auto=========================================================================
 
-  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH) 
+  Portions (c) Copyright 2005 Brigham and Women's Hospital (BWH)
   All Rights Reserved.
 
   See COPYRIGHT.txt
@@ -14,55 +14,73 @@
 #include "vtkMRMLCoreTestingMacros.h"
 #include "vtkMRMLDisplayableNode.h"
 #include "vtkMRMLDisplayNode.h"
+#include "vtkMRMLModelStorageNode.h"
 #include "vtkMRMLScene.h"
 
 // VTK includes
 #include <vtkCollection.h>
 #include <vtkNew.h>
+#include <vtkObjectFactory.h>
+#include <vtkSmartPointer.h>
 
 //----------------------------------------------------------------------------
 class vtkMRMLDisplayableNodeTestHelper1 : public vtkMRMLDisplayableNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLDisplayableNodeTestHelper1 *New(){return new vtkMRMLDisplayableNodeTestHelper1;};
+  static vtkMRMLDisplayableNodeTestHelper1 *New();
 
-  vtkTypeMacro( vtkMRMLDisplayableNodeTestHelper1, vtkMRMLDisplayableNode);
+  vtkTypeMacro(vtkMRMLDisplayableNodeTestHelper1, vtkMRMLDisplayableNode);
 
   // Return the raw list of display nodes. Elements can be 0 even if the node
   // associated to the node ID exists in the scene.
-  const std::vector<vtkMRMLDisplayNode*>& GetInternalDisplayNodes()
+  const std::vector<vtkMRMLDisplayNode*> GetInternalDisplayNodes()
     {
-    return this->DisplayNodes;
+    std::vector<vtkMRMLDisplayNode*> InternalDisplayNodes;
+    int ndnodes = this->GetNumberOfDisplayNodes();
+    for (int i=0; i<ndnodes; i++)
+      {
+      InternalDisplayNodes.push_back(this->GetNthDisplayNode(i));
+      }
+    return InternalDisplayNodes;
     }
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLDisplayableNodeTestHelper1;
+    return vtkMRMLDisplayableNodeTestHelper1::New();
     }
-  virtual const char* GetNodeTagName()
+  const char* GetNodeTagName() override
     {
     return "vtkMRMLDisplayableNodeTestHelper1";
     }
+
+  vtkMRMLStorageNode* CreateDefaultStorageNode() override
+    {
+    // just some random storage node to pass the storage node test of basic MRML node tests
+    return vtkMRMLStorageNode::SafeDownCast(vtkMRMLModelStorageNode::New());
+    }
 };
+vtkStandardNewMacro(vtkMRMLDisplayableNodeTestHelper1);
 
 //----------------------------------------------------------------------------
 class vtkMRMLDisplayNodeTestHelper : public vtkMRMLDisplayNode
 {
 public:
   // Provide a concrete New.
-  static vtkMRMLDisplayNodeTestHelper *New(){return new vtkMRMLDisplayNodeTestHelper;};
+  static vtkMRMLDisplayNodeTestHelper *New();
 
-  vtkTypeMacro( vtkMRMLDisplayNodeTestHelper, vtkMRMLDisplayNode);
+  vtkTypeMacro(vtkMRMLDisplayNodeTestHelper, vtkMRMLDisplayNode);
 
-  virtual vtkMRMLNode* CreateNodeInstance()
+  vtkMRMLNode* CreateNodeInstance() override
     {
-    return new vtkMRMLDisplayNodeTestHelper;
+    return vtkMRMLDisplayNodeTestHelper::New();
     }
-  virtual const char* GetNodeTagName()
+  const char* GetNodeTagName() override
     {
     return "vtkMRMLDisplayNodeTestHelper";
     }
+
 };
+vtkStandardNewMacro(vtkMRMLDisplayNodeTestHelper);
 
 bool TestAddDisplayNodeID();
 bool TestAddDisplayNodeIDWithNoScene();
@@ -77,11 +95,8 @@ bool TestReferences();
 //----------------------------------------------------------------------------
 int vtkMRMLDisplayableNodeTest1(int , char * [] )
 {
-  vtkSmartPointer< vtkMRMLDisplayableNodeTestHelper1 > node1 = vtkSmartPointer< vtkMRMLDisplayableNodeTestHelper1 >::New();
-
-  EXERCISE_BASIC_OBJECT_METHODS( node1 );
-
-  EXERCISE_BASIC_MRML_METHODS(vtkMRMLDisplayableNodeTestHelper1, node1);
+  vtkNew<vtkMRMLDisplayableNodeTestHelper1> node1;
+  EXERCISE_ALL_BASIC_MRML_METHODS(node1.GetPointer());
 
   bool res = true;
   res = TestAddDisplayNodeID() && res;
@@ -109,10 +124,10 @@ bool TestAddDisplayNodeID()
   scene->AddNode(displayNode1.GetPointer());
 
   /// Add empty display node
-  displayableNode->AddAndObserveDisplayNodeID(0);
+  displayableNode->AddAndObserveDisplayNodeID(nullptr);
   if (displayableNode->GetNumberOfDisplayNodes() != 0 ||
-      displayableNode->GetNthDisplayNodeID(0) != 0 ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNodeID(0) != nullptr ||
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": AddAndObserveDisplayNode failed" << std::endl;
     return false;
@@ -128,7 +143,7 @@ bool TestAddDisplayNodeID()
   referencedNodes.TakeReference(scene->GetReferencedNodes(displayableNode.GetPointer()));
   int newReferencedNodesCount = referencedNodes->GetNumberOfItems();
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode1.GetPointer() ||
       newReferencedNodesCount != (referencedNodesCount + 1))
@@ -138,10 +153,10 @@ bool TestAddDisplayNodeID()
     }
 
   /// Add empty display node ID
-  displayableNode->AddAndObserveDisplayNodeID(0);
+  displayableNode->AddAndObserveDisplayNodeID(nullptr);
   if (displayableNode->GetNumberOfDisplayNodes() != 1 ||
-      displayableNode->GetNthDisplayNodeID(1) != 0 ||
-      displayableNode->GetNthDisplayNode(1) != 0)
+      displayableNode->GetNthDisplayNodeID(1) != nullptr ||
+      displayableNode->GetNthDisplayNode(1) != nullptr)
     {
     std::cout << __LINE__ << ": AddAndObserveDisplayNode failed" << std::endl;
     return false;
@@ -153,7 +168,7 @@ bool TestAddDisplayNodeID()
 
   displayableNode->SetAndObserveDisplayNodeID(displayNode2->GetID());
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode2->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode2.GetPointer())
     {
@@ -167,11 +182,11 @@ bool TestAddDisplayNodeID()
 
   displayableNode->SetAndObserveNthDisplayNodeID(1, displayNode3->GetID());
 
-  if (displayableNode->GetNthDisplayNodeID(1) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode3->GetID()) ||
       displayableNode->GetNthDisplayNode(1) != displayNode3.GetPointer() ||
       // make sure it didn't change the first display node ID
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode2->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode2.GetPointer())
     {
@@ -194,9 +209,9 @@ bool TestAddDisplayNodeIDWithNoScene()
   /// Add display node
   displayableNode->SetAndObserveDisplayNodeID(displayNode1->GetID());
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": AddAndObserveDisplayNode failed" << std::endl;
     return false;
@@ -208,9 +223,9 @@ bool TestAddDisplayNodeIDWithNoScene()
 
   displayableNode->SetAndObserveDisplayNodeID(displayNode2->GetID());
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode2->GetID()) ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNode failed" << std::endl;
     return false;
@@ -222,13 +237,13 @@ bool TestAddDisplayNodeIDWithNoScene()
 
   displayableNode->AddAndObserveDisplayNodeID(displayNode3->GetID());
 
-  if (displayableNode->GetNthDisplayNodeID(1) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode3->GetID()) ||
-      displayableNode->GetNthDisplayNode(1) != 0 ||
+      displayableNode->GetNthDisplayNode(1) != nullptr ||
       // make sure it didn't change the first display node ID
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode2->GetID()) ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNode failed" << std::endl;
     return false;
@@ -237,10 +252,10 @@ bool TestAddDisplayNodeIDWithNoScene()
   // Finally, add the node into the scene so it can look for the display nodes
   // in the scene.
   scene->AddNode(displayableNode.GetPointer());
-
-  if (displayableNode->GetInternalDisplayNodes().size() != 2 ||
-      displayableNode->GetInternalDisplayNodes()[0] != 0 ||
-      displayableNode->GetInternalDisplayNodes()[1] != 0)
+  const std::vector<vtkMRMLDisplayNode*> &internalNodes = displayableNode->GetInternalDisplayNodes();
+  if (internalNodes.size() != 2 ||
+      internalNodes[0] == nullptr ||
+      internalNodes[1] == nullptr)
     {
     std::cout << __LINE__ << ": AddNode failed" << std::endl;
     return false;
@@ -252,7 +267,7 @@ bool TestAddDisplayNodeIDWithNoScene()
   if (displayableNode->GetInternalDisplayNodes().size() != 2 ||
       nthDisplayNode != displayNode3.GetPointer() ||
       displayableNode->GetInternalDisplayNodes()[1] != displayNode3.GetPointer() ||
-      displayableNode->GetInternalDisplayNodes()[0] != 0)
+      displayableNode->GetInternalDisplayNodes()[0] == nullptr)
     {
     std::cout << __LINE__ << ": GetNthDisplayNode failed" << std::endl;
     return false;
@@ -264,11 +279,11 @@ bool TestAddDisplayNodeIDWithNoScene()
   if (displayableNode->GetInternalDisplayNodes().size() != 2 ||
       displayableNode->GetInternalDisplayNodes()[0] != displayNode2.GetPointer() ||
       displayableNode->GetInternalDisplayNodes()[1] != displayNode3.GetPointer() ||
-      displayableNode->GetNthDisplayNodeID(1) == 0 ||
+      displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode3->GetID()) ||
       displayableNode->GetNthDisplayNode(1) != displayNode3.GetPointer() ||
       // make sure it didn't change the first display node ID
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode2->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode2.GetPointer())
     {
@@ -292,7 +307,7 @@ bool TestAddDisplayNodeIDEventsWithNoScene()
   scene->AddNode(displayNode.GetPointer());
   displayableNode->SetAndObserveDisplayNodeID(displayNode->GetID());
 
-  vtkNew<vtkMRMLNodeCallback> callback;
+  vtkNew<vtkMRMLCoreTestingUtilities::vtkMRMLNodeCallback> callback;
   displayableNode->AddObserver(vtkCommand::AnyEvent, callback.GetPointer());
 
   scene->AddNode(displayableNode.GetPointer());
@@ -345,9 +360,9 @@ bool TestAddDelayedDisplayNode()
   vtkNew<vtkMRMLDisplayNodeTestHelper> displayNode1;
   displayableNode->SetAndObserveDisplayNodeID("vtkMRMLDisplayNodeTestHelper1");
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), "vtkMRMLDisplayNodeTestHelper1") ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed" << std::endl;
     return false;
@@ -355,9 +370,8 @@ bool TestAddDelayedDisplayNode()
 
   scene->AddNode(displayNode1.GetPointer());
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
-      strcmp(displayableNode->GetNthDisplayNodeID(0), "vtkMRMLDisplayNodeTestHelper1") ||
-      displayableNode->GetInternalDisplayNodes()[0] != 0)
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
+      strcmp(displayableNode->GetNthDisplayNodeID(0), "vtkMRMLDisplayNodeTestHelper1"))
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed" << std::endl;
     return false;
@@ -366,7 +380,7 @@ bool TestAddDelayedDisplayNode()
   // Search for the node in the scene.
   vtkMRMLNode* displayNode = displayableNode->GetNthDisplayNode(0);
 
-  if (displayableNode->GetNthDisplayNodeID(0) == 0 ||
+  if (displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
       displayNode != displayNode1.GetPointer() ||
       displayableNode->GetNthDisplayNode(0) != displayNode1.GetPointer())
@@ -399,10 +413,10 @@ bool TestRemoveDisplayNodeID()
   displayableNode->RemoveNthDisplayNodeID(1);
 
   if (displayableNode->GetNumberOfDisplayNodes() != 2 ||
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode1.GetPointer() ||
-      displayableNode->GetNthDisplayNodeID(1) == 0 ||
+      displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode3->GetID()) ||
       displayableNode->GetNthDisplayNode(1) != displayNode3.GetPointer())
     {
@@ -410,10 +424,10 @@ bool TestRemoveDisplayNodeID()
     return false;
     }
 
-  displayableNode->SetAndObserveNthDisplayNodeID(1, 0);
+  displayableNode->SetAndObserveNthDisplayNodeID(1, nullptr);
 
   if (displayableNode->GetNumberOfDisplayNodes() != 1 ||
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode1.GetPointer())
     {
@@ -424,8 +438,8 @@ bool TestRemoveDisplayNodeID()
   displayableNode->RemoveAllDisplayNodeIDs();
 
   if (displayableNode->GetNumberOfDisplayNodes() != 0 ||
-      displayableNode->GetNthDisplayNodeID(0) != 0 ||
-      displayableNode->GetNthDisplayNode(0) != 0)
+      displayableNode->GetNthDisplayNodeID(0) != nullptr ||
+      displayableNode->GetNthDisplayNode(0) != nullptr)
     {
     std::cout << __LINE__ << ": RemoveAllDisplayNodeIDs failed" << std::endl;
     return false;
@@ -456,10 +470,10 @@ bool TestRemoveDisplayNode()
   scene->RemoveNode(displayNode3.GetPointer());
 
   if (displayableNode->GetNumberOfDisplayNodes() != 2 ||
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
       displayableNode->GetNthDisplayNode(0) != displayNode1.GetPointer() ||
-      displayableNode->GetNthDisplayNodeID(1) == 0 ||
+      displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode2->GetID()) ||
       displayableNode->GetNthDisplayNode(1) != displayNode2.GetPointer())
     {
@@ -494,23 +508,23 @@ bool TestRemoveDisplayableNode()
   // nodes.
   vtkMRMLDisplayNode* displayNode = displayableNode->GetNthDisplayNode(0);
   std::vector<vtkMRMLDisplayNode*> displayNodes =
-    displayableNode->GetDisplayNodes();
+    displayableNode->GetInternalDisplayNodes();
 
   if (displayableNode->GetNumberOfDisplayNodes() != 3 ||
-      displayNode != 0 ||
+      displayNode != nullptr ||
       displayNodes.size() != 3 ||
-      displayNodes[0] != 0 ||
-      displayNodes[1] != 0 ||
-      displayNodes[2] != 0 ||
-      displayableNode->GetNthDisplayNodeID(0) == 0 ||
+      displayNodes[0] != nullptr ||
+      displayNodes[1] != nullptr ||
+      displayNodes[2] != nullptr ||
+      displayableNode->GetNthDisplayNodeID(0) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(0), displayNode1->GetID()) ||
-      displayableNode->GetNthDisplayNode(0) != 0 ||
-      displayableNode->GetNthDisplayNodeID(1) == 0 ||
+      displayableNode->GetNthDisplayNode(0) != nullptr ||
+      displayableNode->GetNthDisplayNodeID(1) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(1), displayNode2->GetID()) ||
-      displayableNode->GetNthDisplayNode(1) != 0 ||
-      displayableNode->GetNthDisplayNodeID(2) == 0 ||
+      displayableNode->GetNthDisplayNode(1) != nullptr ||
+      displayableNode->GetNthDisplayNodeID(2) == nullptr ||
       strcmp(displayableNode->GetNthDisplayNodeID(2), displayNode3->GetID()) ||
-      displayableNode->GetNthDisplayNode(2) != 0
+      displayableNode->GetNthDisplayNode(2) != nullptr
       )
     {
     std::cout << __LINE__ << ": RemoveNode failed" << std::endl;
@@ -531,18 +545,20 @@ bool TestDisplayModifiedEvent()
   vtkNew<vtkMRMLDisplayNodeTestHelper> displayNode1;
   scene->AddNode(displayNode1.GetPointer());
 
-  vtkNew<vtkMRMLNodeCallback> spy;
+  vtkNew<vtkMRMLCoreTestingUtilities::vtkMRMLNodeCallback> spy;
   displayableNode->AddObserver(vtkCommand::AnyEvent, spy.GetPointer());
 
   displayableNode->SetAndObserveDisplayNodeID(displayNode1->GetID());
 
-  if (spy->GetTotalNumberOfEvents() != 2 ||
+  if (spy->GetTotalNumberOfEvents() != 3 ||
       spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) != 1 ||
+      spy->GetNumberOfEvents(vtkMRMLNode::ReferenceAddedEvent) != 1 ||
       spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) != 1)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed:" << std::endl
               << spy->GetTotalNumberOfEvents() << " "
               << spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) << " "
+              << spy->GetNumberOfEvents(vtkMRMLNode::ReferenceAddedEvent) << " "
               << spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) << std::endl;
     return false;
     }
@@ -564,27 +580,31 @@ bool TestDisplayModifiedEvent()
   scene->AddNode(displayNode2.GetPointer());
   displayableNode->SetAndObserveDisplayNodeID(displayNode2->GetID());
 
-  if (spy->GetTotalNumberOfEvents() != 2 ||
+  if (spy->GetTotalNumberOfEvents() != 3 ||
       spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) != 1 ||
+      spy->GetNumberOfEvents(vtkMRMLNode::ReferenceModifiedEvent) != 1 ||
       spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) != 1)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed:" << std::endl
               << spy->GetTotalNumberOfEvents() << " "
               << spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) << " "
+              << spy->GetNumberOfEvents(vtkMRMLNode::ReferenceAddedEvent) << " "
               << spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) << std::endl;
     return false;
     }
   spy->ResetNumberOfEvents();
 
-  displayableNode->SetAndObserveDisplayNodeID(0);
+  displayableNode->SetAndObserveDisplayNodeID(nullptr);
 
-  if (spy->GetTotalNumberOfEvents() != 2 ||
+  if (spy->GetTotalNumberOfEvents() != 3 ||
       spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) != 1 ||
+      spy->GetNumberOfEvents(vtkMRMLNode::ReferenceRemovedEvent) != 1 ||
       spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) != 1)
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed:" << std::endl
               << spy->GetTotalNumberOfEvents() << " "
               << spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) << " "
+              << spy->GetNumberOfEvents(vtkMRMLNode::ReferenceRemovedEvent) << " "<< std::endl
               << spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) << std::endl;
     return false;
     }
@@ -608,13 +628,15 @@ bool TestDisplayModifiedEvent()
   // update the reference of the node
   vtkMRMLDisplayNode* displayNode = displayableNode->GetDisplayNode();
 
-  if (spy->GetTotalNumberOfEvents() != 1 ||
+  if (spy->GetTotalNumberOfEvents() != 2 ||
+      spy->GetNumberOfEvents(vtkMRMLNode::ReferenceAddedEvent) != 1 ||
       spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) != 1 ||
       displayNode != displayNode3.GetPointer())
     {
     std::cout << __LINE__ << ": SetAndObserveDisplayNodeID failed:" << std::endl
               << spy->GetTotalNumberOfEvents() << " "
               << spy->GetNumberOfEvents(vtkCommand::ModifiedEvent) << " "
+              << spy->GetNumberOfEvents(vtkMRMLNode::ReferenceAddedEvent) << " "
               << spy->GetNumberOfEvents(vtkMRMLDisplayableNode::DisplayModifiedEvent) << std::endl;
     return false;
     }
@@ -705,11 +727,11 @@ bool TestReferences()
   // Simulate scene deletion to see if it crashes or not.
   // When the displayable node is destroyed, it unreferences nodes. Make sure
   // it is ok for nodes already removed/deleted like displayNode1.
-  displayNode1 = 0;
-  displayableNode = 0;
-  displayNode2 = 0;
-  displayNode3 = 0;
-  scene = 0;
+  displayNode1 = nullptr;
+  displayableNode = nullptr;
+  displayNode2 = nullptr;
+  displayNode3 = nullptr;
+  scene = nullptr;
 
   return true;
 }

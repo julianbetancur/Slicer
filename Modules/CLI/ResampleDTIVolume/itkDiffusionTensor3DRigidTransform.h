@@ -11,11 +11,11 @@
   See License.txt or http://www.slicer.org/copyright/copyright.txt for details.
 
 ==========================================================================*/
-#ifndef __itkDiffusionTensor3DRigidTransform_h
-#define __itkDiffusionTensor3DRigidTransform_h
+#ifndef itkDiffusionTensor3DRigidTransform_h
+#define itkDiffusionTensor3DRigidTransform_h
 
 #include "itkDiffusionTensor3DMatrix3x3Transform.h"
-#include <itkRigid3DTransform.h>
+#include <itkVersorRigid3DTransform.h>
 
 #define PRECISION .001
 
@@ -39,16 +39,20 @@ public:
   typedef typename Superclass::InternalMatrixTransformType InternalMatrixTransformType;
   typedef Matrix<double, 4, 4>                             MatrixTransform4x4Type;
   typedef Rigid3DTransform<double>                         Rigid3DTransformType;
+  typedef VersorRigid3DTransform<double>                   VersorRigid3DTransformType;
   // /Set the 4x4 Matrix (the last row is ignored and considered to be 0,0,0,1
   void SetMatrix4x4( MatrixTransform4x4Type matrix );
 
   // /Set the transformation matrix from an itk::RigidTransform< double > object
   void SetTransform( typename Rigid3DTransformType::Pointer transform );
-  typename Rigid3DTransformType::Pointer GetRigidTransform();
+  typename VersorRigid3DTransformType::Pointer GetRigidTransform();
+
+  /** Run-time type information (and related methods). */
+  itkTypeMacro(DiffusionTensor3DRigidTransform, DiffusionTensor3DMatrix3x3Transform);
 
   itkNewMacro( Self );
   // /Set the 3x3 rotation matrix
-  void SetMatrix3x3( MatrixTransformType & matrix );
+  void SetMatrix3x3( MatrixTransformType & matrix ) override;
 
   void DisablePrecision();
 
@@ -58,7 +62,7 @@ protected:
   bool m_PrecisionChecking;
   double GetDet( MatrixTransformType & matrix );
 
-  void PreCompute();
+  void PreCompute() override;
 
 };
 

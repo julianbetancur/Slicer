@@ -35,13 +35,13 @@ class VTK_MRML_LOGIC_EXPORT vtkMRMLRemoteIOLogic : public vtkMRMLAbstractLogic
 public:
   /// The Usual vtk class functions
   static vtkMRMLRemoteIOLogic *New();
-  vtkTypeRevisionMacro(vtkMRMLRemoteIOLogic,vtkMRMLAbstractLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  vtkTypeMacro(vtkMRMLRemoteIOLogic,vtkMRMLAbstractLogic);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   void AddDataIOToScene();
   void RemoveDataIOFromScene();
 
-  /// 
+  ///
   /// Accessors for the comonents of the remote IO infrascucture
   /// Note that the internal instances are created in the constructor
   /// and used when calling AddDataIOToScene
@@ -55,7 +55,7 @@ public:
 
 protected:
   vtkMRMLRemoteIOLogic();
-  virtual ~vtkMRMLRemoteIOLogic();
+  ~vtkMRMLRemoteIOLogic() override;
   // disable copy constructor and operator
   vtkMRMLRemoteIOLogic(const vtkMRMLRemoteIOLogic&);
   void operator=(const vtkMRMLRemoteIOLogic&);

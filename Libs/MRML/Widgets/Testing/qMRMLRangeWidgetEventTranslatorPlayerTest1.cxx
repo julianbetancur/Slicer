@@ -25,6 +25,8 @@
 #include <QStandardItemModel>
 #include <QTimer>
 #include <QTreeView>
+// Slicer includes
+#include "vtkSlicerConfigure.h"
 
 // CTK includes
 #include "ctkCallback.h"
@@ -33,6 +35,9 @@
 
 // qMRML includes
 #include "qMRMLRangeWidget.h"
+
+// VTK includes
+#include "qMRMLWidget.h"
 
 // STD includes
 #include <cstdlib>
@@ -45,7 +50,7 @@ void checkFinalWidgetState(void* data)
   {
   qMRMLRangeWidget* widget = reinterpret_cast<qMRMLRangeWidget*>(data);
 
-  CTKCOMPARE(widget->minimumValue(), 14.00);
+  CTKCOMPARE(widget->minimumValue(), 0.00);
   CTKCOMPARE(widget->maximumValue(), 85.00);
   }
 }
@@ -53,7 +58,9 @@ void checkFinalWidgetState(void* data)
 //-----------------------------------------------------------------------------
 int qMRMLRangeWidgetEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
+  qMRMLWidget::preInitializeApplication();
   QApplication app(argc, argv);
+  qMRMLWidget::postInitializeApplication();
 
   QString xmlDirectory = QString(argv[1]) + "/Libs/MRML/Widgets/Testing/";
 

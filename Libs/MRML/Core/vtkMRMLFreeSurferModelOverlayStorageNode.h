@@ -26,44 +26,48 @@ class VTK_MRML_EXPORT vtkMRMLFreeSurferModelOverlayStorageNode
 public:
   static vtkMRMLFreeSurferModelOverlayStorageNode *New();
   vtkTypeMacro(vtkMRMLFreeSurferModelOverlayStorageNode,vtkMRMLModelStorageNode);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual vtkMRMLNode* CreateNodeInstance();
+  vtkMRMLNode* CreateNodeInstance() override;
 
-  /// 
+  ///
   /// Copy data from a  referenced node's filename to new location.
   /// NOTE: use this instead of Write Data in the Remote IO Pipeline
   /// until FreeSurferModel Writers are available.
   virtual int CopyData(vtkMRMLNode *refNode, const char *newFileName);
 
-  /// 
+  ///
   /// Get node XML tag name (like Storage, Model)
-  virtual const char* GetNodeTagName()  {return "FreeSurferModelOverlayStorage";};
+  const char* GetNodeTagName() override {return "FreeSurferModelOverlayStorage";}
 
   /// Return true if reference node can be written from
-  virtual bool CanWriteFromReferenceNode(vtkMRMLNode *refNode);
+  bool CanWriteFromReferenceNode(vtkMRMLNode *refNode) override;
 
 protected:
   vtkMRMLFreeSurferModelOverlayStorageNode();
-  ~vtkMRMLFreeSurferModelOverlayStorageNode();
+  ~vtkMRMLFreeSurferModelOverlayStorageNode() override;
   vtkMRMLFreeSurferModelOverlayStorageNode(const vtkMRMLFreeSurferModelOverlayStorageNode&);
   void operator=(const vtkMRMLFreeSurferModelOverlayStorageNode&);
 
   /// Initialize all the supported read file types
-  virtual void InitializeSupportedReadFileTypes();
+  void InitializeSupportedReadFileTypes() override;
 
   /// Initialize all the supported write file types
-  virtual void InitializeSupportedWriteFileTypes();
+  void InitializeSupportedWriteFileTypes() override;
 
-  /// 
+  ///
   /// Read data and set it in the referenced node
   /// NOTE: Subclasses should implement this method
-  virtual int ReadDataInternal(vtkMRMLNode *refNode);
-  
-  /// 
+  int ReadDataInternal(vtkMRMLNode *refNode) override;
+
+  ///
   /// Write data from a  referenced node
   /// NOTE: Subclasses should implement this method
-  virtual int WriteDataInternal(vtkMRMLNode *refNode);
+  int WriteDataInternal(vtkMRMLNode *refNode) override;
+
+  bool ReadScalarOverlay(const std::string& fullName, vtkMRMLModelNode* modelNode);
+  bool ReadScalarOverlayAnnot(const std::string& fullName, vtkMRMLModelNode* modelNode);
+  bool ReadScalarOverlayVolume(const std::string& fullName, vtkMRMLModelNode* modelNode);
 
   std::string GetColorNodeIDFromExtension(const std::string& extension);
   std::string GetColorNodeIDFromType(int type);
